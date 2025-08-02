@@ -85,16 +85,24 @@ export function UserProfile({ userId }: UserProfileProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
-  // Fetch current user and check admin status
+  // Consolidated data fetching
   useEffect(() => {
-    const fetchCurrentUser = async () => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null);
+      
       if (!session?.user?.id) {
         setError('Please log in to view profiles.');
-        setLoading(false);
+        return;
+      }
+
+      if (!userId) {
+        setError('No user ID provided.');
         return;
       }
 
       try {
+        // Fetch current user and check admin status
         const { data: userData, error: userError } = await supabase
           .from('registrations')
           .select('id, firstName, lastName, username, gender, status, created_at')
@@ -104,19 +112,16 @@ export function UserProfile({ userId }: UserProfileProps) {
         if (userError) {
           console.error('Error fetching current user:', userError);
           setError('Failed to load user data. Please try again.');
-          setLoading(false);
           return;
         }
 
         if (!userData) {
           setError('User registration not found. Please complete registration first.');
-          setLoading(false);
           return;
         }
 
         if (userData.status !== 'verified') {
           setError('Access denied. Your account must be verified to view profiles.');
-          setLoading(false);
           return;
         }
 
@@ -125,22 +130,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Simple admin check - in production, implement proper role-based access control
         setIsAdmin(session?.user?.email?.includes('admin') || false);
         
-      } catch (err: any) {
-        console.error('Error in fetchCurrentUser:', err);
-        setError('An unexpected error occurred while loading user data.');
-        setLoading(false);
-      }
-    };
-
-    fetchCurrentUser();
-  }, [session, supabase]);
-
-  // Fetch profile user data
-  useEffect(() => {
-    const fetchProfileUser = async () => {
-      if (!currentUser || !userId) return;
-
-      try {
+        // Fetch profile user data
         const { data: profileData, error: profileError } = await supabase
           .from('registrations')
           .select('id, firstName, lastName, username, gender, status, created_at')
@@ -158,25 +148,8 @@ export function UserProfile({ userId }: UserProfileProps) {
         }
 
         setProfileUser(profileData);
-      } catch (err: any) {
-        console.error('Error fetching profile user:', err);
-        setError('Failed to load profile data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfileUser();
-  }, [currentUser, userId, supabase]);
-
-  // Fetch user posts, comments, and calculate stats
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!profileUser) return;
-
-      setError(null);
-
-      try {
+        
+        // Fetch user posts, comments, and calculate stats
         // Fetch user posts
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
@@ -227,25 +200,38 @@ export function UserProfile({ userId }: UserProfileProps) {
 
         // If no real data, set mock data for demonstration
         if (posts.length === 0 && comments.length === 0) {
-          setMockData();
+          setMockData(profileData);
         }
 
       } catch (err: any) {
         console.error('Error fetching user data:', err);
         setError(`Failed to load user data: ${err.message}`);
         // Fallback to mock data for demonstration
-        setMockData();
+        setMockData(profileData);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData();
-  }, [profileUser, userId, supabase]);
+    fetchAllData();
+  }, [session, userId, supabase]);
 
   // Mock data for demonstration
-  const setMockData = () => {
-    if (!profileUser) return;
+  const setMockData = (profileData?: UserProfileData) => {
+    // Set mock profile user if not provided
+    if (!profileData) {
+      const mockProfileUser: UserProfileData = {
+        id: userId,
+        firstName: 'Demo',
+        lastName: 'User',
+        username: 'demo_user',
+        gender: 'Male',
+        status: 'verified',
+        created_at: new Date().toISOString()
+      };
+      setProfileUser(mockProfileUser);
+      profileData = mockProfileUser;
+    }
 
     const mockPosts: UserPost[] = [
       {
@@ -302,7 +288,6 @@ export function UserProfile({ userId }: UserProfileProps) {
       totalGreenFlags: mockPosts.reduce((sum, post) => sum + post.green_flag_count, 0),
       totalRedFlags: mockPosts.reduce((sum, post) => sum + post.red_flag_count, 0)
     });
-    setLoading(false);
   };
 
   // Handle ban/unban user
