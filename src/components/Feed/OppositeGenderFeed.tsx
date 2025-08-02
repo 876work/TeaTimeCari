@@ -16,6 +16,7 @@ import {
   CreditCard,
   Star,
   Clock
+} from 'lucide-react';
 import { StripeProvider } from '../Payment/StripeProvider';
 import { PaymentForm } from '../Payment/PaymentForm';
 
