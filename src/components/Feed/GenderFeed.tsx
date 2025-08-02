@@ -13,7 +13,6 @@ import {
   Heart,
   Flag
 } from 'lucide-react';
-import { AppLayout } from '../AppLayout';
 
 // Type definitions
 interface Post {
@@ -329,21 +328,24 @@ export function GenderFeed() {
   // Loading state for user verification
   if (userLoading) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Verifying access...</p>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Error state or access denied
   if (error && !currentUser) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -357,12 +359,14 @@ export function GenderFeed() {
             </button>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
@@ -607,6 +611,7 @@ export function GenderFeed() {
           </div>
         )}
       </div>
-    </AppLayout>
+      </div>
+    </div>
   );
 }
