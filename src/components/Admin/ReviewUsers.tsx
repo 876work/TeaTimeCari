@@ -22,7 +22,7 @@ interface User {
 export function AdminUserReview() {
   const supabase = useSupabaseClient();
   const session = useSession();
-  const [users, setUsers] = useState<User[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function AdminUserReview() {
         throw fetchError;
       }
 
-      setUsers(data || []);
+      setPendingUsers(data || []);
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setError(`Failed to fetch users: ${err.message || err.toString()}`);
@@ -145,6 +145,7 @@ export function AdminUserReview() {
     }
     
     setUsers(filteredMockData);
+    setPendingUsers(filteredMockData);
     setLoading(false);
   };
 
@@ -254,10 +255,12 @@ export function AdminUserReview() {
       }
 
       // Update local state
-      setUsers(prev => prev.map(user => 
+      setPendingUsers(prev => prev.map(user => 
         user.id === userId ? { ...user, status: 'banned' } : user
       ));
       
+      alert(`${userName} has been banned successfully.`);
+
       alert(`${userName} has been banned successfully.`);
 
     } catch (err: any) {
@@ -287,10 +290,12 @@ export function AdminUserReview() {
       }
 
       // Update local state
-      setUsers(prev => prev.map(user => 
+      setPendingUsers(prev => prev.map(user => 
         user.id === userId ? { ...user, status: 'verified' } : user
       ));
       
+      alert(`${userName} has been unbanned successfully.`);
+
       alert(`${userName} has been unbanned successfully.`);
 
     } catch (err: any) {
@@ -302,7 +307,7 @@ export function AdminUserReview() {
   };
 
   // Filter users based on search and gender filter
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = pendingUsers.filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -454,9 +459,9 @@ export function AdminUserReview() {
             <div className="text-center py-12 text-gray-600">
               <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
               <p className="text-lg font-medium">
-                {users.length === 0 ? 'No users found!' : 'No users match your search criteria.'}
+                {pendingUsers.length === 0 ? 'No users found!' : 'No users match your search criteria.'}
               </p>
-              {users.length === 0 && (
+              {pendingUsers.length === 0 && (
                 <p className="text-sm text-gray-500 mt-2">No user registrations found.</p>
               )}
             </div>
@@ -639,7 +644,7 @@ export function AdminUserReview() {
         {filteredUsers.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="text-center text-sm text-gray-600">
-              Showing {filteredUsers.length} of {users.length} total users
+              Showing {filteredUsers.length} of {pendingUsers.length} total users
             </div>
           </div>
         )}
