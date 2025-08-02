@@ -30,17 +30,16 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Cleanup camera stream
+  // Stop camera stream
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    setCameraState('idle');
   }, []);
 
-  // Start camera with appropriate constraints
-  const startCamera = useCallback(async (mode: 'selfie' | 'id') => {
+  // Start video stream
+  const startVideoStream = useCallback(async (mode: 'selfie' | 'id') => {
     setError(null);
     setCameraState('requesting');
     
@@ -57,18 +56,17 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        
-        // Wait for video to start playing before setting state to active
-        try {
-          await videoRef.current.play();
-          setCameraState('active');
-        } catch (playError) {
-          console.error('Error starting video playback:', playError);
-          throw new Error('Failed to start camera preview');
-        }
+      // Wait for video element to be available
+      if (!videoRef.current) {
+        throw new Error('Video element not available');
       }
+
+      videoRef.current.srcObject = stream;
+      
+      // Wait for video to start playing before setting state to active
+      await videoRef.current.play();
+      setCameraState('active');
+      
     } catch (err) {
       console.error('Camera access error:', err);
       let errorMessage = 'Unable to access camera. ';
@@ -88,13 +86,32 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       setError(errorMessage);
       setCameraState('error');
       
-      // Clean up stream if it was created but video failed to play
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
+      // Clean up stream if it was created
+      stopCamera();
     }
-  }, []);
+  }, [stopCamera]);
+
+  // Effect to handle camera initialization when mode changes
+  useEffect(() => {
+    if (captureMode && captureState === 'none') {
+      // Small delay to ensure video element is rendered
+      const timer = setTimeout(() => {
+        startVideoStream(captureMode);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else if (!captureMode) {
+      stopCamera();
+      setCameraState('idle');
+    }
+  }, [captureMode, captureState, startVideoStream, stopCamera]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
 
   // Handle mode selection
   const handleModeSelect = (mode: 'selfie' | 'id') => {
@@ -102,7 +119,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
-    startCamera(mode);
+    setError(null);
   };
 
   // Capture photo
@@ -133,6 +150,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
           setCapturedImage(reader.result as string);
           setCaptureState('captured');
           stopCamera();
+          setCameraState('idle');
         };
         reader.readAsDataURL(blob);
       }
@@ -144,9 +162,8 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
-    if (captureMode) {
-      startCamera(captureMode);
-    }
+    setError(null);
+    // The useEffect will handle restarting the camera
   };
 
   // Handle continue
@@ -159,13 +176,6 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       });
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera]);
 
   const isReadyToContinue = captureState === 'captured' && capturedImage && imageBlob;
 
@@ -263,44 +273,73 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
                   </div>
                 </div>
               ) : (
-                // Camera Feed
+                // Camera Feed Container
                 <div className="relative bg-gray-900 rounded-xl overflow-hidden">
+                  {/* Video Element - Always present when captureMode is active */}
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`w-full h-80 object-cover ${
+                      cameraState === 'active' ? 'block' : 'hidden'
+                    }`}
+                  />
+                  
+                  {/* Loading State Overlay */}
                   {cameraState === 'requesting' && (
-                    <div className="h-80 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                       <div className="text-center text-white">
                         <Camera className="w-12 h-12 mx-auto mb-4 animate-pulse" />
                         <p>Requesting camera access...</p>
+                        <p className="text-sm text-gray-300 mt-2">Please allow camera permissions</p>
                       </div>
                     </div>
                   )}
                   
-                  {cameraState === 'active' && (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-80 object-cover"
-                    />
-                  )}
-                  
+                  {/* Error State Overlay */}
                   {cameraState === 'error' && (
-                    <div className="h-80 flex items-center justify-center bg-red-50">
+                    <div className="absolute inset-0 flex items-center justify-center bg-red-50">
                       <div className="text-center text-red-700 p-6">
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
                         <p className="font-medium mb-2">Camera Error</p>
                         <p className="text-sm">{error}</p>
+                        <button
+                          onClick={() => {
+                            setError(null);
+                            setCameraState('idle');
+                            // Trigger camera restart
+                            setTimeout(() => {
+                              if (captureMode) {
+                                startVideoStream(captureMode);
+                              }
+                            }, 100);
+                          }}
+                          className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Try Again
+                        </button>
                       </div>
                     </div>
                   )}
                   
-                  {/* Camera overlay guide */}
+                  {/* Camera overlay guide - only show when camera is active */}
                   {cameraState === 'active' && (
                     <div className="absolute inset-0 pointer-events-none">
                       <div className="absolute inset-4 border-2 border-white border-dashed rounded-xl opacity-50"></div>
                       {captureMode === 'selfie' && (
                         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white rounded-full opacity-30"></div>
                       )}
+                    </div>
+                  )}
+                  
+                  {/* Fallback when no specific state matches */}
+                  {cameraState === 'idle' && (
+                    <div className="h-80 flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <Camera className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-400">Initializing camera...</p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -346,6 +385,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
                   setCapturedImage(null);
                   setImageBlob(null);
                   setError(null);
+                  setCameraState('idle');
                 }}
                 className="text-sm text-gray-600 hover:text-gray-800 underline"
               >
