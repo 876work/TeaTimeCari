@@ -57,9 +57,9 @@ export function validatePhoneNumber(phone: string): { isValid: boolean; error: s
     return { isValid: false, error: 'Phone number is required' };
   }
   
-  const phoneRegex = /^758-\d{3}-\d{4}$/;
+  const phoneRegex = /^758\d{7}$/;
   if (!phoneRegex.test(phone)) {
-    return { isValid: false, error: 'Phone number must be in format: 758-xxx-xxxx' };
+    return { isValid: false, error: 'Phone number must be in format: 758xxxxxxx' };
   }
   
   return { isValid: true, error: null };
