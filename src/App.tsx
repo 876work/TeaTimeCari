@@ -16,6 +16,7 @@ import { ReviewFlaggedPosts } from './components/Admin/ReviewFlaggedPosts';
 import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
+import { AdminUserReview } from './components/Admin/ReviewUsers';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -27,7 +28,7 @@ function App() {
   const isAdminLoginPage = window.location.pathname === '/teamin';
   
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
-  const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'admin-flagged-posts' | 'user-profile' | 'post-thread'>('register');
+  const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'admin-flagged-posts' | 'admin-user-reviews' | 'user-profile' | 'post-thread'>('register');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string>('mock-post-1'); // Default for testing
   const [registrationData, setRegistrationData] = React.useState<{
@@ -92,6 +93,10 @@ function App() {
 
   const handleGoToAdminFlaggedPosts = () => {
     setCurrentPage('admin-flagged-posts');
+  };
+
+  const handleGoToAdminUserReviews = () => {
+    setCurrentPage('admin-user-reviews');
   };
 
   const handleGoToUserProfile = (userId?: string) => {
@@ -182,6 +187,10 @@ function App() {
             <ReviewFlaggedPosts />
           )}
           
+          {currentPage === 'admin-user-reviews' && (
+            <AdminUserReview />
+          )}
+          
           {currentPage === 'user-profile' && (
             <UserProfile userId={selectedUserId} />
           )}
@@ -241,6 +250,14 @@ function App() {
                 }`}
               >
                 Admin Flagged
+              </button>
+              <button
+                onClick={handleGoToAdminUserReviews}
+                className={`px-3 py-1 text-xs rounded ${
+                  currentPage === 'admin-user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Admin Users
               </button>
               <button
                 onClick={() => handleGoToUserProfile()}

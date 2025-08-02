@@ -171,38 +171,41 @@ export function UserProfile({ userId }: UserProfileProps) {
             content, 
             created_at, 
             post_id,
-            posts(photo_url, username)
+            posts!inner(photo_url, username)
           `)
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
         if (commentsError && commentsError.code !== '42P01') {
-          throw commentsError;
+          console.error('Error fetching comments:', commentsError);
+          // Don't fail completely if comments can't be loaded
+          setUserComments([]);
+        } else {
+          const comments = (commentsData || []).map(comment => {
+            // Handle the posts relationship properly
+            const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
+            return {
+              ...comment,
+              post: post
+            };
+          });
+          setUserComments(comments);
         }
-
-        const comments = (commentsData || []).map(comment => {
-          // Handle the posts relationship properly
-          const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
-          return {
-            ...comment,
-            post: post
-          };
-        });
-        setUserComments(comments);
 
         // Calculate stats
         const totalGreenFlags = posts.reduce((sum, post) => sum + post.green_flag_count, 0);
         const totalRedFlags = posts.reduce((sum, post) => sum + post.red_flag_count, 0);
+        const totalComments = userComments.length;
 
         setUserStats({
           totalPosts: posts.length,
-          totalComments: comments.length,
+          totalComments,
           totalGreenFlags,
           totalRedFlags
         });
 
         // If no real data, set mock data for demonstration
-        if (posts.length === 0 && comments.length === 0) {
+        if (posts.length === 0 && totalComments === 0) {
           setMockData(profileData);
         }
 
@@ -210,7 +213,9 @@ export function UserProfile({ userId }: UserProfileProps) {
         console.error('Error fetching user data:', err);
         setError(`Failed to load user data: ${err.message}`);
         // Fallback to mock data for demonstration
-        setMockData(profileData);
+        if (profileData) {
+          setMockData(profileData);
+        }
       } finally {
         setLoading(false);
       }

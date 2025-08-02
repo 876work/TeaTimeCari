@@ -30,7 +30,7 @@ export function AdminUserReview() {
   const [filterGender, setFilterGender] = useState<'all' | 'Male' | 'Female'>('all');
 
   // Simple admin check - in production, implement proper role-based access control
-  const isAdmin = session?.user?.email?.includes('admin') || true; // TODO: Implement proper admin role check
+  const isAdmin = session?.user?.email?.includes('admin'); // TODO: Implement proper admin role check
 
   useEffect(() => {
     if (!isAdmin) {
