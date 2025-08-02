@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { Image, Upload, X, CheckCircle, AlertCircle, Loader2, Camera, ArrowRight } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
-import { AppLayout } from '../AppLayout';
 
 interface UserData {
   id: string;
@@ -218,21 +217,24 @@ export function UploadPost() {
   // Loading state for user verification
   if (userLoading) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Verifying access...</p>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Error state or access denied
   if (error && !currentUser) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -246,14 +248,16 @@ export function UploadPost() {
             </button>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Success state
   if (success) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -285,12 +289,14 @@ export function UploadPost() {
             </div>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
@@ -432,6 +438,7 @@ export function UploadPost() {
           </div>
         </div>
       </div>
-    </AppLayout>
+      </div>
+    </div>
   );
 }
