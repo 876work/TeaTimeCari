@@ -105,7 +105,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Fetch current user and check admin status
         const { data: userData, error: userError } = await supabase
           .from('registrations')
-          .select('id, firstName, lastName, username, gender, status, created_at')
+          .select('*')
           .eq('id', session.user.id)
           .single();
 
@@ -133,7 +133,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Fetch profile user data
         const { data: profileData, error: profileError } = await supabase
           .from('registrations')
-          .select('id, firstName, lastName, username, gender, status, created_at')
+          .select('*')
           .eq('id', userId)
           .single();
 
@@ -150,7 +150,6 @@ export function UserProfile({ userId }: UserProfileProps) {
         setProfileUser(profileData);
         
         // Fetch user posts, comments, and calculate stats
-        // Fetch user posts
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
           .select('id, photo_url, green_flag_count, red_flag_count, created_at')
@@ -172,7 +171,7 @@ export function UserProfile({ userId }: UserProfileProps) {
             content, 
             created_at, 
             post_id,
-            posts!inner(photo_url, username)
+            posts(photo_url, username)
           `)
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
@@ -181,10 +180,14 @@ export function UserProfile({ userId }: UserProfileProps) {
           throw commentsError;
         }
 
-        const comments = (commentsData || []).map(comment => ({
-          ...comment,
-          post: comment.posts
-        }));
+        const comments = (commentsData || []).map(comment => {
+          // Handle the posts relationship properly
+          const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
+          return {
+            ...comment,
+            post: post
+          };
+        });
         setUserComments(comments);
 
         // Calculate stats
