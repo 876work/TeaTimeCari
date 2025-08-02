@@ -586,5 +586,6 @@ export function AdminInviteCodes() {
           </div>
         )}
       </div>
+    </AdminLayout>
   );
 }
