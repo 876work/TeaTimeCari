@@ -4,7 +4,7 @@ import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, 
 import { AdminLayout } from './AdminLayout';
 
 // Define a type for the user data fetched from Supabase
-interface PendingUser {
+interface User {
   id: string;
   firstName: string;
   lastName: string;
@@ -22,12 +22,13 @@ interface PendingUser {
 export function AdminUserReview() {
   const supabase = useSupabaseClient();
   const session = useSession();
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGender, setFilterGender] = useState<'all' | 'Male' | 'Female'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'banned'>('all');
 
   // Simple admin check - in production, implement proper role-based access control
   const isAdmin = session?.user?.email?.includes('admin'); // TODO: Implement proper admin role check
@@ -39,19 +40,23 @@ export function AdminUserReview() {
       return;
     }
 
-    fetchPendingUsers();
-  }, [isAdmin, supabase]);
+    fetchUsers();
+  }, [isAdmin, supabase, filterStatus]);
 
-  const fetchPendingUsers = async () => {
+  const fetchUsers = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Note: This assumes you have a 'registrations' table in Supabase
-      // You'll need to create this table with the appropriate columns
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('registrations')
-        .select('*')
-        .eq('status', 'pending')
+        .select('*');
+      
+      // Apply status filter if not 'all'
+      if (filterStatus !== 'all') {
+        query = query.eq('status', filterStatus);
+      }
+      
+      const { data, error: fetchError } = await query
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -64,9 +69,9 @@ export function AdminUserReview() {
         throw fetchError;
       }
 
-      setPendingUsers(data || []);
+      setUsers(data || []);
     } catch (err: any) {
-      console.error('Error fetching pending users:', err);
+      console.error('Error fetching users:', err);
       setError(`Failed to fetch users: ${err.message || err.toString()}`);
       // Fallback to mock data for demonstration
       setMockData();
@@ -77,7 +82,7 @@ export function AdminUserReview() {
 
   // Mock data for demonstration purposes
   const setMockData = () => {
-    const mockUsers: PendingUser[] = [
+    const mockUsers: User[] = [
       {
         id: '1',
         firstName: 'John',
@@ -101,11 +106,45 @@ export function AdminUserReview() {
         gender: 'Female',
         captureType: 'id',
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iI0YzRjRGNiIvPgo8c3ZnIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZCNzM4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cmVjdCB4PSIyIiB5PSIzIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIiByeT0iMiIvPgo8bGluZSB4MT0iOCIgeTE9IjIxIiB4Mj0iMTYiIHkyPSIyMSIvPgo8bGluZSB4MT0iMTIiIHkxPSIxNyIgeDI9IjEyIiB5Mj0iMjEiLz4KPC9zdmc+Cjwvc3ZnPgo=',
-        status: 'pending',
+        status: 'verified',
         created_at: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+      },
+      {
+        id: '3',
+        firstName: 'Mike',
+        lastName: 'Johnson',
+        email: 'mike.johnson@example.com',
+        phone: '758-555-1234',
+        username: 'mikej',
+        gender: 'Male',
+        captureType: 'selfie',
+        imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+Cjwvc3ZnPgo8L3N2Zz4K',
+        status: 'banned',
+        created_at: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+      },
+      {
+        id: '4',
+        firstName: 'Sarah',
+        lastName: 'Wilson',
+        email: 'sarah.wilson@example.com',
+        phone: '758-777-8888',
+        username: 'sarahw',
+        gender: 'Female',
+        captureType: 'id',
+        imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iI0YzRjRGNiIvPgo8c3ZnIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZCNzM4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cmVjdCB4PSIyIiB5PSIzIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIiByeT0iMiIvPgo8bGluZSB4MT0iOCIgeTE9IjIxIiB4Mj0iMTYiIHkyPSIyMSIvPgo8bGluZSB4MT0iMTIiIHkxPSIxNyIgeDI9IjEyIiB5Mj0iMjEiLz4KPC9zdmc+Cjwvc3ZnPgo=',
+        status: 'rejected',
+        rejection_reason: 'Incomplete documentation',
+        created_at: new Date(Date.now() - 259200000).toISOString() // 3 days ago
       }
     ];
-    setPendingUsers(mockUsers);
+    
+    // Apply status filter to mock data
+    let filteredMockData = mockUsers;
+    if (filterStatus !== 'all') {
+      filteredMockData = mockUsers.filter(user => user.status === filterStatus);
+    }
+    
+    setUsers(filteredMockData);
     setLoading(false);
   };
 
@@ -196,8 +235,74 @@ export function AdminUserReview() {
     }
   };
 
+  const handleBan = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to ban ${userName}? This will prevent them from accessing the platform.`)) {
+      return;
+    }
+
+    setProcessingUserId(userId);
+    setError(null);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ status: 'banned' })
+        .eq('id', userId);
+
+      if (updateError && updateError.code !== '42P01') {
+        throw updateError;
+      }
+
+      // Update local state
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, status: 'banned' } : user
+      ));
+      
+      alert(`${userName} has been banned successfully.`);
+
+    } catch (err: any) {
+      console.error('Error banning user:', err);
+      setError(`Failed to ban user: ${err.message || err.toString()}`);
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleUnban = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to unban ${userName}? This will restore their access to the platform.`)) {
+      return;
+    }
+
+    setProcessingUserId(userId);
+    setError(null);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ status: 'verified' })
+        .eq('id', userId);
+
+      if (updateError && updateError.code !== '42P01') {
+        throw updateError;
+      }
+
+      // Update local state
+      setUsers(prev => prev.map(user => 
+        user.id === userId ? { ...user, status: 'verified' } : user
+      ));
+      
+      alert(`${userName} has been unbanned successfully.`);
+
+    } catch (err: any) {
+      console.error('Error unbanning user:', err);
+      setError(`Failed to unban user: ${err.message || err.toString()}`);
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
   // Filter users based on search and gender filter
-  const filteredUsers = pendingUsers.filter(user => {
+  const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -208,6 +313,41 @@ export function AdminUserReview() {
     
     return matchesSearch && matchesGender;
   });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            Pending
+          </span>
+        );
+      case 'verified':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Verified
+          </span>
+        );
+      case 'banned':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            Banned
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -228,11 +368,11 @@ export function AdminUserReview() {
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Pending User Reviews</h2>
-              <p className="text-gray-600 mt-1">Review and approve user registrations</p>
+              <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+              <p className="text-gray-600 mt-1">View and manage all user registrations</p>
             </div>
             <button
-              onClick={fetchPendingUsers}
+              onClick={fetchUsers}
               disabled={loading}
               className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
@@ -244,7 +384,7 @@ export function AdminUserReview() {
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex-1">
               <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
                 Search Users
@@ -273,6 +413,23 @@ export function AdminUserReview() {
                 <option value="Female">Female</option>
               </select>
             </div>
+            <div>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Status
+              </label>
+              <select
+                id="status-filter"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'pending' | 'verified' | 'rejected' | 'banned')}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="verified">Verified</option>
+                <option value="rejected">Rejected</option>
+                <option value="banned">Banned</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -291,16 +448,16 @@ export function AdminUserReview() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <p className="text-gray-600">Loading pending users...</p>
+              <p className="text-gray-600">Loading users...</p>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12 text-gray-600">
               <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
               <p className="text-lg font-medium">
-                {pendingUsers.length === 0 ? 'No pending users to review!' : 'No users match your search criteria.'}
+                {users.length === 0 ? 'No users found!' : 'No users match your search criteria.'}
               </p>
-              {pendingUsers.length === 0 && (
-                <p className="text-sm text-gray-500 mt-2">All registrations have been processed.</p>
+              {users.length === 0 && (
+                <p className="text-sm text-gray-500 mt-2">No user registrations found.</p>
               )}
             </div>
           ) : (
@@ -319,6 +476,9 @@ export function AdminUserReview() {
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Photo
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Submitted
@@ -381,6 +541,14 @@ export function AdminUserReview() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(user.status)}
+                        {user.status === 'rejected' && user.rejection_reason && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Reason: {user.rejection_reason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="w-4 h-4 text-gray-400 mr-2" />
                           {new Date(user.created_at).toLocaleDateString()}
@@ -391,34 +559,72 @@ export function AdminUserReview() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => handleApprove(user.id, user.phone, `${user.firstName} ${user.lastName}`)}
-                            disabled={processingUserId === user.id}
-                            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                              processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          >
-                            {processingUserId === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                            )}
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(user.id, `${user.firstName} ${user.lastName}`)}
-                            disabled={processingUserId === user.id}
-                            className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
-                              processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          >
-                            {processingUserId === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                            ) : (
-                              <XCircle className="w-4 h-4 mr-1" />
-                            )}
-                            Reject
-                          </button>
+                          {user.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(user.id, user.phone, `${user.firstName} ${user.lastName}`)}
+                                disabled={processingUserId === user.id}
+                                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                                  processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                              >
+                                {processingUserId === user.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : (
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                )}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleReject(user.id, `${user.firstName} ${user.lastName}`)}
+                                disabled={processingUserId === user.id}
+                                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                                  processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                              >
+                                {processingUserId === user.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                )}
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          
+                          {user.status === 'verified' && (
+                            <button
+                              onClick={() => handleBan(user.id, `${user.firstName} ${user.lastName}`)}
+                              disabled={processingUserId === user.id}
+                              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                                processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {processingUserId === user.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              ) : (
+                                <XCircle className="w-4 h-4 mr-1" />
+                              )}
+                              Ban
+                            </button>
+                          )}
+                          
+                          {user.status === 'banned' && (
+                            <button
+                              onClick={() => handleUnban(user.id, `${user.firstName} ${user.lastName}`)}
+                              disabled={processingUserId === user.id}
+                              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                                processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              {processingUserId === user.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                              )}
+                              Unban
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -433,7 +639,7 @@ export function AdminUserReview() {
         {filteredUsers.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="text-center text-sm text-gray-600">
-              Showing {filteredUsers.length} of {pendingUsers.length} pending registrations
+              Showing {filteredUsers.length} of {users.length} total users
             </div>
           </div>
         )}
