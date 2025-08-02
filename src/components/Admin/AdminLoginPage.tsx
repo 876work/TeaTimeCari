@@ -250,24 +250,6 @@ export function AdminLoginPage() {
                 </div>
               </form>
 
-              {/* Demo credentials */}
-              <div className="mt-4 p-3 bg-blue-900 border border-blue-600 rounded-lg">
-                <p className="text-blue-200 text-xs font-medium mb-2">Demo Admin Credentials:</p>
-                <div className="space-y-1 text-xs text-blue-300">
-                  <p>Email: admin@teatimecari.com</p>
-                  <p>Password: admin123</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('admin@teatimecari.com');
-                    setPassword('admin123');
-                  }}
-                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
-                >
-                  Auto-fill demo credentials
-                </button>
-              </div>
             </div>
           )}
         </div>
