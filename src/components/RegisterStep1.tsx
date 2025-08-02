@@ -122,7 +122,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
       // Check if username exists in a users table
       // Note: This assumes you have a users table with a username column
       const { data, error } = await supabase
-        .from('users')
+        .from('registrations')
         .select('username')
         .eq('username', username.toLowerCase())
         .maybeSingle();
