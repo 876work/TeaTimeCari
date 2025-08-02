@@ -18,6 +18,8 @@ import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminUserReview } from './components/Admin/ReviewUsers';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { AdminInviteCodes } from './components/Admin/AdminInviteCodes';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -192,12 +194,20 @@ function App() {
             <OppositeGenderFeed />
           )}
           
+          {currentPage === 'admin-dashboard' && (
+            <AdminDashboard />
+          )}
+          
           {currentPage === 'admin-flagged-posts' && (
             <ReviewFlaggedPosts />
           )}
           
           {currentPage === 'admin-user-reviews' && (
             <AdminUserReview />
+          )}
+          
+          {currentPage === 'admin-invite-codes' && (
+            <AdminInviteCodes />
           )}
           
           {currentPage === 'user-profile' && (

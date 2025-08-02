@@ -21,6 +21,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
               </div>
               <nav className="hidden md:ml-8 md:flex md:space-x-8">
+                <a href="#" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Dashboard
+                </a>
                 <a href="#" className="text-blue-600 hover:text-blue-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
                   <Users className="w-4 h-4 mr-2" />
                   User Reviews
@@ -28,6 +32,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <a href="#" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
                   <Flag className="w-4 h-4 mr-2" />
                   Flagged Posts
+                </a>
+                <a href="#" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Invite Codes
                 </a>
                 <a href="#" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
                   <Settings className="w-4 h-4 mr-2" />
