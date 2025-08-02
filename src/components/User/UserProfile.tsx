@@ -161,6 +161,8 @@ export function UserProfile({ userId }: UserProfileProps) {
       } catch (err: any) {
         console.error('Error fetching profile user:', err);
         setError('Failed to load profile data.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -172,7 +174,6 @@ export function UserProfile({ userId }: UserProfileProps) {
     const fetchUserData = async () => {
       if (!profileUser) return;
 
-      setLoading(true);
       setError(null);
 
       try {
