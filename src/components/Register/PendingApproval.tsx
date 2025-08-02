@@ -84,7 +84,7 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
           if (insertError.code === '23505') {
             // Unique constraint violation
             if (insertError.message.includes('email')) {
-              throw new Error('This email address is already registered.');
+              throw new Error("You're unable to register with this email address. Please use another and try again.");
             } else if (insertError.message.includes('username')) {
               throw new Error('This username is already taken.');
             } else {
