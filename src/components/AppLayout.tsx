@@ -1,5 +1,6 @@
 import React from 'react';
 import { NotificationBell } from './Notifications/NotificationBell';
+import { LogoutButton } from './Auth/LogoutButton';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
             <div className="flex items-center space-x-4">
               <NotificationBell />
+              <LogoutButton variant="ghost" size="md" />
             </div>
           </div>
         </div>

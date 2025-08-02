@@ -1,5 +1,6 @@
 import React from 'react';
 import { Shield, Users, Settings, LogOut, Flag } from 'lucide-react';
+import { LogoutButton } from '../Auth/LogoutButton';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -35,10 +36,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </nav>
             </div>
             <div className="flex items-center">
-              <button className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </button>
+              <LogoutButton variant="ghost" size="md" />
             </div>
           </div>
         </div>
