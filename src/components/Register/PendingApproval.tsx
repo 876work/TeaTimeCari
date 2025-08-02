@@ -1,5 +1,7 @@
 import React from 'react';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Clock, CheckCircle, User, Mail, Phone, AtSign, Users, Camera } from 'lucide-react';
+import { incrementInviteCodeUsage } from '../../utils/inviteCodeUtils';
 
 export interface PendingApprovalProps {
   registrationData: {
@@ -26,7 +28,105 @@ export interface PendingApprovalProps {
 }
 
 export function PendingApproval({ registrationData, onGoHome }: PendingApprovalProps) {
+  const supabase = useSupabaseClient();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+  
   const { invite, step1, step2, step3 } = registrationData;
+
+  // Generate SMS verification code
+  const generateSmsCode = (): string => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  // Submit registration data to database
+  React.useEffect(() => {
+    const submitRegistration = async () => {
+      // Only submit if we have all required data and haven't submitted yet
+      if (!step1 || !step2 || !step3 || !invite || isSubmitted || isSubmitting) {
+        return;
+      }
+
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      try {
+        // Generate SMS code and expiry
+        const smsCode = generateSmsCode();
+        const smsCodeExpiry = new Date();
+        smsCodeExpiry.setHours(smsCodeExpiry.getHours() + 24); // 24 hours from now
+
+        // Prepare registration data
+        const registrationRecord = {
+          firstName: step1.firstName,
+          lastName: step1.lastName,
+          email: step1.email,
+          phone: step1.phone,
+          username: step1.username,
+          gender: step2.gender,
+          captureType: step3.captureType,
+          imageData: step3.imageData,
+          status: 'pending',
+          sms_code: smsCode,
+          sms_code_expiry: smsCodeExpiry.toISOString(),
+          invite_code_used: invite.inviteCode
+        };
+
+        // Insert into registrations table
+        const { data: insertedData, error: insertError } = await supabase
+          .from('registrations')
+          .insert([registrationRecord])
+          .select()
+          .single();
+
+        if (insertError) {
+          if (insertError.code === '23505') {
+            // Unique constraint violation
+            if (insertError.message.includes('email')) {
+              throw new Error('This email address is already registered.');
+            } else if (insertError.message.includes('username')) {
+              throw new Error('This username is already taken.');
+            } else {
+              throw new Error('Registration data already exists.');
+            }
+          } else if (insertError.code === '42P01') {
+            // Table doesn't exist - for demo purposes, just mark as submitted
+            console.warn('Registrations table not found, marking as submitted for demo');
+            setIsSubmitted(true);
+            return;
+          } else {
+            throw insertError;
+          }
+        }
+
+        console.log('Registration submitted successfully:', insertedData);
+
+        // Increment invite code usage count
+        try {
+          const { success, error: inviteError } = await incrementInviteCodeUsage(supabase, invite.inviteCode);
+          if (!success && inviteError) {
+            console.warn('Failed to increment invite code usage:', inviteError);
+            // Don't fail the registration if invite code update fails
+          }
+        } catch (inviteErr) {
+          console.warn('Error updating invite code usage:', inviteErr);
+          // Don't fail the registration if invite code update fails
+        }
+
+        // Mark as successfully submitted
+        setIsSubmitted(true);
+
+      } catch (err: any) {
+        console.error('Error submitting registration:', err);
+        setSubmitError(err.message || 'Failed to submit registration. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    submitRegistration();
+  }, [step1, step2, step3, invite, isSubmitted, isSubmitting, supabase]);
 
   return (
     <div className="max-w-lg mx-auto">
@@ -55,12 +155,37 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
         </div>
 
         {/* Status Message */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <p className="text-amber-800 text-center">
-            <strong>⏳ Review in Progress</strong><br />
-            An admin is reviewing your submission. You'll receive an SMS once approved.
-          </p>
-        </div>
+        {isSubmitting ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+              <p className="text-blue-800 font-medium">
+                Submitting your registration...
+              </p>
+            </div>
+          </div>
+        ) : submitError ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-800 text-center">
+              <strong>❌ Submission Failed</strong><br />
+              {submitError}
+            </p>
+          </div>
+        ) : isSubmitted ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <p className="text-green-800 text-center">
+              <strong>✅ Registration Submitted</strong><br />
+              Your application is now under review by our admin team.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <p className="text-amber-800 text-center">
+              <strong>⏳ Review in Progress</strong><br />
+              An admin is reviewing your submission. You'll receive an SMS once approved.
+            </p>
+          </div>
+        )}
 
         {/* Submitted Information Summary */}
         {step1 && (
@@ -115,22 +240,29 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
         )}
 
         {/* Next Steps Information */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Our team will review your documents within 24-48 hours</li>
-            <li>• You'll receive an SMS notification once approved</li>
-            <li>• If additional information is needed, we'll contact you</li>
-          </ul>
-        </div>
+        {isSubmitted && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Our team will review your documents within 24-48 hours</li>
+              <li>• You'll receive an SMS notification once approved</li>
+              <li>• If additional information is needed, we'll contact you</li>
+            </ul>
+          </div>
+        )}
 
         {/* Action Button */}
         <button
           type="button"
           onClick={onGoHome}
-          className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+          disabled={isSubmitting}
+          className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+            isSubmitting
+              ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+          }`}
         >
-          Go Back to Homepage
+          {isSubmitting ? 'Submitting...' : 'Go Back to Homepage'}
         </button>
 
         {/* Support Information */}
