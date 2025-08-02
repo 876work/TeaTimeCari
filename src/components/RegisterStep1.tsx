@@ -10,6 +10,12 @@ import {
   UsernameValidationResult
 } from '../utils/usernameValidation';
 
+interface EmailValidationResult {
+  isValid: boolean;
+  isAvailable: boolean | null;
+  error: string | null;
+}
+
 export interface RegisterStep1Data {
   firstName: string;
   lastName: string;
@@ -49,11 +55,22 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
   });
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   
+  // Email validation state
+  const [emailStatus, setEmailStatus] = useState<EmailValidationResult>({
+    isValid: false,
+    isAvailable: null,
+    error: null
+  });
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  
   // Global error state
   const [globalError, setGlobalError] = useState<string | null>(null);
   
   // Debounce username for API calls
   const debouncedUsername = useDebounce(formData.username, 500);
+  
+  // Debounce email for API calls
+  const debouncedEmail = useDebounce(formData.email, 500);
   
   // Handle input changes
   const handleInputChange = (field: keyof RegisterStep1Data) => (
@@ -65,6 +82,11 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
     // Clear previous errors when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    
+    // Clear email validation when user starts typing
+    if (field === 'email' && emailStatus.error) {
+      setEmailStatus(prev => ({ ...prev, error: null, isAvailable: null }));
     }
     
     // Clear global error
@@ -148,6 +170,57 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
     }
   };
   
+  // Check email availability
+  const checkEmailAvailability = async (email: string) => {
+    if (!email || !validateEmail(email).isValid) {
+      return;
+    }
+    
+    setIsCheckingEmail(true);
+    
+    try {
+      // Check if email exists in registrations table
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('email')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        if (error.code === '42P01') {
+          // Table doesn't exist, assume email is available for demo
+          console.warn('Registrations table not found, assuming email is available for demo');
+          setEmailStatus(prev => ({
+            ...prev,
+            isAvailable: true,
+            error: null
+          }));
+          return;
+        }
+        throw error;
+      }
+      
+      const isAvailable = !data;
+      
+      setEmailStatus(prev => ({
+        ...prev,
+        isAvailable,
+        error: isAvailable ? null : "You're unable to register with this email address. Please use another and try again."
+      }));
+      
+      // Log for debugging
+      if (!isAvailable) {
+        console.log('Email availability check: Email already exists in database:', email);
+      }
+      
+    } catch (error) {
+      console.error('Error checking email availability:', error);
+      setGlobalError('Failed to check email availability. Please try again.');
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+  
   // Effect for username availability checking
   useEffect(() => {
     const usernameValidation = validateUsername(debouncedUsername);
@@ -169,6 +242,26 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
     }
   }, [debouncedUsername]);
   
+  // Effect for email availability checking
+  useEffect(() => {
+    const emailValidation = validateEmail(debouncedEmail);
+    
+    setEmailStatus(prev => ({
+      ...prev,
+      isValid: emailValidation.isValid,
+      error: emailValidation.error
+    }));
+    
+    if (emailValidation.isValid && debouncedEmail) {
+      checkEmailAvailability(debouncedEmail);
+    } else {
+      setEmailStatus(prev => ({
+        ...prev,
+        isAvailable: null
+      }));
+    }
+  }, [debouncedEmail]);
+  
   // Handle username suggestion click
   const handleSuggestionClick = (suggestion: string) => {
     setFormData(prev => ({ ...prev, username: suggestion }));
@@ -187,7 +280,10 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
     // Check username availability
     const isUsernameAvailable = usernameStatus.isValid && usernameStatus.isAvailable === true;
     
-    return hasAllValues && hasNoErrors && isUsernameAvailable;
+    // Check email availability
+    const isEmailAvailable = emailStatus.isValid && emailStatus.isAvailable === true;
+    
+    return hasAllValues && hasNoErrors && isUsernameAvailable && isEmailAvailable;
   };
   
   // Handle form submission
@@ -285,23 +381,50 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
             </label>
-            <input
-              type="email"
-              id="email"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              onBlur={handleBlur('email')}
-              className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.email && touched.email
-                  ? 'border-[#E0A3A3] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
-              }`}
-              placeholder="Enter your email address"
-              aria-invalid={errors.email && touched.email ? 'true' : 'false'}
-            />
+            <div className="relative">
+              <input
+                type="email"
+                id="email"
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                onBlur={handleBlur('email')}
+                className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  (errors.email && touched.email) || emailStatus.error
+                    ? 'border-[#E0A3A3] bg-red-50'
+                    : emailStatus.isAvailable === true
+                    ? 'border-[#A3C6E0] bg-blue-50'
+                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                }`}
+                placeholder="Enter your email address"
+                aria-invalid={(errors.email && touched.email) || emailStatus.error ? 'true' : 'false'}
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                {isCheckingEmail ? (
+                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                ) : emailStatus.isAvailable === true ? (
+                  <Check className="w-5 h-5 text-green-500" />
+                ) : emailStatus.isAvailable === false ? (
+                  <X className="w-5 h-5 text-red-500" />
+                ) : null}
+              </div>
+            </div>
+            
+            {/* Email validation messages */}
             {errors.email && touched.email && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {errors.email}
+              </p>
+            )}
+            
+            {emailStatus.error && !errors.email && (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {emailStatus.error}
+              </p>
+            )}
+            
+            {emailStatus.isAvailable === true && !errors.email && (
+              <p className="mt-2 text-sm text-green-600" role="status">
+                ✅ Email is available
               </p>
             )}
           </div>
