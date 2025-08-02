@@ -17,7 +17,8 @@ import {
   Clock
 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { AppLayout } from '../AppLayout';
+import { NotificationBell } from '../Notifications/NotificationBell';
+import { LogoutButton } from '../Auth/LogoutButton';
 
 // Type definitions
 interface Post {
@@ -491,26 +492,42 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <AppLayout>
-        <div className="max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        {/* Header with Notifications */}
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <h1 className="text-xl font-bold text-gray-900">Tea Time Cari</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <NotificationBell />
+                <LogoutButton variant="ghost" size="md" />
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-lg mx-auto">
+            <div className="bg-white rounded-2xl shadow-xl p-10">
             {/* Premium Header */}
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                <Lock className="w-10 h-10 text-white" />
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <Star className="w-4 h-4 text-yellow-800" />
+            <div className="text-center mb-10">
+              <div className="w-24 h-24 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-8 relative shadow-2xl">
+                <Lock className="w-12 h-12 text-white" />
+                <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
+                  <Star className="w-5 h-5 text-yellow-800" />
                 </div>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Premium Access</h1>
-              <p className="text-gray-600 mb-4">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">Premium Access</h1>
+              <p className="text-gray-600 text-lg mb-6">
                 Unlock exclusive access to the {oppositeGender} feed
               </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+              <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-xl shadow-lg" role="alert">
                 <div className="flex items-center">
                   <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
                   <span className="text-red-700 text-sm">{error}</span>
@@ -519,34 +536,42 @@ export function OppositeGenderFeed() {
             )}
 
             {/* Features List */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">What you get:</h3>
-              <div className="space-y-3">
+            <div className="mb-10">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">What you get:</h3>
+              <div className="space-y-4">
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span className="text-gray-700">Access to {oppositeGender} user posts</span>
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className="text-gray-800 font-medium">Access to {oppositeGender} user posts</span>
                 </div>
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span className="text-gray-700">Flag and comment on posts</span>
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className="text-gray-800 font-medium">Flag and comment on posts</span>
                 </div>
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span className="text-gray-700">3 full days of unlimited access</span>
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className="text-gray-800 font-medium">3 full days of unlimited access</span>
                 </div>
                 <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span className="text-gray-700">No recurring charges</span>
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className="text-gray-800 font-medium">No recurring charges</span>
                 </div>
               </div>
             </div>
 
             {/* Pricing */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
+            <div className="bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] bg-opacity-10 rounded-2xl p-8 mb-8 border border-[#E0A3A3] border-opacity-20">
               <div className="text-center">
-                <div className="text-4xl font-bold text-gray-900 mb-2">$29.99</div>
-                <div className="text-gray-600 mb-4">One-time payment • 3-day access</div>
-                <div className="flex items-center justify-center text-sm text-gray-500">
+                <div className="text-5xl font-black text-gray-900 mb-3">$29.99</div>
+                <div className="text-gray-700 text-lg font-medium mb-4">One-time payment • 3-day access</div>
+                <div className="flex items-center justify-center text-gray-600">
                   <Clock className="w-4 h-4 mr-1" />
                   <span>Access expires automatically</span>
                 </div>
@@ -557,41 +582,42 @@ export function OppositeGenderFeed() {
             <button
               onClick={handlePayment}
               disabled={isProcessingPayment}
-              className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
+              className={`w-full py-5 px-8 rounded-2xl font-bold text-xl transition-all duration-300 ${
                 isProcessingPayment
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                  : 'bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white shadow-2xl hover:shadow-3xl transform hover:scale-105'
               }`}
             >
               {isProcessingPayment ? (
                 <div className="flex items-center justify-center">
-                  <Loader2 className="animate-spin h-6 w-6 mr-2" />
+                  <Loader2 className="animate-spin h-7 w-7 mr-3" />
                   Processing Payment...
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 mr-2" />
+                  <CreditCard className="w-7 h-7 mr-3" />
                   Unlock 3-Day Access
                 </div>
               )}
             </button>
 
             {/* Security Notice */}
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 text-center">
+            <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-blue-800 text-center font-medium">
                 <strong>🔒 Secure Payment:</strong> Powered by Stripe. Your payment information is encrypted and secure.
               </p>
             </div>
 
             {/* Terms */}
-            <div className="mt-4 text-center">
+            <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 By purchasing, you agree to our terms of service. Access is non-refundable and expires after 3 days.
               </p>
             </div>
           </div>
+          </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -600,28 +626,46 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        {/* Header with Notifications */}
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-4 relative">
-                  <Users className="w-6 h-6 text-white" />
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <Star className="w-3 h-3 text-yellow-800" />
+                <h1 className="text-xl font-bold text-gray-900">Tea Time Cari</h1>
+              </div>
+              <div className="flex items-center space-x-4">
+                <NotificationBell />
+                <LogoutButton variant="ghost" size="md" />
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mr-6 relative shadow-lg">
+                  <Users className="w-8 h-8 text-white" />
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center shadow-md">
+                    <Star className="w-4 h-4 text-yellow-800" />
                   </div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Premium {oppositeGender} Feed</h1>
-                  <p className="text-gray-600">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Premium {oppositeGender} Feed</h1>
+                  <p className="text-gray-600 text-lg">
                     Exclusive posts from {oppositeGender} users • @{currentUser.username}
                   </p>
                 </div>
               </div>
-              <div className="relative group">
-                <Info className="w-5 h-5 text-gray-400 cursor-help" />
-                <div className="absolute right-0 top-8 w-64 bg-gray-900 text-white text-sm rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+              <div className="relative group hidden md:block">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center cursor-help">
+                  <Info className="w-5 h-5 text-[#E0A3A3]" />
+                </div>
+                <div className="absolute right-0 top-12 w-72 bg-gray-900 text-white text-sm rounded-xl p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10 shadow-2xl">
                   Premium access to {oppositeGender} posts. 
                   {paymentRecord && (
                     <span className="block mt-1 text-xs text-gray-300">
@@ -635,12 +679,14 @@ export function OppositeGenderFeed() {
 
           {/* Access Status */}
           {paymentRecord && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-8 shadow-lg">
               <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
                 <div className="flex-1">
-                  <span className="text-green-700 text-sm font-medium">Premium Access Active</span>
-                  <p className="text-green-600 text-xs mt-1">
+                  <span className="text-green-800 font-bold text-lg">Premium Access Active</span>
+                  <p className="text-green-700 text-sm mt-1 font-medium">
                     Expires: {new Date(paymentRecord.expires_at).toLocaleDateString()} at {new Date(paymentRecord.expires_at).toLocaleTimeString()}
                   </p>
                 </div>
@@ -650,7 +696,7 @@ export function OppositeGenderFeed() {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6" role="alert">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 shadow-lg" role="alert">
               <div className="flex items-center">
                 <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
                 <span className="text-red-700 text-sm">{error}</span>
@@ -660,46 +706,49 @@ export function OppositeGenderFeed() {
 
           {/* Loading State */}
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-16">
               <div className="text-center">
-                <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">Loading premium content...</p>
+                <div className="w-16 h-16 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                </div>
+                <p className="text-gray-700 text-lg font-medium">Loading premium content...</p>
+                <p className="text-gray-500 text-sm mt-2">Accessing exclusive {oppositeGender} posts</p>
               </div>
             </div>
           ) : posts.length === 0 ? (
             /* Empty State */
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8 text-purple-400" />
+            <div className="bg-white rounded-2xl shadow-xl p-16 text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
+                <Heart className="w-12 h-12 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No premium posts yet!</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">No premium posts yet!</h3>
+              <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
                 Be patient, {oppositeGender} users will start sharing content soon.
               </p>
             </div>
           ) : (
             /* Posts Feed - Same structure as GenderFeed */
-            <div className="space-y-6">
+            <div className="space-y-8">
               {posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow border border-purple-100">
+                <div key={post.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-[#E0A3A3] border-opacity-20">
                   {/* Post Header */}
-                  <div className="p-4 border-b border-gray-100">
+                  <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-white font-bold text-sm">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-xl flex items-center justify-center mr-4 shadow-md">
+                          <span className="text-white font-bold text-lg">
                             {post.username.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">@{post.username}</p>
+                          <p className="font-bold text-gray-900 text-lg">@{post.username}</p>
                           <div className="flex items-center">
-                            <p className="text-sm text-gray-500 mr-2">{post.gender}</p>
-                            <Star className="w-3 h-3 text-yellow-500" />
+                            <p className="text-sm text-gray-500 font-medium mr-2">{post.gender}</p>
+                            <Star className="w-4 h-4 text-yellow-500" />
                           </div>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-sm text-gray-500 font-medium">
                         {new Date(post.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -710,79 +759,85 @@ export function OppositeGenderFeed() {
                     <img
                       src={post.photo_url}
                       alt="Premium post content"
-                      className="w-full h-80 object-cover"
+                      className="w-full h-96 object-cover"
                     />
-                    <div className="absolute top-4 right-4 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                    <div className="absolute top-6 right-6 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
                       Premium
                     </div>
                   </div>
 
                   {/* Post Actions */}
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center space-x-6">
                         {/* Green Flag Button */}
                         <button
                           onClick={() => handleFlag(post.id, 'green')}
                           disabled={flaggingPostId === post.id}
-                          className="flex items-center space-x-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors disabled:opacity-50"
+                          className="flex items-center space-x-3 px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
-                            <CheckCircle className="w-4 h-4" />
+                            <CheckCircle className="w-5 h-5" />
                           )}
-                          <span className="text-sm font-medium">{post.green_flag_count}</span>
+                          <span className="text-lg font-bold">{post.green_flag_count}</span>
                         </button>
 
                         {/* Red Flag Button */}
                         <button
                           onClick={() => handleFlag(post.id, 'red')}
                           disabled={flaggingPostId === post.id}
-                          className="flex items-center space-x-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors disabled:opacity-50"
+                          className="flex items-center space-x-3 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" />
                           ) : (
-                            <XCircle className="w-4 h-4" />
+                            <XCircle className="w-5 h-5" />
                           )}
-                          <span className="text-sm font-medium">{post.red_flag_count}</span>
+                          <span className="text-lg font-bold">{post.red_flag_count}</span>
                         </button>
                       </div>
 
                       {/* Comment Button */}
                       <button
                         onClick={() => openCommentModal(post.id)}
-                        className="flex items-center space-x-2 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors"
+                        className="flex items-center space-x-3 px-6 py-3 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
                       >
-                        <MessageSquare className="w-4 h-4" />
-                        <span className="text-sm font-medium">Add Comment</span>
+                        <MessageSquare className="w-5 h-5" />
+                        <span>Add Comment</span>
                       </button>
                     </div>
 
                     {/* Comments Section */}
                     {post.comments && post.comments.length > 0 && (
-                      <div className="border-t border-gray-100 pt-4">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                      <div className="border-t border-gray-100 pt-6">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                          <MessageSquare className="w-5 h-5 mr-2" />
                           Comments ({post.comments.length})
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {post.comments.map((comment) => (
-                            <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={comment.id} className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors duration-200">
+                              <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-medium text-gray-900">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-lg flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">
+                                      {comment.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm font-bold text-gray-900">
                                     @{comment.username}
                                   </span>
-                                  <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                                  <span className="text-xs text-gray-600 bg-white px-3 py-1 rounded-full font-medium shadow-sm">
                                     {comment.gender}
                                   </span>
                                 </div>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs text-gray-500 font-medium">
                                   {new Date(comment.created_at).toLocaleDateString()}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-700">{comment.content}</p>
+                              <p className="text-gray-800 leading-relaxed ml-10">{comment.content}</p>
                             </div>
                           ))}
                         </div>
@@ -796,23 +851,23 @@ export function OppositeGenderFeed() {
 
           {/* Comment Modal - Same as GenderFeed */}
           {isCommentModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-                <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Add Anonymous Comment</h3>
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900">Add Anonymous Comment</h3>
                   <button
                     onClick={closeCommentModal}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    className="w-8 h-8 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full flex items-center justify-center transition-colors duration-200"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
                 
-                <div className="p-4">
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">
+                <div className="p-6">
+                  <div className="mb-6">
+                    <p className="text-gray-600 mb-3">
                       Commenting as: <span className="font-medium">@{currentUser?.username}</span>
-                      <span className="ml-2 text-xs bg-gray-200 px-2 py-1 rounded-full">
+                      <span className="ml-3 text-sm bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] text-white px-3 py-1 rounded-full font-medium">
                         {currentUser?.gender}
                       </span>
                     </p>
@@ -822,34 +877,34 @@ export function OppositeGenderFeed() {
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Share your thoughts..."
-                    className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    className="w-full h-32 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E0A3A3] focus:border-transparent resize-none text-gray-800 placeholder-gray-500"
                     maxLength={500}
                   />
                   
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-xs text-gray-500">
+                  <div className="flex items-center justify-between mt-6">
+                    <span className="text-sm text-gray-500 font-medium">
                       {commentText.length}/500 characters
                     </span>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-3">
                       <button
                         onClick={closeCommentModal}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                        className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors font-medium"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSubmitComment}
                         disabled={!commentText.trim() || submittingComment}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                           commentText.trim() && !submittingComment
-                            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                            ? 'bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                       >
                         {submittingComment ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Send className="w-4 h-4" />
+                          <Send className="w-5 h-5" />
                         )}
                         <span>Post Comment</span>
                       </button>
@@ -860,7 +915,8 @@ export function OppositeGenderFeed() {
             </div>
           )}
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
