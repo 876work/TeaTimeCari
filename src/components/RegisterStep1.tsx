@@ -322,7 +322,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
                   ? 'border-red-300 bg-red-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'
               }`}
-              placeholder="758-xxx-xxxx"
+              placeholder="758xxxxxxx"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
             />
             {errors.phone && touched.phone && (
