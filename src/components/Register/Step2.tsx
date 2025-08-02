@@ -49,7 +49,7 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
             aria-pressed={selectedGender === 'Male'}
             aria-label="Select Male"
           >
-            <div className="text-4xl mb-2">♂️</div>
+            <div className="text-4xl mb-2 text-[#B0B0B0]">♂️</div>
             <span className="font-semibold text-lg">Male</span>
             {selectedGender === 'Male' && (
               <UserCheck className="w-5 h-5 mt-1 opacity-80" />
@@ -70,7 +70,7 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
             aria-pressed={selectedGender === 'Female'}
             aria-label="Select Female"
           >
-            <div className="text-4xl mb-2">♀️</div>
+            <div className="text-4xl mb-2 text-[#B36B6B]">♀️</div>
             <span className="font-semibold text-lg">Female</span>
             {selectedGender === 'Female' && (
               <UserCheck className="w-5 h-5 mt-1 opacity-80" />
