@@ -59,8 +59,15 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setCameraState('active');
+        
+        // Wait for video to start playing before setting state to active
+        try {
+          await videoRef.current.play();
+          setCameraState('active');
+        } catch (playError) {
+          console.error('Error starting video playback:', playError);
+          throw new Error('Failed to start camera preview');
+        }
       }
     } catch (err) {
       console.error('Camera access error:', err);
@@ -80,6 +87,12 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       
       setError(errorMessage);
       setCameraState('error');
+      
+      // Clean up stream if it was created but video failed to play
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     }
   }, []);
 
