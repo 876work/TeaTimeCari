@@ -184,7 +184,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Camera className="w-8 h-8 text-blue-600" />
+            <Camera className="w-8 h-8 text-[#A3C6E0]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Photo Verification</h1>
           <p className="text-gray-600">Step 3 of 3: Identity Verification</p>
@@ -211,11 +211,11 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
               <button
                 type="button"
                 onClick={() => handleModeSelect('selfie')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 group"
+                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#A3C6E0] hover:bg-blue-50 transition-all duration-200 group"
               >
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-                    <User className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-[#A3C6E0] group-hover:bg-opacity-30 transition-colors">
+                    <User className="w-8 h-8 text-[#A3C6E0]" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Take Selfie</h3>
                   <p className="text-sm text-gray-600">
@@ -227,11 +227,11 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
               <button
                 type="button"
                 onClick={() => handleModeSelect('id')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 group"
+                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#E0A3A3] hover:bg-red-50 transition-all duration-200 group"
               >
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-                    <CreditCard className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-[#E0A3A3] group-hover:bg-opacity-30 transition-colors">
+                    <CreditCard className="w-8 h-8 text-[#E0A3A3]" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Photograph ID</h3>
                   <p className="text-sm text-gray-600">
@@ -413,7 +413,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
             className={`
               ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
               ${isReadyToContinue
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}

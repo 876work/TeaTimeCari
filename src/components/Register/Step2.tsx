@@ -28,7 +28,7 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <User className="w-8 h-8 text-blue-600" />
+            <User className="w-8 h-8 text-[#A3C6E0]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Select Your Gender</h1>
           <p className="text-gray-600">Step 2 of 3: Personal Details</p>
@@ -42,8 +42,8 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
               w-32 h-32 rounded-2xl flex flex-col items-center justify-center
               border-2 transition-all duration-200 ease-in-out transform hover:scale-105
               ${selectedGender === 'Male'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600 hover:shadow-md'
+                ? 'bg-gradient-to-br from-[#A3C6E0] to-[#8BB5D9] text-white border-[#A3C6E0] shadow-lg scale-105'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-[#A3C6E0] hover:text-[#A3C6E0] hover:shadow-md'
               }
             `}
             aria-pressed={selectedGender === 'Male'}
@@ -63,8 +63,8 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
               w-32 h-32 rounded-2xl flex flex-col items-center justify-center
               border-2 transition-all duration-200 ease-in-out transform hover:scale-105
               ${selectedGender === 'Female'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600 hover:shadow-md'
+                ? 'bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] text-white border-[#E0A3A3] shadow-lg scale-105'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-[#E0A3A3] hover:text-[#E0A3A3] hover:shadow-md'
               }
             `}
             aria-pressed={selectedGender === 'Female'}
@@ -101,7 +101,7 @@ export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
             className={`
               ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
               ${selectedGender
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}

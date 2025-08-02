@@ -152,7 +152,7 @@ export function InviteStep({ onNext }: InviteStepProps) {
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-            <Key className="w-8 h-8 text-purple-600" />
+            <Key className="w-8 h-8 text-[#A3C6E0]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Enter Invite Code</h1>
           <p className="text-gray-600">You'll need an invite code to register</p>
@@ -161,10 +161,10 @@ export function InviteStep({ onNext }: InviteStepProps) {
         {/* Information Message */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex items-start">
-            <Gift className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+            <Gift className="w-5 h-5 text-[#A3C6E0] mr-2 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm text-blue-800 font-medium mb-1">Need an invite code?</p>
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-[#A3C6E0] font-medium mb-1">Need an invite code?</p>
+              <p className="text-sm text-gray-700">
                 Ask a verified user or admin for an invite code to join the platform.
               </p>
             </div>
@@ -211,10 +211,10 @@ export function InviteStep({ onNext }: InviteStepProps) {
                 onBlur={() => setTouched(true)}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 uppercase tracking-wider font-mono text-center ${
                   validation.error && touched
-                    ? 'border-red-300 bg-red-50'
+                    ? 'border-[#E0A3A3] bg-red-50'
                     : validation.isValid
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-gray-300 bg-white hover:border-gray-400'
+                    ? 'border-[#A3C6E0] bg-blue-50'
+                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
                 placeholder="ENTER-CODE-HERE"
                 aria-invalid={validation.error && touched ? 'true' : 'false'}
@@ -244,7 +244,7 @@ export function InviteStep({ onNext }: InviteStepProps) {
             disabled={!isFormValid}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               isFormValid
-                ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

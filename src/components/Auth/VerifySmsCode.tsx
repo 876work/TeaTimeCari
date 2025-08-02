@@ -127,7 +127,7 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Lock className="w-8 h-8 text-blue-600" />
+            <Lock className="w-8 h-8 text-[#A3C6E0]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
           <p className="text-gray-600">
@@ -156,10 +156,10 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
               onChange={handleInputChange}
               className={`w-full px-4 py-4 text-center text-2xl font-bold tracking-widest border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 error 
-                  ? 'border-red-300 bg-red-50' 
+                  ? 'border-[#E0A3A3] bg-red-50' 
                   : isValidCodeFormat
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-[#A3C6E0] bg-blue-50'
+                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
               placeholder="------"
               inputMode="numeric"
@@ -181,7 +181,7 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
             disabled={!isValidCodeFormat || isLoading}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               isValidCodeFormat && !isLoading
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

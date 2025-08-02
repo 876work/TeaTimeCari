@@ -212,7 +212,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <User className="w-8 h-8 text-blue-600" />
+            <User className="w-8 h-8 text-[#A3C6E0]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
@@ -241,8 +241,8 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
               onBlur={handleBlur('firstName')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.firstName && touched.firstName
-                  ? 'border-red-300 bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-[#E0A3A3] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
               placeholder="Enter your first name"
               aria-invalid={errors.firstName && touched.firstName ? 'true' : 'false'}
@@ -267,8 +267,8 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
               onBlur={handleBlur('lastName')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.lastName && touched.lastName
-                  ? 'border-red-300 bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-[#E0A3A3] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
               placeholder="Enter your last name"
               aria-invalid={errors.lastName && touched.lastName ? 'true' : 'false'}
@@ -293,8 +293,8 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
               onBlur={handleBlur('email')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email && touched.email
-                  ? 'border-red-300 bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-[#E0A3A3] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
               placeholder="Enter your email address"
               aria-invalid={errors.email && touched.email ? 'true' : 'false'}
@@ -319,8 +319,8 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
               onBlur={handleBlur('phone')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.phone && touched.phone
-                  ? 'border-red-300 bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-[#E0A3A3] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
               placeholder="758xxxxxxx"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
@@ -346,12 +346,12 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
                 onBlur={handleBlur('username')}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.username && touched.username
-                    ? 'border-red-300 bg-red-50'
+                    ? 'border-[#E0A3A3] bg-red-50'
                     : usernameStatus.isAvailable === true
-                    ? 'border-green-300 bg-green-50'
+                    ? 'border-[#A3C6E0] bg-blue-50'
                     : usernameStatus.isAvailable === false
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-gray-400'
+                    ? 'border-[#E0A3A3] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
                 placeholder="Choose a username"
                 aria-invalid={errors.username && touched.username ? 'true' : 'false'}
@@ -394,7 +394,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
                           key={suggestion}
                           type="button"
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-colors"
+                          className="px-3 py-1 text-xs bg-[#A3C6E0] bg-opacity-30 hover:bg-[#A3C6E0] hover:bg-opacity-50 text-blue-700 rounded-full transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -422,7 +422,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
               disabled={!isFormValid()}
               className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all ${
                 isFormValid()
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
