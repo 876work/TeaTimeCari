@@ -296,7 +296,7 @@ export function UploadPost() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Camera className="w-8 h-8 text-blue-600" />
+              <Camera className="w-8 h-8 text-[#A3C6E0]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Upload a Photo</h1>
             <p className="text-gray-600">
@@ -329,14 +329,14 @@ export function UploadPost() {
                 htmlFor="file-upload"
                 className={`block w-full p-8 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
                   isProcessing
-                    ? 'border-blue-300 bg-blue-50'
-                    : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                    ? 'border-[#A3C6E0] bg-blue-50'
+                    : 'border-gray-300 hover:border-[#A3C6E0] hover:bg-blue-50'
                 }`}
               >
                 {isProcessing ? (
                   <div className="flex flex-col items-center">
-                    <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-                    <p className="text-blue-600 font-medium">Processing image...</p>
+                    <Loader2 className="w-12 h-12 text-[#A3C6E0] animate-spin mb-4" />
+                    <p className="text-[#A3C6E0] font-medium">Processing image...</p>
                     <p className="text-sm text-gray-500 mt-1">Compressing and removing metadata</p>
                   </div>
                 ) : (
@@ -402,7 +402,7 @@ export function UploadPost() {
             disabled={!selectedFile || isUploading || isProcessing}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               selectedFile && !isUploading && !isProcessing
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
