@@ -2,6 +2,7 @@ import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
 import { InviteStep, InviteStepData } from './components/Register/InviteStep';
@@ -27,6 +28,7 @@ function App() {
   // Check if current path is the admin login page
   const isAdminLoginPage = window.location.pathname === '/teamin';
   
+  const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
   const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'admin-flagged-posts' | 'admin-user-reviews' | 'user-profile' | 'post-thread'>('register');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
@@ -62,6 +64,10 @@ function App() {
     setCurrentStep(4);
   };
 
+  const handleGetStarted = () => {
+    setShowWelcomePage(false);
+  };
+
   const handleVerificationComplete = () => {
     console.log('SMS verification completed');
     setCurrentPage('register');
@@ -72,6 +78,7 @@ function App() {
   const handleGoHome = () => {
     setCurrentPage('register');
     setCurrentStep(0); // Reset to invite step
+    setShowWelcomePage(true); // Show welcome page again
     setRegistrationData({});
   };
 
@@ -130,6 +137,8 @@ function App() {
       <NotificationProvider>
         {isAdminLoginPage ? (
           <AdminLoginPage />
+        ) : showWelcomePage ? (
+          <HomePage onGetStarted={handleGetStarted} />
         ) : (
           <AppLayout>
           {currentPage === 'register' && (
