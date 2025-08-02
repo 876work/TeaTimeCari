@@ -15,6 +15,7 @@ import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
 import { ReviewFlaggedPosts } from './components/Admin/ReviewFlaggedPosts';
 import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
+import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -22,6 +23,9 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {
+  // Check if current path is the admin login page
+  const isAdminLoginPage = window.location.pathname === '/teamin';
+  
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
   const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'admin-flagged-posts' | 'user-profile' | 'post-thread'>('register');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
@@ -119,7 +123,10 @@ function App() {
   return (
     <SessionContextProvider supabaseClient={supabase}>
       <NotificationProvider>
-        <AppLayout>
+        {isAdminLoginPage ? (
+          <AdminLoginPage />
+        ) : (
+          <AppLayout>
           {currentPage === 'register' && (
             <>
               {currentStep === 0 && (
@@ -253,7 +260,8 @@ function App() {
               </button>
             </div>
           </div>
-        </AppLayout>
+          </AppLayout>
+        )}
       </NotificationProvider>
     </SessionContextProvider>
   );
