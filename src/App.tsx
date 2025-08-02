@@ -100,12 +100,20 @@ function App() {
     setCurrentPage('opposite-feed');
   };
 
+  const handleGoToAdminDashboard = () => {
+    setCurrentPage('admin-dashboard');
+  };
+
   const handleGoToAdminFlaggedPosts = () => {
     setCurrentPage('admin-flagged-posts');
   };
 
   const handleGoToAdminUserReviews = () => {
     setCurrentPage('admin-user-reviews');
+  };
+
+  const handleGoToAdminInviteCodes = () => {
+    setCurrentPage('admin-invite-codes');
   };
 
   const handleGoToUserProfile = (userId?: string) => {
@@ -194,20 +202,12 @@ function App() {
             <OppositeGenderFeed />
           )}
           
-          {currentPage === 'admin-dashboard' && (
-            <AdminDashboard />
-          )}
-          
           {currentPage === 'admin-flagged-posts' && (
             <ReviewFlaggedPosts />
           )}
           
           {currentPage === 'admin-user-reviews' && (
             <AdminUserReview />
-          )}
-          
-          {currentPage === 'admin-invite-codes' && (
-            <AdminInviteCodes />
           )}
           
           {currentPage === 'user-profile' && (
@@ -263,6 +263,14 @@ function App() {
                 Premium Feed
               </button>
               <button
+                onClick={handleGoToAdminDashboard}
+                className={`px-3 py-1 text-xs rounded ${
+                  currentPage === 'admin-dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Admin Dashboard
+              </button>
+              <button
                 onClick={handleGoToAdminFlaggedPosts}
                 className={`px-3 py-1 text-xs rounded ${
                   currentPage === 'admin-flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
@@ -277,6 +285,14 @@ function App() {
                 }`}
               >
                 Admin Users
+              </button>
+              <button
+                onClick={handleGoToAdminInviteCodes}
+                className={`px-3 py-1 text-xs rounded ${
+                  currentPage === 'admin-invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Admin Invites
               </button>
               <button
                 onClick={() => handleGoToUserProfile()}
