@@ -67,6 +67,11 @@ export function UserProfile({ userId }: UserProfileProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
 
+  // Go back to feed function - defined early to avoid initialization errors
+  const goBackToFeed = () => {
+    window.history.back();
+  };
+
   // Validate userId before proceeding
   if (!userId || !isValidUUID(userId)) {
     return (
@@ -385,11 +390,6 @@ export function UserProfile({ userId }: UserProfileProps) {
   const closeImageModal = () => {
     setSelectedImage(null);
     setIsImageModalOpen(false);
-  };
-
-  // Go back to feed
-  const goBackToFeed = () => {
-    window.history.back();
   };
 
   // Loading state
