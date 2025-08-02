@@ -95,29 +95,36 @@ Deno.serve(async (req: Request) => {
 
     // Create Stripe payment intent
     const stripeUrl = 'https://api.stripe.com/v1/payment_intents';
-    const stripeResponse = await fetch(stripeUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${stripeSecretKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        amount: amount.toString(),
-        currency: currency,
-        metadata: JSON.stringify({
-          user_id: user.id,
-          feed_access: feedAccess,
+    let paymentIntent;
+    
+    try {
+      const stripeResponse = await fetch(stripeUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${stripeSecretKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          amount: amount.toString(),
+          currency: currency,
+          metadata: JSON.stringify({
+            user_id: user.id,
+            feed_access: feedAccess,
+          }),
         }),
-      }),
-    });
+      });
 
-    if (!stripeResponse.ok) {
-      const errorData = await stripeResponse.text();
-      console.error('Stripe API error:', errorData);
-      throw new Error(`Stripe API error: ${stripeResponse.status}`);
+      if (!stripeResponse.ok) {
+        const errorData = await stripeResponse.text();
+        console.error('Stripe API error:', errorData);
+        throw new Error(`Stripe API error: ${stripeResponse.status} - ${errorData}`);
+      }
+
+      paymentIntent = await stripeResponse.json();
+    } catch (fetchError) {
+      console.error('Failed to connect to Stripe API:', fetchError);
+      throw new Error(`Failed to connect to Stripe API: ${String(fetchError)}`);
     }
-
-    const paymentIntent = await stripeResponse.json();
 
     // Store pending payment record
     const expiresAt = new Date();
@@ -159,10 +166,10 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error('Edge Function error:', error);
+    console.error('Edge Function error:', String(error));
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Internal Server Error',
+        error: String(error) || 'Internal Server Error',
         success: false
       }),
       {
