@@ -17,7 +17,8 @@ import {
   Star,
   Clock
 } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
+import { StripeProvider } from '../Payment/StripeProvider';
+import { PaymentForm } from '../Payment/PaymentForm';
 
 // Type definitions
 interface Post {
@@ -58,9 +59,6 @@ interface PaymentRecord {
   created_at: string;
 }
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_mock');
-
 export function OppositeGenderFeed() {
   const supabase = useSupabaseClient();
   const session = useSession();
@@ -73,7 +71,7 @@ export function OppositeGenderFeed() {
   const [error, setError] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [paymentRecord, setPaymentRecord] = useState<PaymentRecord | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
   
   // Comment modal state
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
@@ -275,62 +273,19 @@ export function OppositeGenderFeed() {
     setLoading(false);
   };
 
-  // Handle Stripe payment
-  const handlePayment = async () => {
-    if (!currentUser || isProcessingPayment) return;
-
-    setIsProcessingPayment(true);
+  // Handle payment success
+  const handlePaymentSuccess = () => {
+    setHasAccess(true);
+    setShowPaymentForm(false);
     setError(null);
+    // Refresh the page to load content
+    window.location.reload();
+  };
 
-    try {
-      // Create payment intent via Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: {
-          feedAccess: 'opposite',
-          amount: 2999, // $29.99 in cents
-          currency: 'usd'
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to create payment intent');
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Payment setup failed');
-      }
-
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error('Stripe failed to load');
-      }
-
-      // Redirect to Stripe Checkout or confirm payment
-      const { error: stripeError } = await stripe.confirmCardPayment(data.paymentIntent.client_secret, {
-        payment_method: {
-          card: {
-            // In a real app, you'd collect card details from the user
-            // For demo purposes, we'll simulate a successful payment
-          }
-        }
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message || 'Payment failed');
-      }
-
-      // Payment successful - refresh access status
-      setHasAccess(true);
-      
-      // Refresh the page to load content
-      window.location.reload();
-
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(`Payment failed: ${err.message}`);
-    } finally {
-      setIsProcessingPayment(false);
-    }
+  // Handle payment error
+  const handlePaymentError = (errorMessage: string) => {
+    setError(`Payment failed: ${errorMessage}`);
+    setShowPaymentForm(false);
   };
 
   // Handle flag click (green or red)
@@ -491,115 +446,148 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <AppLayout>
-        <div className="max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-10">
-            {/* Premium Header */}
-            <div className="text-center mb-10">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-8 relative shadow-2xl">
-                <Lock className="w-12 h-12 text-white" />
-                <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
-                  <Star className="w-5 h-5 text-yellow-800" />
+      <StripeProvider>
+        <AppLayout>
+          <div className="max-w-lg mx-auto">
+            {showPaymentForm ? (
+              /* Payment Form */
+              <div className="bg-white rounded-2xl shadow-xl p-8">
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <CreditCard className="w-8 h-8 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Payment</h1>
+                  <p className="text-gray-600">
+                    Secure payment for 3-day {oppositeGender} feed access
+                  </p>
+                </div>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                      <span className="text-red-700 text-sm">{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                <PaymentForm
+                  amount={2999}
+                  currency="usd"
+                  feedAccess="opposite"
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                />
+
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setShowPaymentForm(false)}
+                    className="text-gray-600 hover:text-gray-800 underline"
+                  >
+                    ← Back to premium info
+                  </button>
                 </div>
               </div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">Premium Access</h1>
-              <p className="text-gray-600 text-lg mb-6">
-                Unlock exclusive access to the {oppositeGender} feed
-              </p>
-            </div>
+            ) : (
+              /* Premium Info Screen */
+              <div className="bg-white rounded-2xl shadow-xl p-10">
+                {/* Premium Header */}
+                <div className="text-center mb-10">
+                  <div className="w-24 h-24 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-8 relative shadow-2xl">
+                    <Lock className="w-12 h-12 text-white" />
+                    <div className="absolute -top-2 -right-2 w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
+                      <Star className="w-5 h-5 text-yellow-800" />
+                    </div>
+                  </div>
+                  <h1 className="text-4xl font-bold text-gray-900 mb-4">Premium Access</h1>
+                  <p className="text-gray-600 text-lg mb-6">
+                    Unlock exclusive access to the {oppositeGender} feed
+                  </p>
+                </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-xl shadow-lg" role="alert">
-                <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-                  <span className="text-red-700 text-sm">{error}</span>
+                {/* Error Message */}
+                {error && (
+                  <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-xl shadow-lg" role="alert">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                      <span className="text-red-700 text-sm">{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Features List */}
+                <div className="mb-10">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6">What you get:</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-gray-800 font-medium">Access to {oppositeGender} user posts</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-gray-800 font-medium">Flag and comment on posts</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-gray-800 font-medium">3 full days of unlimited access</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-gray-800 font-medium">No recurring charges</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pricing */}
+                <div className="bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] bg-opacity-10 rounded-2xl p-8 mb-8 border border-[#E0A3A3] border-opacity-20">
+                  <div className="text-center">
+                    <div className="text-5xl font-black text-gray-900 mb-3">$29.99</div>
+                    <div className="text-gray-700 text-lg font-medium mb-4">One-time payment • 3-day access</div>
+                    <div className="flex items-center justify-center text-gray-600">
+                      <Clock className="w-4 h-4 mr-1" />
+                      <span>Access expires automatically</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Button */}
+                <button
+                  onClick={() => setShowPaymentForm(true)}
+                  className="w-full py-5 px-8 rounded-2xl font-bold text-xl transition-all duration-300 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white shadow-2xl hover:shadow-3xl transform hover:scale-105"
+                >
+                  <div className="flex items-center justify-center">
+                    <CreditCard className="w-7 h-7 mr-3" />
+                    Unlock 3-Day Access
+                  </div>
+                </button>
+
+                {/* Security Notice */}
+                <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
+                  <p className="text-blue-800 text-center font-medium">
+                    <strong>🔒 Secure Payment:</strong> Powered by Stripe. Your payment information is encrypted and secure.
+                  </p>
+                </div>
+
+                {/* Terms */}
+                <div className="mt-6 text-center">
+                  <p className="text-xs text-gray-500">
+                    By purchasing, you agree to our terms of service. Access is non-refundable and expires after 3 days.
+                  </p>
                 </div>
               </div>
             )}
-
-            {/* Features List */}
-            <div className="mb-10">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">What you get:</h3>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                  <span className="text-gray-800 font-medium">Access to {oppositeGender} user posts</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                  <span className="text-gray-800 font-medium">Flag and comment on posts</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                  <span className="text-gray-800 font-medium">3 full days of unlimited access</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  </div>
-                  <span className="text-gray-800 font-medium">No recurring charges</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing */}
-            <div className="bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] bg-opacity-10 rounded-2xl p-8 mb-8 border border-[#E0A3A3] border-opacity-20">
-              <div className="text-center">
-                <div className="text-5xl font-black text-gray-900 mb-3">$29.99</div>
-                <div className="text-gray-700 text-lg font-medium mb-4">One-time payment • 3-day access</div>
-                <div className="flex items-center justify-center text-gray-600">
-                  <Clock className="w-4 h-4 mr-1" />
-                  <span>Access expires automatically</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Button */}
-            <button
-              onClick={handlePayment}
-              disabled={isProcessingPayment}
-              className={`w-full py-5 px-8 rounded-2xl font-bold text-xl transition-all duration-300 ${
-                isProcessingPayment
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white shadow-2xl hover:shadow-3xl transform hover:scale-105'
-              }`}
-            >
-              {isProcessingPayment ? (
-                <div className="flex items-center justify-center">
-                  <Loader2 className="animate-spin h-7 w-7 mr-3" />
-                  Processing Payment...
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  <CreditCard className="w-7 h-7 mr-3" />
-                  Unlock 3-Day Access
-                </div>
-              )}
-            </button>
-
-            {/* Security Notice */}
-            <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
-              <p className="text-blue-800 text-center font-medium">
-                <strong>🔒 Secure Payment:</strong> Powered by Stripe. Your payment information is encrypted and secure.
-              </p>
-            </div>
-
-            {/* Terms */}
-            <div className="mt-6 text-center">
-              <p className="text-xs text-gray-500">
-                By purchasing, you agree to our terms of service. Access is non-refundable and expires after 3 days.
-              </p>
-            </div>
           </div>
-        </div>
-      </AppLayout>
+        </AppLayout>
+      </StripeProvider>
     );
   }
 

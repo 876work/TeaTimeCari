@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { FileText } from 'lucide-react';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { StripeProvider } from './components/Payment/StripeProvider';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
@@ -156,173 +157,175 @@ function App() {
 
   return (
     <SessionContextProvider supabaseClient={supabase}>
-      <NotificationProvider>
-        {isAdminLoginPage ? (
-          <AdminLoginPage />
-        ) : showWelcomePage ? (
-          <HomePage onGetStarted={handleGetStarted} />
-        ) : (
-          <AppLayout>
-          {currentPage === 'register' && (
-            <>
-              {currentStep === 0 && (
-                <InviteStep onNext={handleInviteComplete} />
-              )}
-              {currentStep === 1 && (
-                <RegisterStep1 
-                  onNext={handleStep1Complete}
-                  onBack={handleBackToInvite}
-                />
-              )}
-              {currentStep === 2 && (
-                <RegisterStep2 
-                  onNext={handleStep2Complete}
-                  onBack={handleBackToStep1}
-                />
-              )}
-              {currentStep === 3 && (
-                <RegisterStep3 
-                  onNext={handleStep3Complete}
-                  onBack={handleBackToStep2}
-                />
-              )}
-              {currentStep === 4 && (
-                <PendingApproval 
-                  registrationData={registrationData}
-                  onGoHome={handleGoHome}
-                />
-              )}
-            </>
-          )}
-          
-          {currentPage === 'verify-code' && (
-            <VerifySmsCode 
-              onVerificationComplete={handleVerificationComplete}
-              userPhone={registrationData.step1?.phone}
-            />
-          )}
-          
-          {currentPage === 'feed' && (
-            <GenderFeed />
-          )}
-          
-          {currentPage === 'upload' && (
-            <UploadPost />
-          )}
-          
-          {currentPage === 'opposite-feed' && (
-            <OppositeGenderFeed />
-          )}
-          
-          {currentPage === 'admin' && (
-            <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
-          )}
-          
-          {currentPage === 'user-profile' && (
-            <UserProfile userId={selectedUserId} />
-          )}
-          
-          {currentPage === 'post-thread' && (
-            <PostThread postId={selectedPostId} />
-          )}
-          
-          {/* Navigation for testing - remove in production */}
-          <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
-            <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setCurrentPage('register')}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'register' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Register
-              </button>
-              <button
-                onClick={handleGoToVerification}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'verify-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Verify SMS
-              </button>
-              <button
-                onClick={handleGoToFeed}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Feed
-              </button>
-              <button
-                onClick={handleGoToUpload}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'upload' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Upload
-              </button>
-              <button
-                onClick={handleGoToOppositeFeed}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'opposite-feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Premium Feed
-              </button>
-              <button
-                onClick={handleGoToAdminDashboard}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Admin Dashboard
-              </button>
-              <button
-                onClick={handleGoToAdminFlaggedPosts}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Admin Flagged
-              </button>
-              <button
-                onClick={handleGoToAdminUserReviews}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Admin Users
-              </button>
-              <button
-                onClick={handleGoToAdminInviteCodes}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Admin Invites
-              </button>
-              <button
-                onClick={() => handleGoToUserProfile()}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'user-profile' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                User Profile
-              </button>
-              <button
-                onClick={() => handleGoToPostThread()}
-                className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'post-thread' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Post Thread
-              </button>
+      <StripeProvider>
+        <NotificationProvider>
+          {isAdminLoginPage ? (
+            <AdminLoginPage />
+          ) : showWelcomePage ? (
+            <HomePage onGetStarted={handleGetStarted} />
+          ) : (
+            <AppLayout>
+            {currentPage === 'register' && (
+              <>
+                {currentStep === 0 && (
+                  <InviteStep onNext={handleInviteComplete} />
+                )}
+                {currentStep === 1 && (
+                  <RegisterStep1 
+                    onNext={handleStep1Complete}
+                    onBack={handleBackToInvite}
+                  />
+                )}
+                {currentStep === 2 && (
+                  <RegisterStep2 
+                    onNext={handleStep2Complete}
+                    onBack={handleBackToStep1}
+                  />
+                )}
+                {currentStep === 3 && (
+                  <RegisterStep3 
+                    onNext={handleStep3Complete}
+                    onBack={handleBackToStep2}
+                  />
+                )}
+                {currentStep === 4 && (
+                  <PendingApproval 
+                    registrationData={registrationData}
+                    onGoHome={handleGoHome}
+                  />
+                )}
+              </>
+            )}
+            
+            {currentPage === 'verify-code' && (
+              <VerifySmsCode 
+                onVerificationComplete={handleVerificationComplete}
+                userPhone={registrationData.step1?.phone}
+              />
+            )}
+            
+            {currentPage === 'feed' && (
+              <GenderFeed />
+            )}
+            
+            {currentPage === 'upload' && (
+              <UploadPost />
+            )}
+            
+            {currentPage === 'opposite-feed' && (
+              <OppositeGenderFeed />
+            )}
+            
+            {currentPage === 'admin' && (
+              <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
+            )}
+            
+            {currentPage === 'user-profile' && (
+              <UserProfile userId={selectedUserId} />
+            )}
+            
+            {currentPage === 'post-thread' && (
+              <PostThread postId={selectedPostId} />
+            )}
+            
+            {/* Navigation for testing - remove in production */}
+            <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
+              <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setCurrentPage('register')}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'register' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Register
+                </button>
+                <button
+                  onClick={handleGoToVerification}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'verify-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Verify SMS
+                </button>
+                <button
+                  onClick={handleGoToFeed}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Feed
+                </button>
+                <button
+                  onClick={handleGoToUpload}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'upload' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={handleGoToOppositeFeed}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'opposite-feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Premium Feed
+                </button>
+                <button
+                  onClick={handleGoToAdminDashboard}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Admin Dashboard
+                </button>
+                <button
+                  onClick={handleGoToAdminFlaggedPosts}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Admin Flagged
+                </button>
+                <button
+                  onClick={handleGoToAdminUserReviews}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Admin Users
+                </button>
+                <button
+                  onClick={handleGoToAdminInviteCodes}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Admin Invites
+                </button>
+                <button
+                  onClick={() => handleGoToUserProfile()}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'user-profile' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  User Profile
+                </button>
+                <button
+                  onClick={() => handleGoToPostThread()}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'post-thread' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Post Thread
+                </button>
+              </div>
             </div>
-          </div>
-          </AppLayout>
-        )}
-      </NotificationProvider>
+            </AppLayout>
+          )}
+        </NotificationProvider>
+      </StripeProvider>
     </SessionContextProvider>
   );
 }
