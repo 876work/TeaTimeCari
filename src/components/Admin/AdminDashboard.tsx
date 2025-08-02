@@ -622,6 +622,5 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

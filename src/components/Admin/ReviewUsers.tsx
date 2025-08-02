@@ -438,6 +438,5 @@ export function AdminUserReview() {
           </div>
         )}
       </div>
-    </AdminLayout>
   );
 }

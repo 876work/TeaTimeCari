@@ -628,6 +628,5 @@ export function ReviewFlaggedPosts() {
           </div>
         )}
       </div>
-    </AdminLayout>
   );
 }

@@ -48,7 +48,7 @@ export function AdminLoginPage() {
 
       if (data.user && data.user.email?.includes('admin')) {
         // Successful admin login
-        window.location.href = '/';
+        window.location.href = '/admin/dashboard';
       } else {
         setError('Access denied. This account does not have administrative privileges.');
         // Sign out non-admin user

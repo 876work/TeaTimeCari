@@ -32,7 +32,8 @@ function App() {
   
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
-  const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'admin-flagged-posts' | 'admin-user-reviews' | 'user-profile' | 'post-thread'>('register');
+  const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
+  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string>('mock-post-1'); // Default for testing
   const [registrationData, setRegistrationData] = React.useState<{
@@ -101,19 +102,32 @@ function App() {
   };
 
   const handleGoToAdminDashboard = () => {
-    setCurrentPage('admin-dashboard');
+    setCurrentPage('admin');
+    setAdminActivePage('dashboard');
   };
 
   const handleGoToAdminFlaggedPosts = () => {
-    setCurrentPage('admin-flagged-posts');
+    setCurrentPage('admin');
+    setAdminActivePage('flagged-posts');
   };
 
   const handleGoToAdminUserReviews = () => {
-    setCurrentPage('admin-user-reviews');
+    setCurrentPage('admin');
+    setAdminActivePage('user-reviews');
   };
 
   const handleGoToAdminInviteCodes = () => {
-    setCurrentPage('admin-invite-codes');
+    setCurrentPage('admin');
+    setAdminActivePage('invite-codes');
+  };
+
+  const handleGoToAdminLogs = () => {
+    setCurrentPage('admin');
+    setAdminActivePage('logs');
+  };
+
+  const handleAdminNavigate = (page: string) => {
+    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs');
   };
 
   const handleGoToUserProfile = (userId?: string) => {
@@ -202,12 +216,20 @@ function App() {
             <OppositeGenderFeed />
           )}
           
-          {currentPage === 'admin-flagged-posts' && (
-            <ReviewFlaggedPosts />
-          )}
-          
-          {currentPage === 'admin-user-reviews' && (
-            <AdminUserReview />
+          {currentPage === 'admin' && (
+            <AdminLayout activePage={adminActivePage} onNavigate={handleAdminNavigate}>
+              {adminActivePage === 'dashboard' && <AdminDashboard />}
+              {adminActivePage === 'user-reviews' && <AdminUserReview />}
+              {adminActivePage === 'flagged-posts' && <ReviewFlaggedPosts />}
+              {adminActivePage === 'invite-codes' && <AdminInviteCodes />}
+              {adminActivePage === 'logs' && (
+                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Moderation Logs</h2>
+                  <p className="text-gray-600">This feature is coming soon.</p>
+                </div>
+              )}
+            </AdminLayout>
           )}
           
           {currentPage === 'user-profile' && (
@@ -265,7 +287,7 @@ function App() {
               <button
                 onClick={handleGoToAdminDashboard}
                 className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin-dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 Admin Dashboard
@@ -273,7 +295,7 @@ function App() {
               <button
                 onClick={handleGoToAdminFlaggedPosts}
                 className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin-flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 Admin Flagged
@@ -281,7 +303,7 @@ function App() {
               <button
                 onClick={handleGoToAdminUserReviews}
                 className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin-user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 Admin Users
@@ -289,7 +311,7 @@ function App() {
               <button
                 onClick={handleGoToAdminInviteCodes}
                 className={`px-3 py-1 text-xs rounded ${
-                  currentPage === 'admin-invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 Admin Invites
