@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
+import { isValidUUID } from '../../utils/validationUtils';
 import { 
   ArrowLeft, 
   MessageSquare, 
@@ -121,7 +122,20 @@ export function PostThread({ postId }: PostThreadProps) {
   // Fetch post data
   useEffect(() => {
     const fetchPost = async () => {
-      if (!currentUser || !postId) return;
+      if (!currentUser || !postId) {
+        if (!postId) {
+          setError('No post selected.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Validate UUID format
+      if (!isValidUUID(postId)) {
+        setError('Invalid post ID format.');
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
       setError(null);

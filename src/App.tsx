@@ -37,7 +37,7 @@ function App() {
   const [currentPage, setCurrentPage] = React.useState<'register' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
-  const [selectedPostId, setSelectedPostId] = React.useState<string>('mock-post-1'); // Default for testing
+  const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
     invite?: InviteStepData;
     step1?: RegisterStep1Data;
