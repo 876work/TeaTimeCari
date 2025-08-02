@@ -18,8 +18,6 @@ import {
   Clock
 } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
-import { NotificationBell } from '../Notifications/NotificationBell';
-import { LogoutButton } from '../Auth/LogoutButton';
 
 // Type definitions
 interface Post {
@@ -493,25 +491,9 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
-        {/* Header with Notifications */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">Tea Time Cari</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <NotificationBell />
-                <LogoutButton variant="ghost" size="md" />
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-lg mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl p-10">
+      <AppLayout>
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-10">
             {/* Premium Header */}
             <div className="text-center mb-10">
               <div className="w-24 h-24 bg-gradient-to-br from-[#E0A3A3] to-[#D98B8B] rounded-2xl flex items-center justify-center mx-auto mb-8 relative shadow-2xl">
@@ -616,9 +598,8 @@ export function OppositeGenderFeed() {
               </p>
             </div>
           </div>
-          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
@@ -627,24 +608,8 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
-        {/* Header with Notifications */}
-        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">Tea Time Cari</h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <NotificationBell />
-                <LogoutButton variant="ghost" size="md" />
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
+      <AppLayout>
+        <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
             <div className="flex items-center justify-between">
@@ -916,8 +881,7 @@ export function OppositeGenderFeed() {
             </div>
           )}
         </div>
-        </div>
-      </div>
+      </AppLayout>
     );
   }
 
