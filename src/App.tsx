@@ -1,6 +1,7 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
+import { FileText } from 'lucide-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
