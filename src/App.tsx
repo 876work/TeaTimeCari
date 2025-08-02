@@ -14,14 +14,10 @@ import { VerifySmsCode } from './components/Auth/VerifySmsCode';
 import { GenderFeed } from './components/Feed/GenderFeed';
 import { UploadPost } from './components/Posts/UploadPost';
 import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
-import { ReviewFlaggedPosts } from './components/Admin/ReviewFlaggedPosts';
 import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
-import { AdminUserReview } from './components/Admin/ReviewUsers';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
-import { AdminInviteCodes } from './components/Admin/AdminInviteCodes';
-import { AdminLayout } from './components/Admin/AdminLayout';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -219,19 +215,7 @@ function App() {
           )}
           
           {currentPage === 'admin' && (
-            <AdminLayout activePage={adminActivePage} onNavigate={handleAdminNavigate}>
-              {adminActivePage === 'dashboard' && <AdminDashboard />}
-              {adminActivePage === 'user-reviews' && <AdminUserReview />}
-              {adminActivePage === 'flagged-posts' && <ReviewFlaggedPosts />}
-              {adminActivePage === 'invite-codes' && <AdminInviteCodes />}
-              {adminActivePage === 'logs' && (
-                <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Moderation Logs</h2>
-                  <p className="text-gray-600">This feature is coming soon.</p>
-                </div>
-              )}
-            </AdminLayout>
+            <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
           )}
           
           {currentPage === 'user-profile' && (

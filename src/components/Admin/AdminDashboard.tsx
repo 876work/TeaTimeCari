@@ -20,6 +20,9 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { AdminUserReview } from './ReviewUsers';
+import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
+import { AdminInviteCodes } from './AdminInviteCodes';
 
 // Type definitions
 interface DashboardStats {
@@ -50,7 +53,12 @@ interface QuickAction {
   action: () => void;
 }
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  activePage?: string;
+  onNavigate?: (page: string) => void;
+}
+
+export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDashboardProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
@@ -222,19 +230,21 @@ export function AdminDashboard() {
 
   // Quick action handlers
   const handleGoToUserReviews = () => {
-    // In a real app, you'd use proper routing
-    console.log('Navigate to /admin/review');
-    window.location.hash = '#admin-user-reviews';
+    if (onNavigate) {
+      onNavigate('user-reviews');
+    }
   };
 
   const handleGoToFlaggedPosts = () => {
-    console.log('Navigate to /admin/flagged');
-    window.location.hash = '#admin-flagged-posts';
+    if (onNavigate) {
+      onNavigate('flagged-posts');
+    }
   };
 
   const handleGoToInviteCodes = () => {
-    console.log('Navigate to /admin/invites');
-    window.location.hash = '#admin-invite-codes';
+    if (onNavigate) {
+      onNavigate('invite-codes');
+    }
   };
 
   // Quick actions configuration
@@ -269,7 +279,7 @@ export function AdminDashboard() {
 
   if (!isAdmin) {
     return (
-      <AdminLayout>
+      <AdminLayout activePage={activePage} onNavigate={onNavigate}>
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
@@ -279,8 +289,22 @@ export function AdminDashboard() {
     );
   }
 
+  // Render specific admin page content
+  if (activePage === 'user-reviews') {
+    return <AdminUserReview />;
+  }
+
+  if (activePage === 'flagged-posts') {
+    return <ReviewFlaggedPosts />;
+  }
+
+  if (activePage === 'invite-codes') {
+    return <AdminInviteCodes />;
+  }
+
+  // Default dashboard content
   return (
-    <AdminLayout>
+    <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-6">
