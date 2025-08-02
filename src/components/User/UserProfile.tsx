@@ -19,7 +19,6 @@ import {
   Users,
   Camera
 } from 'lucide-react';
-import { AppLayout } from '../AppLayout';
 import { isValidUUID } from '../../utils/validationUtils';
 
 // Type definitions
@@ -75,7 +74,7 @@ export function UserProfile({ userId }: UserProfileProps) {
   // Validate userId before proceeding
   if (!userId || !isValidUUID(userId)) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -91,7 +90,7 @@ export function UserProfile({ userId }: UserProfileProps) {
             </button>
           </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
   
@@ -395,21 +394,21 @@ export function UserProfile({ userId }: UserProfileProps) {
   // Loading state
   if (loading || !profileUser) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Loading profile...</p>
           </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   // Error state
   if (error && !profileUser) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -423,7 +422,7 @@ export function UserProfile({ userId }: UserProfileProps) {
             </button>
           </div>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
@@ -431,7 +430,7 @@ export function UserProfile({ userId }: UserProfileProps) {
   const isBanned = profileUser.status === 'banned';
 
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Back Button */}
         <button
@@ -692,6 +691,6 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
       </div>
-    </AppLayout>
+    </div>
   );
 }
