@@ -107,7 +107,7 @@ export function UserProfile({ userId }: UserProfileProps) {
           .from('registrations')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (userError) {
           console.error('Error fetching current user:', userError);
@@ -135,7 +135,7 @@ export function UserProfile({ userId }: UserProfileProps) {
           .from('registrations')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error('Error fetching profile user:', profileError);
