@@ -20,6 +20,7 @@ import {
   Camera
 } from 'lucide-react';
 import { AppLayout } from '../AppLayout';
+import { isValidUUID } from '../../utils/validationUtils';
 
 // Type definitions
 interface UserProfileData {
@@ -65,6 +66,29 @@ interface UserProfileProps {
 export function UserProfile({ userId }: UserProfileProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
+
+  // Validate userId before proceeding
+  if (!userId || !isValidUUID(userId)) {
+    return (
+      <AppLayout>
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Invalid User ID</h2>
+            <p className="text-gray-700 mb-6">
+              The provided user ID is not valid. Please check the URL and try again.
+            </p>
+            <button
+              onClick={goBackToFeed}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   
   // State management
   const [currentUser, setCurrentUser] = useState<UserProfileData | null>(null);
