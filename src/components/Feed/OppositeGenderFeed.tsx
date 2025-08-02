@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
+import { AppLayout } from '../AppLayout';
 import { 
   CheckCircle, 
   XCircle, 
