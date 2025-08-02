@@ -20,6 +20,7 @@ import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminUserReview } from './components/Admin/ReviewUsers';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AdminInviteCodes } from './components/Admin/AdminInviteCodes';
+import { AdminLayout } from './components/Admin/AdminLayout';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
