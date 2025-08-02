@@ -17,7 +17,6 @@ import {
   User,
   Clock
 } from 'lucide-react';
-import { AppLayout } from '../AppLayout';
 
 // Type definitions
 interface PostData {
@@ -418,21 +417,24 @@ export function PostThread({ postId }: PostThreadProps) {
   // Loading state for user verification
   if (userLoading) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Verifying access...</p>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Error state or access denied
   if (error && !currentUser) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -446,28 +448,32 @@ export function PostThread({ postId }: PostThreadProps) {
             </button>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Loading state for post
   if (loading || !post) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Loading post...</p>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   // Post not found or deleted
   if (error && !post) {
     return (
-      <AppLayout>
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -483,14 +489,16 @@ export function PostThread({ postId }: PostThreadProps) {
             </button>
           </div>
         </div>
-      </AppLayout>
+        </div>
+      </div>
     );
   }
 
   const isValidComment = newComment.trim().length > 0 && newComment.length <= 500;
 
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Back Button */}
         <button
@@ -731,6 +739,7 @@ export function PostThread({ postId }: PostThreadProps) {
           </div>
         </div>
       </div>
-    </AppLayout>
+      </div>
+    </div>
   );
 }
