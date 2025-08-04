@@ -27,19 +27,20 @@ export interface RegisterStep1Data {
 interface RegisterStep1Props {
   onNext: (data: RegisterStep1Data) => void;
   onBack?: () => void;
+  initialData?: RegisterStep1Data;
 }
 
-export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
+export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Props) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
   // Form state
   const [formData, setFormData] = useState<RegisterStep1Data>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    username: ''
+    firstName: initialData?.firstName || '',
+    lastName: initialData?.lastName || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
+    username: initialData?.username || ''
   });
   
   // Validation state

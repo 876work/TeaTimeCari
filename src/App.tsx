@@ -198,24 +198,31 @@ function App() {
             {currentPage === 'register' && (
               <>
                 {currentStep === 0 && (
-                  <InviteStep onNext={handleInviteComplete} onGoToLogin={handleGoToLogin} />
+                  <InviteStep 
+                    onNext={handleInviteComplete} 
+                    onGoToLogin={handleGoToLogin}
+                    initialData={registrationData.invite}
+                  />
                 )}
                 {currentStep === 1 && (
                   <RegisterStep1 
                     onNext={handleStep1Complete}
                     onBack={handleBackToInvite}
+                    initialData={registrationData.step1}
                   />
                 )}
                 {currentStep === 2 && (
                   <RegisterStep2 
                     onNext={handleStep2Complete}
                     onBack={handleBackToStep1}
+                    initialData={registrationData.step2}
                   />
                 )}
                 {currentStep === 3 && (
                   <RegisterStep3 
                     onNext={handleStep3Complete}
                     onBack={handleBackToStep2}
+                    initialData={registrationData.step3}
                   />
                 )}
                 {currentStep === 4 && (

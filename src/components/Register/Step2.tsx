@@ -8,10 +8,11 @@ export interface RegisterStep2Data {
 interface RegisterStep2Props {
   onNext: (data: RegisterStep2Data) => void;
   onBack?: () => void;
+  initialData?: RegisterStep2Data;
 }
 
-export function RegisterStep2({ onNext, onBack }: RegisterStep2Props) {
-  const [selectedGender, setSelectedGender] = useState<'Male' | 'Female' | null>(null);
+export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Props) {
+  const [selectedGender, setSelectedGender] = useState<'Male' | 'Female' | null>(initialData?.gender || null);
 
   const handleGenderSelect = (gender: 'Male' | 'Female') => {
     setSelectedGender(gender);

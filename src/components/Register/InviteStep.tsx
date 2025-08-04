@@ -10,6 +10,7 @@ export interface InviteStepData {
 interface InviteStepProps {
   onNext: (data: InviteStepData) => void;
   onGoToLogin?: () => void;
+  initialData?: InviteStepData;
 }
 
 interface InviteCodeValidation {
@@ -24,11 +25,11 @@ interface InviteCodeValidation {
   };
 }
 
-export function InviteStep({ onNext, onGoToLogin }: InviteStepProps) {
+export function InviteStep({ onNext, onGoToLogin, initialData }: InviteStepProps) {
   const supabase = useSupabaseClient();
   
   // Form state
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(initialData?.inviteCode || '');
   const [isValidating, setIsValidating] = useState(false);
   const [validation, setValidation] = useState<InviteCodeValidation>({
     isValid: false,

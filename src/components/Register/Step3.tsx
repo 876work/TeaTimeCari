@@ -10,20 +10,21 @@ export interface RegisterStep3Data {
 interface RegisterStep3Props {
   onNext: (data: RegisterStep3Data) => void;
   onBack?: () => void;
+  initialData?: RegisterStep3Data;
 }
 
 type CaptureMode = 'selfie' | 'id' | null;
 type CameraState = 'idle' | 'requesting' | 'active' | 'error';
 type CaptureState = 'none' | 'captured' | 'previewing';
 
-export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
+export function RegisterStep3({ onNext, onBack, initialData }: RegisterStep3Props) {
   // State management
   const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
   const [cameraState, setCameraState] = useState<CameraState>('idle');
-  const [captureState, setCaptureState] = useState<CaptureState>('none');
+  const [captureState, setCaptureState] = useState<CaptureState>(initialData?.imageData ? 'captured' : 'none');
   const [error, setError] = useState<string | null>(null);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(initialData?.imageData || null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -91,6 +92,13 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
     }
   }, [stopCamera]);
 
+  // Initialize capture mode from initial data
+  useEffect(() => {
+    if (initialData?.captureType && !captureMode) {
+      setCaptureMode(initialData.captureType);
+    }
+  }, [initialData?.captureType, captureMode]);
+
   // Effect to handle camera initialization when mode changes
   useEffect(() => {
     if (captureMode && captureState === 'none') {
@@ -115,7 +123,7 @@ export function RegisterStep3({ onNext, onBack }: RegisterStep3Props) {
 
   // Handle mode selection
   const handleModeSelect = (mode: 'selfie' | 'id') => {
-    setCaptureMode(mode);
+    setCaptureMode(initialData?.captureType || mode);
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
