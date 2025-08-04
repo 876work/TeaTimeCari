@@ -20,6 +20,7 @@ import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { LoginComponent } from './components/Auth/LoginComponent';
+import { ResetPasswordComponent } from './components/Auth/ResetPasswordComponent';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -30,9 +31,13 @@ function App() {
   // Check if current path is the admin login page
   const isAdminLoginPage = window.location.pathname === '/teamin';
   
+  // Check if current path is the password reset page
+  const isResetPasswordPage = window.location.pathname === '/reset-password' || 
+    window.location.search.includes('type=recovery');
+  
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
-  const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
+  const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
@@ -61,6 +66,11 @@ function App() {
   const handleLoginSuccess = () => {
     console.log('Login successful');
     setCurrentPage('feed'); // Redirect to feed after successful login
+  };
+
+  const handleResetPasswordComplete = () => {
+    console.log('Password reset completed');
+    setCurrentPage('login'); // Redirect to login after password reset
   };
 
   const handleStep1Complete = (data: RegisterStep1Data) => {
@@ -176,6 +186,11 @@ function App() {
         <NotificationProvider>
           {isAdminLoginPage ? (
             <AdminLoginPage />
+          ) : isResetPasswordPage ? (
+            <ResetPasswordComponent 
+              onResetComplete={handleResetPasswordComplete}
+              onBackToLogin={() => setCurrentPage('login')}
+            />
           ) : showWelcomePage ? (
             <HomePage onGetStarted={handleGetStarted} />
           ) : (
@@ -216,6 +231,13 @@ function App() {
               <LoginComponent 
                 onLoginSuccess={handleLoginSuccess}
                 onBackToRegister={handleBackToRegister}
+              />
+            )}
+            
+            {currentPage === 'reset-password' && (
+              <ResetPasswordComponent 
+                onResetComplete={handleResetPasswordComplete}
+                onBackToLogin={() => setCurrentPage('login')}
               />
             )}
             
@@ -269,6 +291,14 @@ function App() {
                   }`}
                 >
                   Login
+                </button>
+                <button
+                  onClick={() => setCurrentPage('reset-password')}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'reset-password' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Reset Password
                 </button>
                 <button
                   onClick={handleGoToVerification}

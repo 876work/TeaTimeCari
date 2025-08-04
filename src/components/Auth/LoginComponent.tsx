@@ -263,6 +263,11 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
                 autoComplete="email"
               />
             </div>
+            {touched.email && formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+              <p className="mt-2 text-sm text-red-600">
+                Please enter a valid email address
+              </p>
+            )}
           </div>
 
           {/* Password */}
