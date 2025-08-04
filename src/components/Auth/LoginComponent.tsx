@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { LogIn, Loader2, AlertCircle, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { LogIn, Loader2, AlertCircle, Mail, Lock, ArrowLeft, RotateCcw, CheckCircle } from 'lucide-react';
 import { AuthLayout } from '../AuthLayout';
 
 interface LoginComponentProps {
@@ -20,6 +20,9 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const [touched, setTouched] = useState({
     email: false,
     password: false
@@ -36,6 +39,11 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
     if (error) {
       setError(null);
     }
+    
+    // Clear reset success message when user starts typing
+    if (resetEmailSent) {
+      setResetEmailSent(false);
+    }
   };
 
   // Handle field blur
@@ -46,12 +54,68 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
   // Validate form
   const isFormValid = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(formData.email) && formData.password.length >= 6;
+    return emailRegex.test(formData.email) && (showPasswordReset || formData.password.length >= 6);
   };
 
+  // Handle password reset request
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    setError(null);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        throw resetError;
+      }
+
+      setResetEmailSent(true);
+      setError(null);
+
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      
+      let errorMessage = 'Failed to send reset email. Please try again.';
+      
+      if (err.message?.includes('Email not found')) {
+        errorMessage = 'No account found with this email address.';
+      } else if (err.message?.includes('Email rate limit exceeded')) {
+        errorMessage = 'Too many reset requests. Please wait before trying again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  // Toggle password reset mode
+  const togglePasswordReset = () => {
+    setShowPasswordReset(!showPasswordReset);
+    setError(null);
+    setResetEmailSent(false);
+    setTouched({ email: false, password: false });
+  };
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // If in password reset mode, handle reset instead
+    if (showPasswordReset) {
+      return handlePasswordReset(e);
+    }
     
     // Mark all fields as touched
     setTouched({ email: true, password: true });
@@ -130,10 +194,21 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <LogIn className="w-8 h-8 text-[#A3C6E0]" />
+            {showPasswordReset ? (
+              <RotateCcw className="w-8 h-8 text-[#A3C6E0]" />
+            ) : (
+              <LogIn className="w-8 h-8 text-[#A3C6E0]" />
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your Tea Time Cari account</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {showPasswordReset ? 'Reset Password' : 'Welcome Back'}
+          </h1>
+          <p className="text-gray-600">
+            {showPasswordReset 
+              ? 'Enter your email to receive a password reset link'
+              : 'Sign in to your Tea Time Cari account'
+            }
+          </p>
         </div>
 
         {/* Error Message */}
@@ -142,6 +217,21 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700 text-sm">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Success Message for Password Reset */}
+        {resetEmailSent && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg" role="status">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              <div>
+                <span className="text-green-700 text-sm font-medium">Reset email sent!</span>
+                <p className="text-green-600 text-xs mt-1">
+                  Check your email for a password reset link. It may take a few minutes to arrive.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -176,6 +266,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
           </div>
 
           {/* Password */}
+          {!showPasswordReset && (
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Password
@@ -208,21 +299,27 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
               </p>
             )}
           </div>
+          )}
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={!isFormValid() || isLoading}
+            disabled={!isFormValid() || isLoading || isResettingPassword}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              isFormValid() && !isLoading
+              isFormValid() && !isLoading && !isResettingPassword
                 ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isLoading ? (
+            {isLoading || isResettingPassword ? (
               <div className="flex items-center justify-center">
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Signing In...
+                {showPasswordReset ? 'Sending Reset Email...' : 'Signing In...'}
+              </div>
+            ) : showPasswordReset ? (
+              <div className="flex items-center justify-center">
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Send Reset Email
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -232,6 +329,26 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
             )}
           </button>
         </form>
+
+        {/* Password Reset Toggle */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={togglePasswordReset}
+            className="text-sm text-gray-600 hover:text-gray-800 transition-colors underline"
+          >
+            {showPasswordReset ? (
+              <div className="flex items-center justify-center">
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to Sign In
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Forgot your password?
+              </div>
+            )}
+          </button>
+        </div>
 
         {/* Back to Registration Link */}
         {onBackToRegister && (
@@ -251,7 +368,10 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
               <strong>Need help?</strong><br />
-              If you're having trouble logging in, please contact support for assistance.
+              {showPasswordReset 
+                ? 'If you don\'t receive the reset email, check your spam folder or contact support.'
+                : 'If you\'re having trouble logging in, please contact support for assistance.'
+              }
             </p>
           </div>
         </div>
