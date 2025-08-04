@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Key, Loader2, AlertCircle, CheckCircle, Users, Gift } from 'lucide-react';
+import { Key, Loader2, AlertCircle, CheckCircle, Users, Gift, LogIn } from 'lucide-react';
 import { AuthLayout } from '../AuthLayout';
 
 export interface InviteStepData {
@@ -9,6 +9,7 @@ export interface InviteStepData {
 
 interface InviteStepProps {
   onNext: (data: InviteStepData) => void;
+  onGoToLogin?: () => void;
 }
 
 interface InviteCodeValidation {
@@ -23,7 +24,7 @@ interface InviteCodeValidation {
   };
 }
 
-export function InviteStep({ onNext }: InviteStepProps) {
+export function InviteStep({ onNext, onGoToLogin }: InviteStepProps) {
   const supabase = useSupabaseClient();
   
   // Form state
@@ -261,6 +262,27 @@ export function InviteStep({ onNext }: InviteStepProps) {
             )}
           </button>
         </form>
+
+        {/* Login Link for Existing Users */}
+        {onGoToLogin && (
+          <div className="mt-8 text-center">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Already have an account?</span>
+              </div>
+            </div>
+            <button
+              onClick={onGoToLogin}
+              className="mt-4 w-full py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-[#A3C6E0] transition-all duration-200 flex items-center justify-center"
+            >
+              <LogIn className="w-5 h-5 mr-2" />
+              Sign In to Your Account
+            </button>
+          </div>
+        )}
 
         {/* Sample Codes for Demo */}
         <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg">
