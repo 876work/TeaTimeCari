@@ -52,6 +52,24 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
       setSubmitError(null);
 
       try {
+        // First, check if a registration with this email already exists
+        const { data: existingRegistration, error: checkError } = await supabase
+          .from('registrations')
+          .select('id, status')
+          .eq('email', step1.email)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116' && checkError.code !== '42P01') {
+          throw checkError;
+        }
+
+        // If registration already exists, mark as submitted and return
+        if (existingRegistration) {
+          console.log('Registration already exists for email:', step1.email, 'Status:', existingRegistration.status);
+          setIsSubmitted(true);
+          return;
+        }
+
         // Generate SMS code and expiry
         const smsCode = generateSmsCode();
         const smsCodeExpiry = new Date();
