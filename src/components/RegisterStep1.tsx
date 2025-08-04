@@ -298,8 +298,47 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
     // Validate all fields
     allFields.forEach(field => validateField(field, formData[field]));
     
+    // Perform immediate re-check of email and username availability before submission
+    setGlobalError(null);
+    
+    try {
+      // Re-check email availability
+      if (formData.email) {
+        const emailValidation = validateEmail(formData.email);
+        if (emailValidation.isValid) {
+          await checkEmailAvailability(formData.email);
+        }
+      }
+      
+      // Re-check username availability
+      if (formData.username) {
+        const usernameValidation = validateUsername(formData.username);
+        if (usernameValidation.isValid) {
+          await checkUsernameAvailability(formData.username);
+        }
+      }
+      
+      // Wait a moment for state updates to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+    } catch (err: any) {
+      console.error('Error during final availability check:', err);
+      setGlobalError('Failed to verify availability. Please try again.');
+      return;
+    }
+    
+    // Re-validate form after the immediate checks
     if (isFormValid()) {
       onNext(formData);
+    } else {
+      // If form is no longer valid after re-check, show appropriate error
+      if (emailStatus.error) {
+        setGlobalError(emailStatus.error);
+      } else if (!usernameStatus.isAvailable) {
+        setGlobalError('Username is no longer available. Please choose a different username.');
+      } else {
+        setGlobalError('Please fix the errors above before continuing.');
+      }
     }
   };
   
