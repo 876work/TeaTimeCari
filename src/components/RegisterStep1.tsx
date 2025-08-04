@@ -287,7 +287,7 @@ export function RegisterStep1({ onNext, onBack }: RegisterStep1Props) {
   };
   
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Mark all fields as touched
