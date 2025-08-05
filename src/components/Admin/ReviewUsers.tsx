@@ -239,8 +239,8 @@ export function AdminUserReview() {
       try {
         const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-approval-email', {
           body: {
-            email: userData?.email || phoneNumber, // Use actual email from database
-            firstName: userData?.firstName || userName.split(' ')[0]
+            email: userData.email,
+            firstName: userData.firstName
           }
         });
 
