@@ -262,9 +262,10 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <h4 className="font-medium text-blue-900 mb-2">What happens next?</h4>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Our team will review your documents within 24-48 hours</li>
-              <li>• You'll receive an SMS notification once approved</li>
-              <li>• If additional information is needed, we'll contact you</li>
+              <li>• Our admin team will review your documents within 24-48 hours</li>
+              <li>• You'll receive an email with a verification code once approved</li>
+              <li>• Enter the code in the app to activate your account</li>
+              <li>• If additional information is needed, we'll contact you via email</li>
             </ul>
           </div>
         )}

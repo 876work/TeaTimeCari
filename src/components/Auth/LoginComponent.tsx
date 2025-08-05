@@ -144,7 +144,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
         // Check if user has completed registration
         const { data: registrationData, error: regError } = await supabase
           .from('registrations')
-          .select('status')
+          .select('status, email_code, email_code_expiry')
           .eq('id', data.user.id)
           .maybeSingle();
 
@@ -153,11 +153,55 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
           // Don't fail login if we can't check registration status
         }
 
-        if (registrationData && registrationData.status !== 'verified') {
-          setError(`Your account status is: ${registrationData.status}. Please contact support if you believe this is an error.`);
-          // Sign out the user since they can't access the app
-          await supabase.auth.signOut();
-          return;
+        if (registrationData) {
+          // Handle different registration statuses
+          switch (registrationData.status) {
+            case 'pending':
+              setError('Your account is still pending admin approval. Please wait for approval notification.');
+              await supabase.auth.signOut();
+              return;
+            
+            case 'verified':
+              // User has been approved by admin but needs to verify email code
+              if (registrationData.email_code && registrationData.email_code_expiry) {
+                // Check if code has expired
+                const expiryDate = new Date(registrationData.email_code_expiry);
+                if (expiryDate > new Date()) {
+                  // Code is still valid, redirect to email verification
+                  setError('Please verify your email code to complete account activation.');
+                  // Instead of signing out, we could redirect to email verification
+                  // For now, we'll show the error and let them navigate manually
+                  return;
+                } else {
+                  setError('Your verification code has expired. Please contact support for a new code.');
+                  await supabase.auth.signOut();
+                  return;
+                }
+              } else {
+                setError('Verification code not found. Please contact support.');
+                await supabase.auth.signOut();
+                return;
+              }
+            
+            case 'active':
+              // User is fully verified and can access the app
+              break;
+            
+            case 'rejected':
+              setError('Your account has been rejected. Please contact support for assistance.');
+              await supabase.auth.signOut();
+              return;
+            
+            case 'banned':
+              setError('Your account has been banned. Please contact support for assistance.');
+              await supabase.auth.signOut();
+              return;
+            
+            default:
+              setError(`Account status: ${registrationData.status}. Please contact support if you believe this is an error.`);
+              await supabase.auth.signOut();
+              return;
+          }
         }
 
         // Successful login

@@ -12,6 +12,7 @@ import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
 import { PendingApproval } from './components/Register/PendingApproval';
 import { VerifySmsCode } from './components/Auth/VerifySmsCode';
+import { VerifyEmailCode } from './components/Auth/VerifyEmailCode';
 import { GenderFeed } from './components/Feed/GenderFeed';
 import { UploadPost } from './components/Posts/UploadPost';
 import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
@@ -37,7 +38,7 @@ function App() {
   
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
-  const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
+  const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'verify-email-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
@@ -102,6 +103,11 @@ function App() {
     setRegistrationData({});
   };
 
+  const handleEmailVerificationComplete = () => {
+    console.log('Email verification completed');
+    setCurrentPage('feed'); // Redirect to feed after email verification
+  };
+
   const handleGoHome = () => {
     setCurrentPage('register');
     setCurrentStep(0); // Reset to invite step
@@ -111,6 +117,10 @@ function App() {
 
   const handleGoToVerification = () => {
     setCurrentPage('verify-code');
+  };
+
+  const handleGoToEmailVerification = () => {
+    setCurrentPage('verify-email-code');
   };
 
   const handleGoToFeed = () => {
@@ -255,6 +265,14 @@ function App() {
               />
             )}
             
+            {currentPage === 'verify-email-code' && (
+              <VerifyEmailCode 
+                onVerificationComplete={handleEmailVerificationComplete}
+                onBackToLogin={() => setCurrentPage('login')}
+                userEmail={registrationData.step1?.email}
+              />
+            )}
+            
             {currentPage === 'feed' && (
               <GenderFeed />
             )}
@@ -314,6 +332,14 @@ function App() {
                   }`}
                 >
                   Verify SMS
+                </button>
+                <button
+                  onClick={handleGoToEmailVerification}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'verify-email-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Verify Email
                 </button>
                 <button
                   onClick={handleGoToFeed}
