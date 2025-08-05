@@ -5,32 +5,32 @@ import { AuthLayout } from '../AuthLayout';
 
 interface VerifySmsCodeProps {
   onVerificationComplete?: () => void;
-  userPhone?: string;
+  userEmail?: string;
 }
 
-export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCodeProps) {
+export function VerifySmsCode({ onVerificationComplete, userEmail }: VerifySmsCodeProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
-  const [smsCode, setSmsCode] = useState('');
+  const [emailCode, setEmailCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidCodeFormat, setIsValidCodeFormat] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
-    // Validate SMS code format: exactly 6 digits
-    setIsValidCodeFormat(/^\d{6}$/.test(smsCode));
+    // Validate email code format: exactly 6 digits
+    setIsValidCodeFormat(/^\d{6}$/.test(emailCode));
     if (error) {
       setError(null); // Clear error when user starts typing again
     }
-  }, [smsCode]);
+  }, [emailCode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // Allow only digits and limit to 6 characters
     if (/^\d*$/.test(value) && value.length <= 6) {
-      setSmsCode(value);
+      setEmailCode(value);
     }
   };
 
@@ -40,12 +40,12 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
     setIsLoading(true);
 
     try {
-      // Fetch the user's registration record by SMS code and check expiry
+      // Fetch the user's registration record by email code and check expiry
       const { data: registration, error: fetchError } = await supabase
         .from('registrations')
-        .select('id, sms_code, sms_code_expiry, firstName, status')
-        .eq('sms_code', smsCode)
-        .gt('sms_code_expiry', new Date().toISOString())
+        .select('id, email_code, email_code_expiry, firstName, status')
+        .eq('email_code', emailCode)
+        .gt('email_code_expiry', new Date().toISOString())
         .single();
 
       if (fetchError || !registration) {
@@ -54,8 +54,8 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
         // Check if it's because code doesn't exist or is expired
         const { data: expiredCheck } = await supabase
           .from('registrations')
-          .select('sms_code_expiry')
-          .eq('sms_code', smsCode)
+          .select('email_code_expiry')
+          .eq('email_code', emailCode)
           .single();
 
         if (expiredCheck) {
@@ -72,8 +72,8 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
         .from('registrations')
         .update({ 
           status: 'verified', 
-          sms_code: null, // Clear the code after successful verification
-          sms_code_expiry: null 
+          email_code: null, // Clear the code after successful verification
+          email_code_expiry: null 
         })
         .eq('id', registration.id);
 
@@ -131,7 +131,7 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
           <p className="text-gray-600">
-            Enter the 6-digit code sent to your phone{userPhone && ` (${userPhone})`}. This code expires in 24 hours.
+            Enter the 6-digit code sent to your email{userEmail && ` (${userEmail})`}. This code expires in 24 hours.
           </p>
         </div>
 
@@ -147,12 +147,12 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="smsCode" className="sr-only">
-              SMS Verification Code
+              Email Verification Code
             </label>
             <input
               type="text"
-              id="smsCode"
-              value={smsCode}
+              id="emailCode"
+              value={emailCode}
               onChange={handleInputChange}
               className={`w-full px-4 py-4 text-center text-2xl font-bold tracking-widest border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 error 
@@ -169,7 +169,7 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
               aria-describedby={error ? 'code-error' : undefined}
               maxLength={6}
             />
-            {!isValidCodeFormat && smsCode.length > 0 && smsCode.length < 6 && (
+            {!isValidCodeFormat && emailCode.length > 0 && emailCode.length < 6 && (
               <p className="mt-2 text-sm text-gray-500">
                 Enter all 6 digits of your verification code
               </p>
@@ -200,7 +200,7 @@ export function VerifySmsCode({ onVerificationComplete, userPhone }: VerifySmsCo
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-amber-800">
               <strong>Didn't receive the code?</strong><br />
-              Check your messages or contact support for assistance.
+              Check your email inbox and spam folder, or contact support for assistance.
             </p>
           </div>
         </div>

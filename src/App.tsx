@@ -251,7 +251,7 @@ function App() {
             {currentPage === 'verify-code' && (
               <VerifySmsCode 
                 onVerificationComplete={handleVerificationComplete}
-                userPhone={registrationData.step1?.phone}
+                userEmail={registrationData.step1?.email}
               />
             )}
             

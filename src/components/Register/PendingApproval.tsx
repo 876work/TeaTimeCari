@@ -35,8 +35,8 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
   
   const { invite, step1, step2, step3 } = registrationData;
 
-  // Generate SMS verification code
-  const generateSmsCode = (): string => {
+  // Generate email verification code
+  const generateEmailCode = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
@@ -70,10 +70,10 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
           return;
         }
 
-        // Generate SMS code and expiry
-        const smsCode = generateSmsCode();
-        const smsCodeExpiry = new Date();
-        smsCodeExpiry.setHours(smsCodeExpiry.getHours() + 24); // 24 hours from now
+        // Generate email code and expiry
+        const emailCode = generateEmailCode();
+        const emailCodeExpiry = new Date();
+        emailCodeExpiry.setHours(emailCodeExpiry.getHours() + 24); // 24 hours from now
 
         // Prepare registration data
         const registrationRecord = {
@@ -86,8 +86,8 @@ export function PendingApproval({ registrationData, onGoHome }: PendingApprovalP
           captureType: step3.captureType,
           imageData: step3.imageData,
           status: 'pending',
-          sms_code: smsCode,
-          sms_code_expiry: smsCodeExpiry.toISOString(),
+          email_code: emailCode,
+          email_code_expiry: emailCodeExpiry.toISOString(),
           invite_code_used: invite.inviteCode
         };
 
