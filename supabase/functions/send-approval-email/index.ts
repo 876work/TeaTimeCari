@@ -123,6 +123,54 @@ Deno.serve(async (req: Request) => {
 
     userId = updateData.id;
 
+    // Rate limiting: Check if user has exceeded resend limit (3 attempts per hour)
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+    try {
+      const { data: recentSends, error: countError } = await supabase
+        .from('code_sends')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('sent_at', oneHourAgo.toISOString());
+
+      if (countError && countError.code !== '42P01' && countError.code !== 'PGRST116') {
+        console.warn('Error checking rate limit:', countError);
+        // Continue without rate limiting if we can't check
+      } else if (recentSends && recentSends.length >= 3) {
+        errorMessage = "You've reached the resend limit. Try again later.";
+        
+        // Log the rate limit violation
+        try {
+          await supabase
+            .from('code_sends')
+            .insert({
+              user_id: userId,
+              code: 'RATE_LIMITED',
+              delivery_status: 'rate_limited',
+              error_message: errorMessage
+            });
+        } catch (logErr) {
+          console.error('Error logging rate limit violation:', logErr);
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: errorMessage,
+            rateLimited: true
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 429, // Too Many Requests
+          }
+        );
+      }
+    } catch (rateLimitErr) {
+      console.warn('Rate limit check failed, proceeding without limit:', rateLimitErr);
+      // Continue without rate limiting if check fails
+    }
+
     // Check if email service is configured
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@teatimecari.com';
