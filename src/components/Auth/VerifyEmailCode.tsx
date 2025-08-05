@@ -34,6 +34,8 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
   // Resend code state
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLimitReached, setResendLimitReached] = useState(false);
+  const [rateLimitResetTimer, setRateLimitResetTimer] = useState(0);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
 
@@ -131,6 +133,12 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
       setResendSuccess(false);
       setResendError(null);
     }
+    
+    // Clear rate limit status when user starts typing (they might have a valid code)
+    if (resendLimitReached) {
+      setResendLimitReached(false);
+      setRateLimitResetTimer(0);
+    }
   }, [emailCode, error]);
 
   // Cooldown timer effect
@@ -143,6 +151,24 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
     }
     return () => clearTimeout(timer);
   }, [resendCooldown]);
+
+  // Rate limit reset timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (rateLimitResetTimer > 0) {
+      timer = setTimeout(() => {
+        setRateLimitResetTimer(prev => {
+          const newValue = prev - 1;
+          if (newValue <= 0) {
+            setResendLimitReached(false);
+            setResendError(null);
+          }
+          return newValue;
+        });
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [rateLimitResetTimer]);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,12 +253,13 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
 
   // Handle resend code
   const handleResendCode = async () => {
-    if (!userRegistration || isResending || resendCooldown > 0) return;
+    if (!userRegistration || isResending || resendCooldown > 0 || isLoading || resendLimitReached) return;
 
     setIsResending(true);
     setResendError(null);
     setResendSuccess(false);
     setError(null);
+    setResendLimitReached(false);
 
     try {
       // Call the Edge Function to generate and send a new code
@@ -244,7 +271,15 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
       });
 
       if (emailError) {
-        throw new Error(emailError.message || 'Failed to send verification code');
+        // Check if this is a rate limiting error
+        if (emailError.message?.includes("You've reached the resend limit")) {
+          setResendLimitReached(true);
+          setRateLimitResetTimer(3600); // 60 minutes = 3600 seconds
+          setResendError("You've reached the resend limit. Please try again after 1 hour.");
+          return;
+        } else {
+          throw new Error(emailError.message || 'Failed to send verification code');
+        }
       }
 
       if (emailResponse?.success) {
@@ -262,12 +297,27 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           setUserRegistration(updatedRegistration);
         }
       } else {
-        throw new Error(emailResponse?.error || 'Failed to send verification code');
+        // Check if the response indicates rate limiting
+        if (emailResponse?.error?.includes("You've reached the resend limit") || emailResponse?.rateLimited) {
+          setResendLimitReached(true);
+          setRateLimitResetTimer(3600); // 60 minutes = 3600 seconds
+          setResendError("You've reached the resend limit. Please try again after 1 hour.");
+        } else {
+          throw new Error(emailResponse?.error || 'Failed to send verification code');
+        }
       }
 
     } catch (err: any) {
       console.error('Error resending code:', err);
-      setResendError(err.message || 'Something went wrong while resending the code. Please try again.');
+      
+      // Check if this is a rate limiting error from the catch block
+      if (err.message?.includes("You've reached the resend limit")) {
+        setResendLimitReached(true);
+        setRateLimitResetTimer(3600); // 60 minutes = 3600 seconds
+        setResendError("You've reached the resend limit. Please try again after 1 hour.");
+      } else {
+        setResendError(err.message || 'Something went wrong while resending the code. Please try again.');
+      }
     } finally {
       setIsResending(false);
     }
@@ -511,9 +561,9 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           <button
             type="button"
             onClick={handleResendCode}
-            disabled={isResending || resendCooldown > 0 || isLoading}
+            disabled={isResending || resendCooldown > 0 || isLoading || resendLimitReached}
             className={`mt-4 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-              isResending || resendCooldown > 0 || isLoading
+              isResending || resendCooldown > 0 || isLoading || resendLimitReached
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-[#A3C6E0] shadow-sm hover:shadow-md'
             }`}
@@ -528,6 +578,11 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Resend in {resendCooldown}s
               </div>
+            ) : resendLimitReached ? (
+              <div className="flex items-center">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Rate Limited ({Math.floor(rateLimitResetTimer / 60)}m {rateLimitResetTimer % 60}s)
+              </div>
             ) : (
               <div className="flex items-center">
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -535,6 +590,25 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
               </div>
             )}
           </button>
+          
+          {/* Rate Limit Message */}
+          {resendLimitReached && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 text-amber-600 mr-2" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">
+                    You've reached the resend limit. Please try again after 1 hour.
+                  </p>
+                  {rateLimitResetTimer > 0 && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      Reset in: {Math.floor(rateLimitResetTimer / 60)} minutes and {rateLimitResetTimer % 60} seconds
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Help Section */}
