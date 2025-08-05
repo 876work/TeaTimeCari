@@ -11,13 +11,6 @@ interface RequestPayload {
   firstName: string;
 }
 
-interface EmailResponse {
-  success: boolean;
-  message: string;
-  code?: string;
-  error?: string;
-}
-
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -26,6 +19,11 @@ Deno.serve(async (req: Request) => {
       headers: corsHeaders,
     });
   }
+
+  let userId: string | null = null;
+  let generatedCode: string | null = null;
+  let deliveryStatus: string = 'failed';
+  let errorMessage: string | null = null;
 
   try {
     const supabase = createClient(
@@ -37,10 +35,11 @@ Deno.serve(async (req: Request) => {
 
     // Validate required fields
     if (!email || !firstName) {
+      errorMessage = 'Email and firstName are required';
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Email and firstName are required' 
+          error: errorMessage 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -52,10 +51,11 @@ Deno.serve(async (req: Request) => {
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      errorMessage = 'Invalid email format';
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Invalid email format' 
+          error: errorMessage 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -75,6 +75,7 @@ Deno.serve(async (req: Request) => {
 
     const sixDigitCode = generateSixDigitCode();
     const fullCode = `SLU${sixDigitCode}`;
+    generatedCode = fullCode;
 
     // Calculate expiry time (10 minutes from now)
     const expiryTime = new Date();
@@ -92,11 +93,12 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (updateError) {
+      errorMessage = `Failed to update registration record: ${updateError.message}`;
       console.error('Database update error:', updateError);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: `Failed to update registration record: ${updateError.message}` 
+          error: errorMessage 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -106,10 +108,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!updateData) {
+      errorMessage = 'No registration found with this email address';
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'No registration found with this email address' 
+          error: errorMessage 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -118,16 +121,34 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    userId = updateData.id;
+
     // Check if email service is configured
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@teatimecari.com';
 
     if (!resendApiKey) {
       console.warn('Resend API key not configured, simulating email send');
+      deliveryStatus = 'simulated';
       
       // Simulate email sending for development/demo purposes
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Log the simulated send
+      try {
+        const { error: logError } = await supabase
+          .from('code_sends')
+          .insert({
+            user_id: userId,
+            code: generatedCode,
+            delivery_status: deliveryStatus,
+            error_message: null
+          });
+        if (logError) console.error('Error logging simulated code send:', logError);
+      } catch (logErr) {
+        console.error('Critical error logging simulated code send:', logErr);
+      }
+
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -194,17 +215,41 @@ Deno.serve(async (req: Request) => {
       if (!resendResponse.ok) {
         const errorData = await resendResponse.text();
         console.error('Resend API error:', errorData);
-        throw new Error(`Resend API error: ${resendResponse.status} - ${errorData}`);
+        deliveryStatus = 'failed';
+        errorMessage = `Resend API error: ${resendResponse.status} - ${errorData}`;
+      } else {
+        const resendData = await resendResponse.json();
+        console.log('Email sent successfully via Resend:', resendData.id);
+        deliveryStatus = 'success';
       }
 
-      const resendData = await resendResponse.json();
-      console.log('Email sent successfully via Resend:', resendData.id);
+    } catch (emailError: any) {
+      console.error('Email sending error:', emailError);
+      deliveryStatus = 'failed';
+      errorMessage = `Email sending error: ${emailError.message}`;
+    }
 
+    // Log the code send attempt regardless of email success/failure
+    try {
+      const { error: logError } = await supabase
+        .from('code_sends')
+        .insert({
+          user_id: userId,
+          code: generatedCode,
+          delivery_status: deliveryStatus,
+          error_message: errorMessage
+        });
+      if (logError) console.error('Error logging code send:', logError);
+    } catch (logErr) {
+      console.error('Critical error logging code send:', logErr);
+    }
+
+    // Return response based on delivery status
+    if (deliveryStatus === 'success') {
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Approval email sent successfully',
-          emailId: resendData.id,
           code: fullCode
         }),
         {
@@ -212,15 +257,11 @@ Deno.serve(async (req: Request) => {
           status: 200,
         }
       );
-
-    } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      
-      // Even if email fails, the code is stored in database, so return partial success
+    } else {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: `Code generated but email failed to send: ${emailError.message}`,
+          error: errorMessage || 'Failed to send email',
           code: fullCode
         }),
         {
@@ -232,6 +273,24 @@ Deno.serve(async (req: Request) => {
 
   } catch (error) {
     console.error('Edge Function error:', error);
+    
+    // Attempt to log general failure if userId was determined
+    if (userId) {
+      try {
+        const { error: logError } = await supabase
+          .from('code_sends')
+          .insert({
+            user_id: userId,
+            code: generatedCode || 'N/A',
+            delivery_status: 'failed',
+            error_message: `General function error: ${error.message || String(error)}`
+          });
+        if (logError) console.error('Error logging general function error:', logError);
+      } catch (logErr) {
+        console.error('Critical error logging general function error:', logErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: false,
