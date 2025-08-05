@@ -115,7 +115,6 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
         setUserRegistration(registration);
         
         // Calculate time remaining until code expires
-        const expiryDate = new Date(registration.email_code_expiry);
         const now = new Date();
         const remainingMs = expiryDate.getTime() - now.getTime();
         const remainingSeconds = Math.floor(remainingMs / 1000);
