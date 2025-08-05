@@ -9,6 +9,7 @@ const corsHeaders = {
 interface RequestPayload {
   email: string;
   firstName: string;
+  emailCode?: string; // Optional - if not provided, will generate one
 }
 
 Deno.serve(async (req: Request) => {
@@ -31,7 +32,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { email, firstName }: RequestPayload = await req.json();
+    const { email, firstName, emailCode }: RequestPayload = await req.json();
 
     // Validate required fields
     if (!email || !firstName) {
@@ -64,144 +65,199 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Sanitize email (convert to lowercase and trim)
+    // Sanitize inputs
     const sanitizedEmail = email.toLowerCase().trim();
     const sanitizedFirstName = firstName.trim();
 
-    // Generate 6-digit code
-    const generateSixDigitCode = (): string => {
-      return Math.floor(100000 + Math.random() * 900000).toString();
-    };
+    // Get user ID from registrations table
+    const { data: userData, error: userError } = await supabase
+      .from('registrations')
+      .select('id')
+      .eq('email', sanitizedEmail)
+      .single();
 
-    const sixDigitCode = generateSixDigitCode();
-    const fullCode = `SLU${sixDigitCode}`;
-    generatedCode = fullCode;
+    if (userError) {
+      if (userError.code === '42P01') {
+        // Table doesn't exist, use mock user ID for demo
+        console.warn('Registrations table not found, using mock user ID for demo');
+        userId = 'demo-user-id';
+      } else if (userError.code === 'PGRST116') {
+        errorMessage = 'No registration found with this email address';
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: errorMessage 
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404,
+          }
+        );
+      } else {
+        throw userError;
+      }
+    } else {
+      userId = userData.id;
+    }
+
+    // Rate limiting: Check if user has exceeded resend limit (3 attempts per hour)
+    if (userId !== 'demo-user-id') {
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      try {
+        const { data: recentSends, error: countError } = await supabase
+          .from('code_sends')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('sent_at', oneHourAgo.toISOString());
+
+        if (countError && countError.code !== '42P01' && countError.code !== 'PGRST116') {
+          console.warn('Error checking rate limit:', countError);
+          // Continue without rate limiting if we can't check
+        } else if (recentSends && recentSends.length >= 3) {
+          errorMessage = "You've reached the resend limit. Try again later.";
+          
+          // Log the rate limit violation
+          try {
+            await supabase
+              .from('code_sends')
+              .insert({
+                user_id: userId,
+                code: 'RATE_LIMITED',
+                delivery_status: 'rate_limited',
+                error_message: errorMessage
+              });
+          } catch (logError) {
+            console.error('Error logging rate limit violation:', logError);
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: errorMessage,
+              rateLimited: true
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 429, // Too Many Requests
+            }
+          );
+        }
+      } catch (rateLimitError) {
+        console.warn('Rate limit check failed, proceeding without limit:', rateLimitError);
+        // Continue without rate limiting if check fails
+      }
+    }
+
+    // Generate or use provided email code
+    let finalCode: string;
+    if (emailCode) {
+      // Validate provided code format (should be SLU + 6 digits)
+      if (!/^SLU\d{6}$/.test(emailCode)) {
+        errorMessage = 'Invalid email code format. Must be SLU followed by 6 digits.';
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: errorMessage 
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          }
+        );
+      }
+      finalCode = emailCode;
+    } else {
+      // Generate new 6-digit code
+      const generateSixDigitCode = (): string => {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+      };
+      const sixDigitCode = generateSixDigitCode();
+      finalCode = `SLU${sixDigitCode}`;
+    }
+
+    generatedCode = finalCode;
 
     // Calculate expiry time (10 minutes from now)
     const expiryTime = new Date();
     expiryTime.setMinutes(expiryTime.getMinutes() + 10);
 
-    // Update the registrations table with the new code and expiry
-    const { data: updateData, error: updateError } = await supabase
-      .from('registrations')
-      .update({
-        email_code: fullCode,
-        email_code_expiry: expiryTime.toISOString()
-      })
-      .eq('email', sanitizedEmail)
-      .select('id, email, firstName')
-      .single();
+    // Update the registrations table with the new code and expiry (only if not demo)
+    if (userId !== 'demo-user-id') {
+      const { data: updateData, error: updateError } = await supabase
+        .from('registrations')
+        .update({
+          email_code: finalCode,
+          email_code_expiry: expiryTime.toISOString()
+        })
+        .eq('email', sanitizedEmail)
+        .select('id, email, firstName')
+        .single();
 
-    if (updateError) {
-      errorMessage = `Failed to update registration record: ${updateError.message}`;
-      console.error('Database update error:', updateError);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: errorMessage 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-        }
-      );
-    }
-
-    if (!updateData) {
-      errorMessage = 'No registration found with this email address';
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: errorMessage 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404,
-        }
-      );
-    }
-
-    userId = updateData.id;
-
-    // Rate limiting: Check if user has exceeded resend limit (3 attempts per hour)
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    try {
-      const { data: recentSends, error: countError } = await supabase
-        .from('code_sends')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('sent_at', oneHourAgo.toISOString());
-
-      if (countError && countError.code !== '42P01' && countError.code !== 'PGRST116') {
-        console.warn('Error checking rate limit:', countError);
-        // Continue without rate limiting if we can't check
-      } else if (recentSends && recentSends.length >= 3) {
-        errorMessage = "You've reached the resend limit. Try again later.";
-        
-        // Log the rate limit violation
-        try {
-          await supabase
-            .from('code_sends')
-            .insert({
-              user_id: userId,
-              code: 'RATE_LIMITED',
-              delivery_status: 'rate_limited',
-              error_message: errorMessage
-            });
-        } catch (logErr) {
-          console.error('Error logging rate limit violation:', logErr);
-        }
-
+      if (updateError) {
+        errorMessage = `Failed to update registration record: ${updateError.message}`;
+        console.error('Database update error:', updateError);
         return new Response(
           JSON.stringify({ 
             success: false,
-            error: errorMessage,
-            rateLimited: true
+            error: errorMessage 
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 429, // Too Many Requests
+            status: 500,
           }
         );
       }
-    } catch (rateLimitErr) {
-      console.warn('Rate limit check failed, proceeding without limit:', rateLimitErr);
-      // Continue without rate limiting if check fails
+
+      if (!updateData) {
+        errorMessage = 'No registration found with this email address';
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: errorMessage 
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404,
+          }
+        );
+      }
     }
 
-    // Check if email service is configured
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@teatimecari.com';
+    // Get SendGrid configuration
+    const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY') || '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';
+    const sendGridFromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@code.teatimecari.app';
 
-    if (!resendApiKey) {
-      console.warn('Resend API key not configured, simulating email send');
+    if (!sendGridApiKey || sendGridApiKey === 'your-sendgrid-api-key') {
+      console.warn('SendGrid API key not configured, simulating email send');
       deliveryStatus = 'simulated';
       
       // Simulate email sending for development/demo purposes
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Log the simulated send
-      try {
-        const { error: logError } = await supabase
-          .from('code_sends')
-          .insert({
-            user_id: userId,
-            code: generatedCode,
-            delivery_status: deliveryStatus,
-            error_message: null
-          });
-        if (logError) console.error('Error logging simulated code send:', logError);
-      } catch (logErr) {
-        console.error('Critical error logging simulated code send:', logErr);
+      if (userId !== 'demo-user-id') {
+        try {
+          const { error: logError } = await supabase
+            .from('code_sends')
+            .insert({
+              user_id: userId,
+              code: generatedCode,
+              delivery_status: deliveryStatus,
+              error_message: null
+            });
+          if (logError) console.error('Error logging simulated code send:', logError);
+        } catch (logErr) {
+          console.error('Critical error logging simulated code send:', logErr);
+        }
       }
 
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Email simulated (Resend not configured)',
-          code: fullCode,
+          message: 'Email simulated (SendGrid not configured)',
+          code: finalCode,
           email: sanitizedEmail
         }),
         {
@@ -211,106 +267,114 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Send email via Resend API
-    const emailSubject = 'Your TeaTimeCari Access Code';
-    const emailBody = `Hi ${sanitizedFirstName}, your TeaTimeCari access code is: ${fullCode}. Enter this code in the app to complete your access.`;
+    // Compose email content
+    const emailSubject = 'Your TeaTimeCari Verification Code';
+    const emailBody = `Hi ${sanitizedFirstName},
 
+Your verification code is: ${finalCode}
+
+Use this to activate your account. This code expires in 10 minutes.
+
+Regards,
+Tea Time Cari Team`;
+
+    // Send email via SendGrid API
     try {
-      const resendResponse = await fetch('https://api.resend.com/emails', {
+      const sendGridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
+          'Authorization': `Bearer ${sendGridApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: resendFromEmail,
-          to: [sanitizedEmail],
-          subject: emailSubject,
-          text: emailBody,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #A3C6E0; font-size: 28px; margin-bottom: 10px;">TeaTimeCari</h1>
-                <p style="color: #666; font-size: 16px;">Your Access Code</p>
-              </div>
-              
-              <div style="background: linear-gradient(135deg, #A3C6E0, #E0A3A3); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 30px;">
-                <h2 style="color: white; font-size: 24px; margin-bottom: 15px;">Hi ${sanitizedFirstName}!</h2>
-                <p style="color: white; font-size: 18px; margin-bottom: 20px;">Your TeaTimeCari access code is:</p>
-                <div style="background: white; padding: 20px; border-radius: 10px; display: inline-block;">
-                  <span style="font-size: 32px; font-weight: bold; color: #333; letter-spacing: 3px;">${fullCode}</span>
-                </div>
-              </div>
-              
-              <div style="text-align: center; margin-bottom: 30px;">
-                <p style="color: #666; font-size: 16px; line-height: 1.5;">
-                  Enter this code in the app to complete your access.<br>
-                  This code will expire in 10 minutes.
-                </p>
-              </div>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #A3C6E0;">
-                <p style="color: #666; font-size: 14px; margin: 0;">
-                  <strong>Security Notice:</strong> If you didn't request this code, please ignore this email. 
-                  Never share your access code with anyone.
-                </p>
-              </div>
-            </div>
-          `
+          personalizations: [
+            {
+              to: [
+                {
+                  email: sanitizedEmail,
+                  name: sanitizedFirstName
+                }
+              ],
+              subject: emailSubject
+            }
+          ],
+          from: {
+            email: sendGridFromEmail,
+            name: 'Tea Time Cari'
+          },
+          content: [
+            {
+              type: 'text/plain',
+              value: emailBody
+            }
+          ]
         }),
       });
 
-      if (!resendResponse.ok) {
-        const errorData = await resendResponse.text();
-        console.error('Resend API error:', errorData);
+      if (!sendGridResponse.ok) {
+        const errorData = await sendGridResponse.text();
+        console.error('SendGrid API error:', errorData);
         deliveryStatus = 'failed';
-        errorMessage = `Resend API error: ${resendResponse.status} - ${errorData}`;
-      } else {
-        const resendData = await resendResponse.json();
-        console.log('Email sent successfully via Resend:', resendData.id);
-        deliveryStatus = 'success';
+        errorMessage = `SendGrid API error: ${sendGridResponse.status} - ${errorData}`;
+        
+        // Log the failed send attempt
+        if (userId !== 'demo-user-id') {
+          try {
+            await supabase
+              .from('code_sends')
+              .insert({
+                user_id: userId,
+                code: generatedCode,
+                delivery_status: deliveryStatus,
+                error_message: errorMessage
+              });
+          } catch (logError) {
+            console.error('Error logging failed send:', logError);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: errorMessage
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+          }
+        );
       }
 
+      // SendGrid returns 202 for successful queuing
+      const responseData = await sendGridResponse.text();
+      console.log('Email sent successfully via SendGrid:', responseData);
+      deliveryStatus = 'success';
+
     } catch (emailError: any) {
-      console.error('Email sending error:', emailError);
+      console.error('SendGrid sending error:', emailError);
       deliveryStatus = 'failed';
       errorMessage = `Email sending error: ${emailError.message}`;
-    }
-
-    // Log the code send attempt regardless of email success/failure
-    try {
-      const { error: logError } = await supabase
-        .from('code_sends')
-        .insert({
-          user_id: userId,
-          code: generatedCode,
-          delivery_status: deliveryStatus,
-          error_message: errorMessage
-        });
-      if (logError) console.error('Error logging code send:', logError);
-    } catch (logErr) {
-      console.error('Critical error logging code send:', logErr);
-    }
-
-    // Return response based on delivery status
-    if (deliveryStatus === 'success') {
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Approval email sent successfully',
-          code: fullCode
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+      
+      // Log the failed send attempt
+      if (userId !== 'demo-user-id') {
+        try {
+          await supabase
+            .from('code_sends')
+            .insert({
+              user_id: userId,
+              code: generatedCode,
+              delivery_status: deliveryStatus,
+              error_message: errorMessage
+            });
+        } catch (logError) {
+          console.error('Error logging failed send:', logError);
         }
-      );
-    } else {
+      }
+
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: errorMessage || 'Failed to send email',
-          code: fullCode
+          error: errorMessage
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -319,12 +383,47 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Log the successful send attempt
+    if (userId !== 'demo-user-id') {
+      try {
+        const { error: logError } = await supabase
+          .from('code_sends')
+          .insert({
+            user_id: userId,
+            code: generatedCode,
+            delivery_status: deliveryStatus,
+            error_message: null
+          });
+        if (logError) console.error('Error logging successful send:', logError);
+      } catch (logErr) {
+        console.error('Critical error logging successful send:', logErr);
+      }
+    }
+
+    // Return success response
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: 'Verification email sent successfully',
+        code: finalCode // Include for debugging/testing purposes
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
+
   } catch (error) {
     console.error('Edge Function error:', error);
     
     // Attempt to log general failure if userId was determined
-    if (userId) {
+    if (userId && userId !== 'demo-user-id') {
       try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
+        
         const { error: logError } = await supabase
           .from('code_sends')
           .insert({
