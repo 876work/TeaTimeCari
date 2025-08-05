@@ -30,6 +30,12 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
   const [isVerified, setIsVerified] = useState(false);
   const [userRegistration, setUserRegistration] = useState<UserRegistration | null>(null);
   const [fetchingUser, setFetchingUser] = useState(true);
+  
+  // Resend code state
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   // Fetch user registration data
   useEffect(() => {
@@ -119,7 +125,24 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
     if (error && emailCode.length > 0) {
       setError(null); // Clear error when user starts typing again
     }
+    
+    // Clear resend messages when user starts typing
+    if (resendSuccess || resendError) {
+      setResendSuccess(false);
+      setResendError(null);
+    }
   }, [emailCode, error]);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => {
+        setResendCooldown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +222,54 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
       setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle resend code
+  const handleResendCode = async () => {
+    if (!userRegistration || isResending || resendCooldown > 0) return;
+
+    setIsResending(true);
+    setResendError(null);
+    setResendSuccess(false);
+    setError(null);
+
+    try {
+      // Call the Edge Function to generate and send a new code
+      const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-approval-email', {
+        body: {
+          email: userRegistration.email,
+          firstName: userRegistration.firstName
+        }
+      });
+
+      if (emailError) {
+        throw new Error(emailError.message || 'Failed to send verification code');
+      }
+
+      if (emailResponse?.success) {
+        setResendSuccess(true);
+        setResendCooldown(30); // Start 30-second cooldown
+        
+        // Refresh user registration data to get the new code and expiry
+        const { data: updatedRegistration, error: refreshError } = await supabase
+          .from('registrations')
+          .select('id, email, firstName, status, email_code, email_code_expiry')
+          .eq('id', session?.user?.id)
+          .single();
+
+        if (!refreshError && updatedRegistration) {
+          setUserRegistration(updatedRegistration);
+        }
+      } else {
+        throw new Error(emailResponse?.error || 'Failed to send verification code');
+      }
+
+    } catch (err: any) {
+      console.error('Error resending code:', err);
+      setResendError(err.message || 'Something went wrong while resending the code. Please try again.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -323,6 +394,28 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           </div>
         )}
 
+        {/* Resend Success Message */}
+        {resendSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg" role="status">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              <span className="text-green-700 text-sm font-medium">
+                A new verification code has been sent to your email.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Resend Error Message */}
+        {resendError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              <span className="text-red-700 text-sm">{resendError}</span>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email Code Input */}
           <div>
@@ -404,6 +497,46 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           </button>
         </form>
 
+        {/* Resend Code Section */}
+        <div className="mt-6 text-center">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Didn't receive the code?</span>
+            </div>
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleResendCode}
+            disabled={isResending || resendCooldown > 0 || isLoading}
+            className={`mt-4 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+              isResending || resendCooldown > 0 || isLoading
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-[#A3C6E0] shadow-sm hover:shadow-md'
+            }`}
+          >
+            {isResending ? (
+              <div className="flex items-center">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Sending New Code...
+              </div>
+            ) : resendCooldown > 0 ? (
+              <div className="flex items-center">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Resend in {resendCooldown}s
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Resend Code
+              </div>
+            )}
+          </button>
+        </div>
+
         {/* Help Section */}
         <div className="mt-8 space-y-4">
           {/* Back to Login */}
@@ -420,8 +553,8 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           {/* Help Information */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 text-center">
-              <strong>Didn't receive the code?</strong><br />
-              Check your email inbox and spam folder. The code expires in 10 minutes after being sent.
+              <strong>Still having trouble?</strong><br />
+              Check your email inbox and spam folder. Codes expire 10 minutes after being sent.
             </p>
           </div>
 
