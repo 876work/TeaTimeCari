@@ -17,6 +17,10 @@ interface User {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   rejection_reason?: string;
+  email_code?: string | null;
+  email_code_expiry?: string | null;
+  last_code_sent_at?: string | null;
+  last_code_delivery_status?: string | null;
 }
 
 export function AdminUserReview() {
@@ -49,7 +53,7 @@ export function AdminUserReview() {
     try {
       let query = supabase
         .from('registrations')
-        .select('*');
+        .select('*, email_code, email_code_expiry');
       
       // Apply status filter if not 'all'
       if (filterStatus !== 'all') {
@@ -69,7 +73,40 @@ export function AdminUserReview() {
         throw fetchError;
       }
 
-      setPendingUsers(data || []);
+      // Fetch last code send information for each user
+      const usersWithCodeInfo = await Promise.all(
+        (data || []).map(async (user) => {
+          try {
+            // Get the latest code send for this user
+            const { data: lastCodeSend, error: codeSendError } = await supabase
+              .from('code_sends')
+              .select('sent_at, delivery_status')
+              .eq('user_id', user.id)
+              .order('sent_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (codeSendError && codeSendError.code !== 'PGRST116' && codeSendError.code !== '42P01') {
+              console.warn('Error fetching code send data for user:', user.id, codeSendError);
+            }
+
+            return {
+              ...user,
+              last_code_sent_at: lastCodeSend?.sent_at || null,
+              last_code_delivery_status: lastCodeSend?.delivery_status || null
+            };
+          } catch (err) {
+            console.warn('Error processing code send data for user:', user.id, err);
+            return {
+              ...user,
+              last_code_sent_at: null,
+              last_code_delivery_status: null
+            };
+          }
+        })
+      );
+
+      setPendingUsers(usersWithCodeInfo);
     } catch (err: any) {
       console.error('Error fetching users:', err);
       setError(`Failed to fetch users: ${err.message || err.toString()}`);
@@ -82,6 +119,11 @@ export function AdminUserReview() {
 
   // Mock data for demonstration purposes
   const setMockData = () => {
+    const now = new Date();
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+    const expiredTime = new Date(now.getTime() - 5 * 60 * 1000);
+
     const mockUsers: User[] = [
       {
         id: '1',
@@ -94,7 +136,11 @@ export function AdminUserReview() {
         captureType: 'selfie',
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+Cjwvc3ZnPgo8L3N2Zz4K',
         status: 'pending',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        email_code: null,
+        email_code_expiry: null,
+        last_code_sent_at: null,
+        last_code_delivery_status: null
       },
       {
         id: '2',
@@ -107,7 +153,11 @@ export function AdminUserReview() {
         captureType: 'id',
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iI0YzRjRGNiIvPgo8c3ZnIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZCNzM4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cmVjdCB4PSIyIiB5PSIzIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIiByeT0iMiIvPgo8bGluZSB4MT0iOCIgeTE9IjIxIiB4Mj0iMTYiIHkyPSIyMSIvPgo8bGluZSB4MT0iMTIiIHkxPSIxNyIgeDI9IjEyIiB5Mj0iMjEiLz4KPC9zdmc+Cjwvc3ZnPgo=',
         status: 'verified',
-        created_at: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+        created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        email_code: 'SLU123456',
+        email_code_expiry: fiveMinutesFromNow.toISOString(),
+        last_code_sent_at: tenMinutesAgo.toISOString(),
+        last_code_delivery_status: 'success'
       },
       {
         id: '3',
@@ -120,7 +170,11 @@ export function AdminUserReview() {
         captureType: 'selfie',
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+Cjwvc3ZnPgo8L3N2Zz4K',
         status: 'banned',
-        created_at: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+        created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+        email_code: 'SLU789012',
+        email_code_expiry: expiredTime.toISOString(),
+        last_code_sent_at: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+        last_code_delivery_status: 'failed'
       },
       {
         id: '4',
@@ -134,7 +188,11 @@ export function AdminUserReview() {
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iI0YzRjRGNiIvPgo8c3ZnIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZCNzM4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cmVjdCB4PSIyIiB5PSIzIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIiByeT0iMiIvPgo8bGluZSB4MT0iOCIgeTE9IjIxIiB4Mj0iMTYiIHkyPSIyMSIvPgo8bGluZSB4MT0iMTIiIHkxPSIxNyIgeDI9IjEyIiB5Mj0iMjEiLz4KPC9zdmc+Cjwvc3ZnPgo=',
         status: 'rejected',
         rejection_reason: 'Incomplete documentation',
-        created_at: new Date(Date.now() - 259200000).toISOString() // 3 days ago
+        created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+        email_code: null,
+        email_code_expiry: null,
+        last_code_sent_at: null,
+        last_code_delivery_status: null
       }
     ];
     
@@ -144,7 +202,6 @@ export function AdminUserReview() {
       filteredMockData = mockUsers.filter(user => user.status === filterStatus);
     }
     
-    setUsers(filteredMockData);
     setPendingUsers(filteredMockData);
     setLoading(false);
   };
@@ -496,6 +553,9 @@ export function AdminUserReview() {
                       Photo
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email Code Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -557,6 +617,58 @@ export function AdminUserReview() {
                             <span className="text-xs text-gray-400">No photo</span>
                           </div>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">
+                          {user.email_code ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center">
+                                <span className="text-gray-600 text-xs mr-2">Code:</span>
+                                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                  {user.email_code}
+                                </span>
+                              </div>
+                              {user.email_code_expiry && (
+                                <div className="flex items-center">
+                                  <span className="text-gray-600 text-xs mr-2">Expires:</span>
+                                  <span className={`text-xs font-medium ${
+                                    new Date(user.email_code_expiry) < new Date()
+                                      ? 'text-red-600 font-bold'
+                                      : 'text-green-600'
+                                  }`}>
+                                    {new Date(user.email_code_expiry).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {user.last_code_sent_at && (
+                                <div className="flex items-center">
+                                  <span className="text-gray-600 text-xs mr-2">Last Sent:</span>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(user.last_code_sent_at).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {user.last_code_delivery_status && (
+                                <div className="flex items-center">
+                                  <span className="text-gray-600 text-xs mr-2">Status:</span>
+                                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                    user.last_code_delivery_status === 'success'
+                                      ? 'bg-green-100 text-green-800'
+                                      : user.last_code_delivery_status === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {user.last_code_delivery_status}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-500">
+                              No code generated
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
