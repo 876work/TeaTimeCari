@@ -184,48 +184,6 @@ Deno.serve(async (req: Request) => {
     expiryTime.setMinutes(expiryTime.getMinutes() + 10);
 
     // Update the registrations table with the new code and expiry (only if not demo)
-    if (userId !== 'demo-user-id') {
-      const { data: updateData, error: updateError } = await supabase
-        .from('registrations')
-        .update({
-          email_code: finalCode,
-          email_code_expiry: expiryTime.toISOString()
-        })
-        .eq('email', sanitizedEmail)
-        .select('id, email, firstName')
-        .single();
-
-      if (updateError) {
-        errorMessage = `Failed to update registration record: ${updateError.message}`;
-        console.error('Database update error:', updateError);
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: errorMessage 
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-          }
-        );
-      }
-
-      if (!updateData) {
-        errorMessage = 'No registration found with this email address';
-        return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: errorMessage 
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 404,
-          }
-        );
-      }
-    }
-
-    // Get SendGrid configuration
     const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY') || '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';
     const sendGridFromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@code.teatimecari.app';
 
