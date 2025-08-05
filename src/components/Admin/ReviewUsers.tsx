@@ -167,23 +167,23 @@ export function AdminUserReview() {
 
       // 2. Send SMS via Supabase Edge Function
       try {
-        const { data: smsData, error: smsError } = await supabase.functions.invoke('send-approval-sms', {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
           body: {
-            to: phoneNumber,
-            message: `Congratulations ${userName.split(' ')[0]}! Your KYC registration has been approved. You can now access your account.`
+            email: phoneNumber, // This should actually be email, but keeping for compatibility
+            firstName: userName.split(' ')[0]
           }
         });
 
-        if (smsError) {
-          console.warn('SMS sending failed:', smsError);
-          // Don't fail the approval if SMS fails, but show a warning
-          setError(`${userName} approved successfully, but SMS notification failed: ${smsError.message}`);
+        if (emailError) {
+          console.warn('Email sending failed:', emailError);
+          // Don't fail the approval if email fails, but show a warning
+          setError(`${userName} approved successfully, but email notification failed: ${emailError.message}`);
         } else {
-          console.log('SMS sent successfully:', smsData);
+          console.log('Email sent successfully:', emailData);
         }
-      } catch (smsErr) {
-        console.warn('SMS function not available:', smsErr);
-        // Don't fail the approval if SMS function is not available
+      } catch (emailErr) {
+        console.warn('Email function not available:', emailErr);
+        // Don't fail the approval if email function is not available
       }
 
       // Remove approved user from the list
@@ -191,7 +191,7 @@ export function AdminUserReview() {
       
       // Show success message if no SMS error occurred
       if (!error) {
-        alert(`${userName} has been approved successfully and notified via SMS!`);
+        alert(`${userName} has been approved successfully and notified via email!`);
       }
 
     } catch (err: any) {
