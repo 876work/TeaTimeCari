@@ -155,22 +155,35 @@ export function AdminUserReview() {
     setProcessingUserId(userId);
     setError(null);
     try {
-      // 1. Update user status in database
+      // 1. Update user status in database to 'verified'
+      // The email_code and email_code_expiry will be handled by the Edge Function
       const { error: updateError } = await supabase
         .from('registrations')
-        .update({ status: 'approved' })
+        .update({ status: 'verified' })
         .eq('id', userId);
 
       if (updateError && updateError.code !== '42P01') {
         throw updateError;
       }
 
-      // 2. Send SMS via Supabase Edge Function
+      // 2. Get user's email address for the Edge Function
+      const { data: userData, error: userError } = await supabase
+        .from('registrations')
+        .select('email, firstName')
+        .eq('id', userId)
+        .single();
+
+      if (userError && userError.code !== '42P01') {
+        throw new Error('Failed to fetch user email for notification');
+      }
+
+      // 3. Call the Edge Function to send approval email
+      // The Edge Function will generate the code, store it, and send the email
       try {
-        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-approval-email', {
           body: {
-            email: phoneNumber, // This should actually be email, but keeping for compatibility
-            firstName: userName.split(' ')[0]
+            email: userData?.email || phoneNumber, // Use actual email from database
+            firstName: userData?.firstName || userName.split(' ')[0]
           }
         });
 
@@ -179,7 +192,7 @@ export function AdminUserReview() {
           // Don't fail the approval if email fails, but show a warning
           setError(`${userName} approved successfully, but email notification failed: ${emailError.message}`);
         } else {
-          console.log('Email sent successfully:', emailData);
+          console.log('Email sent successfully:', emailResponse);
         }
       } catch (emailErr) {
         console.warn('Email function not available:', emailErr);
@@ -189,7 +202,7 @@ export function AdminUserReview() {
       // Remove approved user from the list
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
       
-      // Show success message if no SMS error occurred
+      // Show success message if no email error occurred
       if (!error) {
         alert(`${userName} has been approved successfully and notified via email!`);
       }
