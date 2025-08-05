@@ -38,6 +38,10 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
   const [rateLimitResetTimer, setRateLimitResetTimer] = useState(0);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
+  
+  // Code expiry state
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [isCodeExpired, setIsCodeExpired] = useState(false);
 
   // Fetch user registration data
   useEffect(() => {
@@ -109,6 +113,28 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
         }
 
         setUserRegistration(registration);
+        
+        // Calculate time remaining until code expires
+        const expiryDate = new Date(registration.email_code_expiry);
+        const now = new Date();
+        const remainingMs = expiryDate.getTime() - now.getTime();
+        const remainingSeconds = Math.floor(remainingMs / 1000);
+        
+        if (remainingSeconds <= 0) {
+          // Code is already expired
+          setIsCodeExpired(true);
+          setTimeRemaining(0);
+          setError('Your verification code has expired. Please contact support for a new code.');
+          
+          // Auto-redirect after showing error for 3 seconds
+          setTimeout(() => {
+            alert('Your verification code has expired. You will be redirected to the login page.');
+            handleBackToLogin();
+          }, 3000);
+        } else {
+          setTimeRemaining(remainingSeconds);
+          setIsCodeExpired(false);
+        }
       } catch (err: any) {
         console.error('Error fetching user registration:', err);
         setError('Failed to load verification data. Please try again.');
@@ -119,6 +145,37 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
 
     fetchUserRegistration();
   }, [session, supabase]);
+
+  // Live countdown timer for code expiry
+  useEffect(() => {
+    if (!userRegistration?.email_code_expiry || isCodeExpired || timeRemaining <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeRemaining(prev => {
+        const newTime = prev - 1;
+        
+        if (newTime <= 0) {
+          // Code has expired during the session
+          setIsCodeExpired(true);
+          setError('Your verification code has expired during this session. You will be redirected shortly.');
+          
+          // Show alert and redirect after 2 seconds
+          setTimeout(() => {
+            alert('Your verification code has expired. You will be redirected to the login page.');
+            handleBackToLogin();
+          }, 2000);
+          
+          return 0;
+        }
+        
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [userRegistration?.email_code_expiry, isCodeExpired, timeRemaining]);
 
   // Validate email code format
   useEffect(() => {
@@ -138,6 +195,12 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
     if (resendLimitReached) {
       setResendLimitReached(false);
       setRateLimitResetTimer(0);
+    }
+    
+    // Clear expiry status when user starts typing (they might have received a new code)
+    if (isCodeExpired && emailCode.length > 0) {
+      setIsCodeExpired(false);
+      setError(null);
     }
   }, [emailCode, error]);
 
@@ -192,6 +255,12 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if code is expired before submission
+    if (isCodeExpired || timeRemaining <= 0) {
+      setError('Your verification code has expired. Please contact support for a new code.');
+      return;
+    }
+    
     if (!userRegistration || !emailCode.trim()) {
       setError('Please enter your verification code.');
       return;
@@ -211,7 +280,16 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
       // Check if code has expired (double-check)
       const expiryDate = new Date(userRegistration.email_code_expiry!);
       if (expiryDate < new Date()) {
-        setError('This code has expired. Contact support for a new code.');
+        setIsCodeExpired(true);
+        setTimeRemaining(0);
+        setError('This code has expired during verification. You will be redirected shortly.');
+        
+        // Auto-redirect after showing error
+        setTimeout(() => {
+          alert('Your verification code has expired. You will be redirected to the login page.');
+          handleBackToLogin();
+        }, 2000);
+        
         setIsLoading(false);
         return;
       }
@@ -253,7 +331,7 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
 
   // Handle resend code
   const handleResendCode = async () => {
-    if (!userRegistration || isResending || resendCooldown > 0 || isLoading || resendLimitReached) return;
+    if (!userRegistration || isResending || resendCooldown > 0 || isLoading || resendLimitReached || isCodeExpired) return;
 
     setIsResending(true);
     setResendError(null);
@@ -295,6 +373,18 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
 
         if (!refreshError && updatedRegistration) {
           setUserRegistration(updatedRegistration);
+          
+          // Reset expiry timer with new code
+          const expiryDate = new Date(updatedRegistration.email_code_expiry);
+          const now = new Date();
+          const remainingMs = expiryDate.getTime() - now.getTime();
+          const remainingSeconds = Math.floor(remainingMs / 1000);
+          
+          if (remainingSeconds > 0) {
+            setTimeRemaining(remainingSeconds);
+            setIsCodeExpired(false);
+            setError(null);
+          }
         }
       } else {
         // Check if the response indicates rate limiting
@@ -321,6 +411,15 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
     } finally {
       setIsResending(false);
     }
+  };
+
+  // Format time remaining for display
+  const formatTimeRemaining = (seconds: number): string => {
+    if (seconds <= 0) return '0m 0s';
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
   // Handle back to login
@@ -419,6 +518,19 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
               Code sent to: <span className="font-medium">{userRegistration.email}</span>
             </p>
           )}
+          {userRegistration?.email_code_expiry && !isCodeExpired && timeRemaining > 0 && (
+            <div className="mt-3 flex items-center justify-center">
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                timeRemaining <= 300 // 5 minutes
+                  ? 'bg-red-100 text-red-800'
+                  : timeRemaining <= 600 // 10 minutes  
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                Code expires in: {formatTimeRemaining(timeRemaining)}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Information Message */}
@@ -436,10 +548,21 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
 
         {/* Error Message */}
         {error && userRegistration && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+          <div className={`mb-6 p-4 rounded-lg border ${
+            isCodeExpired 
+              ? 'bg-red-50 border-red-200' 
+              : 'bg-red-50 border-red-200'
+          }`} role="alert">
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
+              <div>
+                <span className="text-red-700 text-sm font-medium">{error}</span>
+                {isCodeExpired && (
+                  <p className="text-red-600 text-xs mt-1">
+                    You will be automatically redirected to request a new code.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -483,12 +606,12 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
                   : isValidCodeFormat
                   ? 'border-[#A3C6E0] bg-blue-50'
                   : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
-              }`}
+              } ${isCodeExpired || timeRemaining <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
               placeholder="SLU123456"
               aria-invalid={error ? 'true' : 'false'}
               aria-describedby={error ? 'code-error' : undefined}
               maxLength={9}
-              disabled={isLoading}
+              disabled={isLoading || isCodeExpired || timeRemaining <= 0}
               autoComplete="one-time-code"
             />
             
@@ -526,9 +649,9 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={!isValidCodeFormat || isLoading}
+            disabled={!isValidCodeFormat || isLoading || isCodeExpired || timeRemaining <= 0}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              isValidCodeFormat && !isLoading
+              isValidCodeFormat && !isLoading && !isCodeExpired && timeRemaining > 0
                 ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
@@ -537,6 +660,11 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
               <div className="flex items-center justify-center">
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
                 Verifying Code...
+              </div>
+            ) : isCodeExpired || timeRemaining <= 0 ? (
+              <div className="flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                Code Expired
               </div>
             ) : (
               <div className="flex items-center justify-center">
@@ -561,9 +689,9 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
           <button
             type="button"
             onClick={handleResendCode}
-            disabled={isResending || resendCooldown > 0 || isLoading || resendLimitReached}
+            disabled={isResending || resendCooldown > 0 || isLoading || resendLimitReached || isCodeExpired || timeRemaining <= 0}
             className={`mt-4 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-              isResending || resendCooldown > 0 || isLoading || resendLimitReached
+              isResending || resendCooldown > 0 || isLoading || resendLimitReached || isCodeExpired || timeRemaining <= 0
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-[#A3C6E0] shadow-sm hover:shadow-md'
             }`}
@@ -582,6 +710,11 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
               <div className="flex items-center">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Rate Limited ({Math.floor(rateLimitResetTimer / 60)}m {rateLimitResetTimer % 60}s)
+              </div>
+            ) : isCodeExpired || timeRemaining <= 0 ? (
+              <div className="flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Code Expired
               </div>
             ) : (
               <div className="flex items-center">
@@ -610,6 +743,23 @@ export function VerifyEmailCode({ onVerificationComplete, onBackToLogin, userEma
             </div>
           )}
         </div>
+
+        {/* Code Expired Message */}
+        {isCodeExpired && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+              <div>
+                <p className="text-sm text-red-800 font-medium">
+                  Your verification code has expired.
+                </p>
+                <p className="text-xs text-red-700 mt-1">
+                  Please contact support to request a new verification code.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Help Section */}
         <div className="mt-8 space-y-4">
