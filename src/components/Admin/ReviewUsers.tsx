@@ -216,7 +216,7 @@ export function AdminUserReview() {
       // The email_code and email_code_expiry will be handled by the Edge Function
       const { error: updateError } = await supabase
         .from('registrations')
-        .update({ status: 'verified' })
+        .update({ status: 'approved' })
         .eq('id', userId);
 
       if (updateError && updateError.code !== '42P01') {
@@ -292,11 +292,44 @@ export function AdminUserReview() {
         throw updateError;
       }
 
+      // 2. Get user's email address for the Edge Function
+      const { data: userData, error: userError } = await supabase
+        .from('registrations')
+        .select('email, firstName')
+        .eq('id', userId)
+        .single();
+
+      if (userError && userError.code !== '42P01') {
+        throw new Error('Failed to fetch user email for notification');
+      }
+
+      // 3. Call the Edge Function to send rejection email
+      try {
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-rejection-email', {
+          body: {
+            email: userData.email,
+            firstName: userData.firstName,
+            reason: reason || 'No reason provided'
+          }
+        });
+
+        if (emailError) {
+          console.warn('Rejection email sending failed:', emailError);
+          setError(`${userName} rejected successfully, but email notification failed: ${emailError.message}`);
+        } else {
+          console.log('Rejection email sent successfully:', emailResponse);
+        }
+      } catch (emailErr) {
+        console.warn('Rejection email function not available:', emailErr);
+      }
+
       // Remove rejected user from the list
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
       
       // Show success message
-      alert(`${userName} has been rejected.`);
+      if (!error) {
+        alert(`${userName} has been rejected and notified via email.`);
+      }
 
     } catch (err: any) {
       console.error('Error rejecting user:', err);
