@@ -25,9 +25,10 @@ export interface PendingApprovalProps {
     };
   };
   onGoHome: () => void;
+  onGoBackToStep1: () => void;
 }
 
-export function PendingApproval({ registrationData, onGoHome }: PendingApprovalProps) {
+export function PendingApproval({ registrationData, onGoHome, onGoBackToStep1 }: PendingApprovalProps) {
   const supabase = useSupabaseClient();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
