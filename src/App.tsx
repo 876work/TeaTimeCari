@@ -239,6 +239,7 @@ function App() {
                   <PendingApproval 
                     registrationData={registrationData}
                     onGoHome={handleGoHome}
+                    onGoBackToStep1={handleBackToStep1}
                   />
                 )}
               </>

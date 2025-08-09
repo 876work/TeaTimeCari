@@ -272,18 +272,37 @@ export function PendingApproval({ registrationData, onGoHome, onGoBackToStep1 }:
         )}
 
         {/* Action Button */}
-        <button
-          type="button"
-          onClick={onGoHome}
-          disabled={isSubmitting}
-          className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-            isSubmitting
-              ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
-          }`}
-        >
-          {isSubmitting ? 'Submitting...' : 'Go Back to Homepage'}
-        </button>
+        {submitError ? (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={onGoBackToStep1}
+              className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+            >
+              Try Different Email Address
+            </button>
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 bg-gray-600 hover:bg-gray-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+            >
+              Go Back to Homepage
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onGoHome}
+            disabled={isSubmitting}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              isSubmitting
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+            }`}
+          >
+            {isSubmitting ? 'Submitting...' : 'Go Back to Homepage'}
+          </button>
+        )}
 
         {/* Support Information */}
         <div className="text-center mt-6">
