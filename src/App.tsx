@@ -25,6 +25,7 @@ import { LoginComponent } from './components/Auth/LoginComponent';
 import { ResetPasswordComponent } from './components/Auth/ResetPasswordComponent';
 import KycVerification from './pages/KycVerification';
 import SetPassword from './pages/SetPassword';
+import SetPassword from './pages/SetPassword';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -194,6 +195,7 @@ function App() {
             <Routes>
               {/* KYC Routes */}
               <Route path="/kyc-verification" element={<KycVerification />} />
+              <Route path="/set-password" element={<SetPassword />} />
               <Route path="/set-password" element={<SetPassword />} />
               
               {/* Admin Routes */}
