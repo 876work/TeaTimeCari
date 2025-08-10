@@ -3,13 +3,6 @@ import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
-const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const FN_HEADERS = {
-  Authorization: `Bearer ${ANON}`,
-  apikey: ANON,
-  'Content-Type': 'application/json',
-};
-
 // Define a type for the user data fetched from Supabase
 interface User {
   id: string;
@@ -249,11 +242,12 @@ export function AdminUserReview() {
             email: userData.email,
             firstName: userData.firstName
           },
-          headers: FN_HEADERS
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          }
         });
 
         if (emailError) {
-          console.error('Email invoke error:', { emailError, data: emailResponse });
           console.warn('Email sending failed:', emailError);
           // Don't fail the approval if email fails, but show a warning
           setError(`${userName} approved successfully, but email notification failed: ${emailError.message}`);
@@ -261,7 +255,6 @@ export function AdminUserReview() {
           console.log('Email sent successfully:', emailResponse);
         }
       } catch (emailErr) {
-        console.error('Email function catch error:', emailErr);
         console.warn('Email function not available:', emailErr);
         // Don't fail the approval if email function is not available
       }
@@ -315,24 +308,24 @@ export function AdminUserReview() {
 
       // 3. Call the Edge Function to send rejection email
       try {
-        const { data: rejEmailResponse, error: rejEmailErr } = await supabase.functions.invoke('send-rejection-email', {
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-rejection-email', {
           body: {
             email: userData.email,
             firstName: userData.firstName,
             reason: reason || 'No reason provided'
           },
-          headers: FN_HEADERS
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          }
         });
 
-        if (rejEmailErr) {
-          console.error('Rejection email invoke error:', { rejEmailErr, data: rejEmailResponse });
-          console.warn('Rejection email sending failed:', rejEmailErr);
-          setError(`${userName} rejected successfully, but email notification failed: ${rejEmailErr.message}`);
+        if (emailError) {
+          console.warn('Rejection email sending failed:', emailError);
+          setError(`${userName} rejected successfully, but email notification failed: ${emailError.message}`);
         } else {
-          console.log('Rejection email sent successfully:', rejEmailResponse);
+          console.log('Rejection email sent successfully:', emailResponse);
         }
       } catch (emailErr) {
-        console.error('Rejection email function catch error:', emailErr);
         console.warn('Rejection email function not available:', emailErr);
       }
 
