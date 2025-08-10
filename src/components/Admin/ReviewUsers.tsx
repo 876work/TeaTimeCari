@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-const FN_HEADERS = {
+const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' } as const;
   Authorization: `Bearer ${ANON}`,
   apikey: ANON,
   'Content-Type': 'application/json',
@@ -43,6 +43,8 @@ export function AdminUserReview() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'banned'>('all');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string|null>(null);
+  const [generatedExpiry, setGeneratedExpiry] = useState<string|null>(null);
 
   // Simple admin check - in production, implement proper role-based access control
   const isAdmin = session?.user?.email?.includes('admin'); // TODO: Implement proper admin role check
@@ -222,53 +224,29 @@ export function AdminUserReview() {
     setProcessingUserId(userId);
     setError(null);
     try {
-      const res = await supabase.functions.invoke('kyc-approve', {
+      await supabase.from('registrations').update({ status: 'approved' }).eq('id', userId);
+
+      const { data, error } = await supabase.functions.invoke('kyc-approve', {
         headers: FN_HEADERS,
         body: { registrationId: userId }
       });
-      
-      if (res.error) {
-        // Try to pull status/body from the error's response
-        // @ts-ignore
-        const ctx = res.error?.context;
-        let extra = '';
-        try {
-          if (ctx?.response) {
-            const status = ctx.response.status;
-            const text = await ctx.response.text();
-            extra = ` [status=${status}] ${text}`;
-          }
-        } catch {}
-        console.error('kyc-approve error:', res.error?.name, res.error?.message, extra);
-        throw new Error(`Failed to approve user: ${res.error?.message || 'Edge error'}${extra}`);
-      }
 
-      if (!res.data?.success) {
-        console.error('kyc-approve non-success:', res.data);
-        throw new Error(`Failed to approve user: ${res.data?.error || 'Unknown error'}`);
+      if (error) {
+        // Pull status/body if available
+        // @ts-ignore
+        const ctx = error.context; let extra='';
+        try { if (ctx?.response) extra = ` [status=${ctx.response.status}] ${await ctx.response.text()}`; } catch {}
+        throw new Error(`Failed to approve user: ${error.message || 'Edge error'}${extra}`);
       }
+      if (!data?.success) throw new Error(`Failed to approve user: ${data?.error || 'Unknown error'}`);
+
+      setGeneratedCode(data.code);
+      setGeneratedExpiry(data.expiresAt);
 
       // Remove approved user from the list
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
       
-      // Show success message with code and link for manual sending
-      const message = `${userName} has been approved successfully!
-
-MANUAL ACTION REQUIRED:
-Please send the following to the user manually:
-
-6-Digit Code: ${res.data.code}
-Verification Link: ${res.data.verifyLink}
-
-Code expires: ${new Date(res.data.expiresAt).toLocaleString()}
-User Email: ${res.data.userEmail}
-
-The user should:
-1. Click the verification link
-2. Enter the 6-digit code
-3. Create their password`;
-      
-      alert(message);
+      alert(`${userName} has been approved successfully! Check the code display in the bottom-right corner.`);
 
     } catch (err: any) {
       console.error('Error approving user:', err);
@@ -813,6 +791,18 @@ The user should:
           </div>
         )}
       </div>
+
+      {/* Code Display Banner */}
+      {generatedCode && (
+        <div className="fixed bottom-4 right-4 bg-white border shadow p-4 rounded">
+          <div className="font-medium mb-1">KYC code generated</div>
+          <div className="mb-2">Code: <span className="font-mono">{generatedCode}</span></div>
+          {generatedExpiry && <div className="text-xs text-gray-600">Expires: {new Date(generatedExpiry).toLocaleString()}</div>}
+          <button className="mt-2 px-3 py-1 border rounded" onClick={() => navigator.clipboard.writeText(generatedCode!)}>
+            Copy
+          </button>
+        </div>
+      )}
     </AdminLayout>
   );
 }
