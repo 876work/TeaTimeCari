@@ -68,7 +68,7 @@ export default function KycVerification() {
       }
 
       // Redirect to password setting page with action token
-      navigate(`/set-password?act=${encodeURIComponent(data.act)}`);
+      navigate(`/kyc-summary?act=${encodeURIComponent(data.act)}`);
 
     } catch (err: any) {
       console.error('KYC verification error:', err);

@@ -1,17 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
-
-async function verifyHS256(jwt: string, secret: string): Promise<any> {
-  const [h, p, s] = jwt.split('.');
-  if (!h || !p || !s) throw new Error("Malformed token");
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
-  const ok = await crypto.subtle.verify('HMAC', key, Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0)), enc.encode(`${h}.${p}`));
-  if (!ok) throw new Error("Invalid signature");
-  const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(p.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0))));
-  if (payload.exp && payload.exp*1000 < Date.now()) throw new Error("Token expired");
-  return payload;
-}
+import { verifyHS256 } from "../_shared/jwt.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
