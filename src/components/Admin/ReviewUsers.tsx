@@ -4,14 +4,12 @@ import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, 
 import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
-// ---- Functions auth headers (single source of truth) ----
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const FN_HEADERS = {
   Authorization: `Bearer ${ANON}`,
   apikey: ANON,
   'Content-Type': 'application/json',
 } as const;
-// ---------------------------------------------------------
 
 // Define a type for the user data fetched from Supabase
 interface User {
@@ -224,14 +222,30 @@ export function AdminUserReview() {
     setProcessingUserId(userId);
     setError(null);
     try {
-      // Call the KYC approval function to generate code and token
-      const { data, error } = await supabase.functions.invoke('kyc-approve', {
-        body: { userId },
+      const res = await supabase.functions.invoke('kyc-approve', {
         headers: FN_HEADERS
+        body: { registrationId: userId }
       });
       
-      if (error || (data && data.success === false)) {
-        throw new Error(error?.message || data?.error || 'Failed to trigger KYC approval email');
+      if (res.error) {
+        // Try to pull status/body from the error's response
+        // @ts-ignore
+        const ctx = res.error?.context;
+        let extra = '';
+        try {
+          if (ctx?.response) {
+            const status = ctx.response.status;
+            const text = await ctx.response.text();
+            extra = ` [status=${status}] ${text}`;
+          }
+        } catch {}
+        console.error('kyc-approve error:', res.error?.name, res.error?.message, extra);
+        throw new Error(`Failed to approve user: ${res.error?.message || 'Edge error'}${extra}`);
+      }
+
+      if (!res.data?.success) {
+        console.error('kyc-approve non-success:', res.data);
+        throw new Error(`Failed to approve user: ${res.data?.error || 'Unknown error'}`);
       }
 
       // Remove approved user from the list
@@ -243,11 +257,11 @@ export function AdminUserReview() {
 MANUAL ACTION REQUIRED:
 Please send the following to the user manually:
 
-6-Digit Code: ${data.code}
-Verification Link: ${data.verifyLink}
+6-Digit Code: ${res.data.code}
+Verification Link: ${res.data.verifyLink}
 
-Code expires: ${new Date(data.expiresAt).toLocaleString()}
-User Email: ${data.userEmail}
+Code expires: ${new Date(res.data.expiresAt).toLocaleString()}
+User Email: ${res.data.userEmail}
 
 The user should:
 1. Click the verification link
