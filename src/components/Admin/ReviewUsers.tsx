@@ -3,6 +3,13 @@ import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
+const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const FN_HEADERS = {
+  Authorization: `Bearer ${ANON}`,
+  apikey: ANON,
+  'Content-Type': 'application/json',
+};
+
 // Define a type for the user data fetched from Supabase
 interface User {
   id: string;
@@ -237,24 +244,24 @@ export function AdminUserReview() {
       // 3. Call the Edge Function to send approval email
       // The Edge Function will generate the code, store it, and send the email
       try {
-        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-approval-email', {
+        const { data, error: emailError } = await supabase.functions.invoke('send-approval-email', {
           body: {
             email: userData.email,
             firstName: userData.firstName
           },
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          }
+          headers: FN_HEADERS
         });
 
         if (emailError) {
+          console.error('Email invoke error:', { emailError, data });
           console.warn('Email sending failed:', emailError);
           // Don't fail the approval if email fails, but show a warning
           setError(`${userName} approved successfully, but email notification failed: ${emailError.message}`);
         } else {
-          console.log('Email sent successfully:', emailResponse);
+          console.log('Email sent successfully:', data);
         }
       } catch (emailErr) {
+        console.error('Email function catch error:', emailErr);
         console.warn('Email function not available:', emailErr);
         // Don't fail the approval if email function is not available
       }
@@ -308,24 +315,24 @@ export function AdminUserReview() {
 
       // 3. Call the Edge Function to send rejection email
       try {
-        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-rejection-email', {
+        const { data, error: rejEmailErr } = await supabase.functions.invoke('send-rejection-email', {
           body: {
             email: userData.email,
             firstName: userData.firstName,
             reason: reason || 'No reason provided'
           },
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          }
+          headers: FN_HEADERS
         });
 
-        if (emailError) {
-          console.warn('Rejection email sending failed:', emailError);
-          setError(`${userName} rejected successfully, but email notification failed: ${emailError.message}`);
+        if (rejEmailErr) {
+          console.error('Rejection email invoke error:', { rejEmailErr, data });
+          console.warn('Rejection email sending failed:', rejEmailErr);
+          setError(`${userName} rejected successfully, but email notification failed: ${rejEmailErr.message}`);
         } else {
-          console.log('Rejection email sent successfully:', emailResponse);
+          console.log('Rejection email sent successfully:', data);
         }
       } catch (emailErr) {
+        console.error('Rejection email function catch error:', emailErr);
         console.warn('Rejection email function not available:', emailErr);
       }
 
