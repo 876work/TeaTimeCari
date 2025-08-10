@@ -1,10 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 interface RequestPayload {
   email: string;
@@ -15,10 +10,7 @@ interface RequestPayload {
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   let userId: string | null = null;
@@ -43,8 +35,8 @@ Deno.serve(async (req: Request) => {
           error: errorMessage 
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -89,8 +81,8 @@ Deno.serve(async (req: Request) => {
             error: errorMessage 
           }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       } else {
@@ -139,8 +131,8 @@ Deno.serve(async (req: Request) => {
               rateLimited: true
             }),
             {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 429, // Too Many Requests
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             }
           );
         }
@@ -162,8 +154,8 @@ Deno.serve(async (req: Request) => {
             error: errorMessage 
           }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
@@ -219,8 +211,8 @@ Deno.serve(async (req: Request) => {
           email: sanitizedEmail
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -297,8 +289,8 @@ Tea Time Cari Team`;
             error: errorMessage
           }),
           {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
@@ -335,8 +327,8 @@ Tea Time Cari Team`;
           error: errorMessage
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -366,8 +358,8 @@ Tea Time Cari Team`;
         code: finalCode // Include for debugging/testing purposes
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
 
@@ -402,8 +394,8 @@ Tea Time Cari Team`;
         error: error.message || 'Internal Server Error'
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }

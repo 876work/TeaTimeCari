@@ -241,6 +241,9 @@ export function AdminUserReview() {
           body: {
             email: userData.email,
             firstName: userData.firstName
+          },
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           }
         });
 
@@ -310,6 +313,9 @@ export function AdminUserReview() {
             email: userData.email,
             firstName: userData.firstName,
             reason: reason || 'No reason provided'
+          },
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           }
         });
 
