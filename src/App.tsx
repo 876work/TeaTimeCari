@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { FileText } from 'lucide-react';
@@ -22,6 +23,8 @@ import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { LoginComponent } from './components/Auth/LoginComponent';
 import { ResetPasswordComponent } from './components/Auth/ResetPasswordComponent';
+import KycVerification from './pages/KycVerification';
+import SetPassword from './pages/SetPassword';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -29,13 +32,6 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 function App() {
-  // Check if current path is the admin login page
-  const isAdminLoginPage = window.location.pathname === '/teamin';
-  
-  // Check if current path is the password reset page
-  const isResetPasswordPage = window.location.pathname === '/reset-password' || 
-    window.location.search.includes('type=recovery');
-  
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
   const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'verify-email-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
@@ -194,241 +190,262 @@ function App() {
     <SessionContextProvider supabaseClient={supabase}>
       <StripeProvider>
         <NotificationProvider>
-          {isAdminLoginPage ? (
-            <AdminLoginPage />
-          ) : isResetPasswordPage ? (
-            <ResetPasswordComponent 
-              onResetComplete={handleResetPasswordComplete}
-              onBackToLogin={() => setCurrentPage('login')}
-            />
-          ) : showWelcomePage ? (
-            <HomePage onGetStarted={handleGetStarted} />
-          ) : (
-            <AppLayout>
-            {currentPage === 'register' && (
-              <>
-                {currentStep === 0 && (
-                  <InviteStep 
-                    onNext={handleInviteComplete} 
-                    onGoToLogin={handleGoToLogin}
-                    initialData={registrationData.invite}
+          <Router>
+            <Routes>
+              {/* KYC Routes */}
+              <Route path="/kyc-verification" element={<KycVerification />} />
+              <Route path="/set-password" element={<SetPassword />} />
+              
+              {/* Admin Routes */}
+              <Route path="/teamin" element={<AdminLoginPage />} />
+              
+              {/* Password Reset Route */}
+              <Route 
+                path="/reset-password" 
+                element={
+                  <ResetPasswordComponent 
+                    onResetComplete={handleResetPasswordComplete}
+                    onBackToLogin={() => setCurrentPage('login')}
                   />
-                )}
-                {currentStep === 1 && (
-                  <RegisterStep1 
-                    onNext={handleStep1Complete}
-                    onBack={handleBackToInvite}
-                    initialData={registrationData.step1}
-                  />
-                )}
-                {currentStep === 2 && (
-                  <RegisterStep2 
-                    onNext={handleStep2Complete}
-                    onBack={handleBackToStep1}
-                    initialData={registrationData.step2}
-                  />
-                )}
-                {currentStep === 3 && (
-                  <RegisterStep3 
-                    onNext={handleStep3Complete}
-                    onBack={handleBackToStep2}
-                    initialData={registrationData.step3}
-                  />
-                )}
-                {currentStep === 4 && (
-                  <PendingApproval 
-                    registrationData={registrationData}
-                    onGoHome={handleGoHome}
-                    onGoBackToStep1={handleBackToStep1}
-                  />
-                )}
-              </>
-            )}
-            
-            {currentPage === 'login' && (
-              <LoginComponent 
-                onLoginSuccess={handleLoginSuccess}
-                onBackToRegister={handleBackToRegister}
+                } 
               />
-            )}
-            
-            {currentPage === 'reset-password' && (
-              <ResetPasswordComponent 
-                onResetComplete={handleResetPasswordComplete}
-                onBackToLogin={() => setCurrentPage('login')}
+              
+              {/* Main App Route */}
+              <Route 
+                path="/*" 
+                element={
+                  showWelcomePage ? (
+                    <HomePage onGetStarted={handleGetStarted} />
+                  ) : (
+                    <AppLayout>
+                      {currentPage === 'register' && (
+                        <>
+                          {currentStep === 0 && (
+                            <InviteStep 
+                              onNext={handleInviteComplete} 
+                              onGoToLogin={handleGoToLogin}
+                              initialData={registrationData.invite}
+                            />
+                          )}
+                          {currentStep === 1 && (
+                            <RegisterStep1 
+                              onNext={handleStep1Complete}
+                              onBack={handleBackToInvite}
+                              initialData={registrationData.step1}
+                            />
+                          )}
+                          {currentStep === 2 && (
+                            <RegisterStep2 
+                              onNext={handleStep2Complete}
+                              onBack={handleBackToStep1}
+                              initialData={registrationData.step2}
+                            />
+                          )}
+                          {currentStep === 3 && (
+                            <RegisterStep3 
+                              onNext={handleStep3Complete}
+                              onBack={handleBackToStep2}
+                              initialData={registrationData.step3}
+                            />
+                          )}
+                          {currentStep === 4 && (
+                            <PendingApproval 
+                              registrationData={registrationData}
+                              onGoHome={handleGoHome}
+                              onGoBackToStep1={handleBackToStep1}
+                            />
+                          )}
+                        </>
+                      )}
+                      
+                      {currentPage === 'login' && (
+                        <LoginComponent 
+                          onLoginSuccess={handleLoginSuccess}
+                          onBackToRegister={handleBackToRegister}
+                        />
+                      )}
+                      
+                      {currentPage === 'reset-password' && (
+                        <ResetPasswordComponent 
+                          onResetComplete={handleResetPasswordComplete}
+                          onBackToLogin={() => setCurrentPage('login')}
+                        />
+                      )}
+                      
+                      {currentPage === 'verify-code' && (
+                        <VerifySmsCode 
+                          onVerificationComplete={handleVerificationComplete}
+                          userEmail={registrationData.step1?.email}
+                        />
+                      )}
+                      
+                      {currentPage === 'verify-email-code' && (
+                        <VerifyEmailCode 
+                          onVerificationComplete={handleEmailVerificationComplete}
+                          onBackToLogin={() => setCurrentPage('login')}
+                          userEmail={registrationData.step1?.email}
+                        />
+                      )}
+                      
+                      {currentPage === 'feed' && (
+                        <GenderFeed />
+                      )}
+                      
+                      {currentPage === 'upload' && (
+                        <UploadPost />
+                      )}
+                      
+                      {currentPage === 'opposite-feed' && (
+                        <OppositeGenderFeed />
+                      )}
+                      
+                      {currentPage === 'admin' && (
+                        <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
+                      )}
+                      
+                      {currentPage === 'user-profile' && (
+                        <UserProfile userId={selectedUserId} />
+                      )}
+                      
+                      {currentPage === 'post-thread' && (
+                        <PostThread postId={selectedPostId} />
+                      )}
+                      
+                      {/* Navigation for testing - remove in production */}
+                      <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
+                        <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => setCurrentPage('register')}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'register' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Register
+                          </button>
+                          <button
+                            onClick={handleGoToLogin}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'login' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Login
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage('reset-password')}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'reset-password' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Reset Password
+                          </button>
+                          <button
+                            onClick={handleGoToVerification}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'verify-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Verify SMS
+                          </button>
+                          <button
+                            onClick={handleGoToEmailVerification}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'verify-email-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Verify Email
+                          </button>
+                          <button
+                            onClick={handleGoToFeed}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Feed
+                          </button>
+                          <button
+                            onClick={handleGoToUpload}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'upload' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Upload
+                          </button>
+                          <button
+                            onClick={handleGoToOppositeFeed}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'opposite-feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Premium Feed
+                          </button>
+                          <button
+                            onClick={handleGoToAdminDashboard}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Admin Dashboard
+                          </button>
+                          <button
+                            onClick={handleGoToAdminFlaggedPosts}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Admin Flagged
+                          </button>
+                          <button
+                            onClick={handleGoToAdminUserReviews}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Admin Users
+                          </button>
+                          <button
+                            onClick={handleGoToAdminInviteCodes}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Admin Invites
+                          </button>
+                          <button
+                            onClick={() => handleGoToUserProfile()}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'user-profile' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            User Profile
+                          </button>
+                          <button
+                            onClick={() => handleGoToPostThread()}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'post-thread' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Post Thread
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCurrentPage('admin');
+                              setAdminActivePage('function-ping');
+                            }}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'admin' && adminActivePage === 'function-ping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Function Ping
+                          </button>
+                        </div>
+                      </div>
+                    </AppLayout>
+                  )
+                } 
               />
-            )}
-            
-            {currentPage === 'verify-code' && (
-              <VerifySmsCode 
-                onVerificationComplete={handleVerificationComplete}
-                userEmail={registrationData.step1?.email}
-              />
-            )}
-            
-            {currentPage === 'verify-email-code' && (
-              <VerifyEmailCode 
-                onVerificationComplete={handleEmailVerificationComplete}
-                onBackToLogin={() => setCurrentPage('login')}
-                userEmail={registrationData.step1?.email}
-              />
-            )}
-            
-            {currentPage === 'feed' && (
-              <GenderFeed />
-            )}
-            
-            {currentPage === 'upload' && (
-              <UploadPost />
-            )}
-            
-            {currentPage === 'opposite-feed' && (
-              <OppositeGenderFeed />
-            )}
-            
-            {currentPage === 'admin' && (
-              <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
-            )}
-            
-            {currentPage === 'user-profile' && (
-              <UserProfile userId={selectedUserId} />
-            )}
-            
-            {currentPage === 'post-thread' && (
-              <PostThread postId={selectedPostId} />
-            )}
-            
-            {/* Navigation for testing - remove in production */}
-            <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
-              <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setCurrentPage('register')}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'register' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Register
-                </button>
-                <button
-                  onClick={handleGoToLogin}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'login' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => setCurrentPage('reset-password')}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'reset-password' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Reset Password
-                </button>
-                <button
-                  onClick={handleGoToVerification}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'verify-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Verify SMS
-                </button>
-                <button
-                  onClick={handleGoToEmailVerification}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'verify-email-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Verify Email
-                </button>
-                <button
-                  onClick={handleGoToFeed}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Feed
-                </button>
-                <button
-                  onClick={handleGoToUpload}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'upload' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Upload
-                </button>
-                <button
-                  onClick={handleGoToOppositeFeed}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'opposite-feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Premium Feed
-                </button>
-                <button
-                  onClick={handleGoToAdminDashboard}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Admin Dashboard
-                </button>
-                <button
-                  onClick={handleGoToAdminFlaggedPosts}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Admin Flagged
-                </button>
-                <button
-                  onClick={handleGoToAdminUserReviews}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Admin Users
-                </button>
-                <button
-                  onClick={handleGoToAdminInviteCodes}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Admin Invites
-                </button>
-                <button
-                  onClick={() => handleGoToUserProfile()}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'user-profile' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  User Profile
-                </button>
-                <button
-                  onClick={() => handleGoToPostThread()}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'post-thread' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Post Thread
-                </button>
-                <button
-                  onClick={() => {
-                    setCurrentPage('admin');
-                    setAdminActivePage('function-ping');
-                  }}
-                  className={`px-3 py-1 text-xs rounded ${
-                    currentPage === 'admin' && adminActivePage === 'function-ping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Function Ping
-                </button>
-              </div>
-            </div>
-            </AppLayout>
-          )}
+            </Routes>
+          </Router>
         </NotificationProvider>
       </StripeProvider>
     </SessionContextProvider>
