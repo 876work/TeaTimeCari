@@ -223,7 +223,7 @@ export function AdminUserReview() {
     setError(null);
     try {
       const res = await supabase.functions.invoke('kyc-approve', {
-        headers: FN_HEADERS
+        headers: FN_HEADERS,
         body: { registrationId: userId }
       });
       
