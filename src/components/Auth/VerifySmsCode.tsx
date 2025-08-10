@@ -5,10 +5,9 @@ import { AuthLayout } from '../AuthLayout';
 
 interface VerifySmsCodeProps {
   onVerificationComplete?: () => void;
-  userEmail?: string;
 }
 
-export function VerifySmsCode({ onVerificationComplete, userEmail }: VerifySmsCodeProps) {
+export function VerifySmsCode({ onVerificationComplete }: VerifySmsCodeProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
@@ -131,7 +130,7 @@ export function VerifySmsCode({ onVerificationComplete, userEmail }: VerifySmsCo
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
           <p className="text-gray-600">
-            Enter the 6-digit code sent to your email{userEmail && ` (${userEmail})`}. This code expires in 24 hours.
+            Enter the 6-digit code you received. This code expires in 24 hours.
           </p>
         </div>
 
@@ -147,7 +146,7 @@ export function VerifySmsCode({ onVerificationComplete, userEmail }: VerifySmsCo
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="smsCode" className="sr-only">
-              Email Verification Code
+              Verification Code
             </label>
             <input
               type="text"
@@ -200,7 +199,7 @@ export function VerifySmsCode({ onVerificationComplete, userEmail }: VerifySmsCo
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-amber-800">
               <strong>Didn't receive the code?</strong><br />
-              Check your email inbox and spam folder, or contact support for assistance.
+              Contact support for assistance with your verification code.
             </p>
           </div>
         </div>
