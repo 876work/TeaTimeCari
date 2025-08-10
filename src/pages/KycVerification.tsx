@@ -129,7 +129,7 @@ export default function KycVerification() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Account Verification</h1>
           <p className="text-gray-600">
-            Enter the 6-digit code from your approval email
+            Enter the 6-digit code you received
           </p>
         </div>
 
@@ -138,9 +138,9 @@ export default function KycVerification() {
           <div className="flex items-start">
             <Key className="w-5 h-5 text-[#A3C6E0] mr-2 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-sm text-[#A3C6E0] font-medium mb-1">Check your email inbox</p>
+              <p className="text-sm text-[#A3C6E0] font-medium mb-1">Enter your verification code</p>
               <p className="text-sm text-gray-700">
-                Your account has been approved! Enter the 6-digit code from your email to continue setting up your account.
+                Your account has been approved! Enter the 6-digit code you received to continue setting up your account.
               </p>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function KycVerification() {
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 text-center">
               <strong>Need help?</strong><br />
-              Check your email inbox and spam folder for the 6-digit verification code.
+              Make sure you have the 6-digit verification code that was sent to you.
             </p>
           </div>
 

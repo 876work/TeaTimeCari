@@ -224,17 +224,7 @@ export function AdminUserReview() {
     setProcessingUserId(userId);
     setError(null);
     try {
-      // 1. Update user status in database to 'approved'
-      const { error: updateError } = await supabase
-        .from('registrations')
-        .update({ status: 'approved' })
-        .eq('id', userId);
-
-      if (updateError && updateError.code !== '42P01') {
-        throw updateError;
-      }
-
-      // 2. Call the KYC approval function
+      // Call the KYC approval function to generate code and token
       const { data, error } = await supabase.functions.invoke('kyc-approve', {
         body: { userId },
         headers: FN_HEADERS
@@ -247,8 +237,24 @@ export function AdminUserReview() {
       // Remove approved user from the list
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
       
-      // Show success message
-      alert(`${userName} has been approved successfully and notified via email!`);
+      // Show success message with code and link for manual sending
+      const message = `${userName} has been approved successfully!
+
+MANUAL ACTION REQUIRED:
+Please send the following to the user manually:
+
+6-Digit Code: ${data.code}
+Verification Link: ${data.verifyLink}
+
+Code expires: ${new Date(data.expiresAt).toLocaleString()}
+User Email: ${data.userEmail}
+
+The user should:
+1. Click the verification link
+2. Enter the 6-digit code
+3. Create their password`;
+      
+      alert(message);
 
     } catch (err: any) {
       console.error('Error approving user:', err);
