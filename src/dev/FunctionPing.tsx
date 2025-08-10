@@ -60,7 +60,7 @@ export default function FunctionPing() {
       <pre style={{ background: "#111", color: "#0f0", padding: 12, marginTop: 12 }}>
 {JSON.stringify({ headers, approvalResp, errA, rejectionResp, errR }, null, 2)}
       </pre>
-      <div><b>Computed functions URL</b>: {url ? \`${url.replace(/\/+$/, '')}/functions/v1` : "(missing URL)"}</div>
+      <div><b>Computed functions URL</b>: {url ? `${url.replace(/\/+$/, '')}/functions/v1` : "(missing URL)"}</div>
     </div>
   );
 }
