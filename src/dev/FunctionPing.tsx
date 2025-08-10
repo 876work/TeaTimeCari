@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 const url = import.meta.env.VITE_SUPABASE_URL as string;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+const computedFnUrl = url ? `${url.replace(/\/+$/, '')}/functions/v1` : "(missing URL)";
+
 const supabase = createClient(url, anon);
 
 export default function FunctionPing() {
@@ -60,7 +62,7 @@ export default function FunctionPing() {
       <pre style={{ background: "#111", color: "#0f0", padding: 12, marginTop: 12 }}>
 {JSON.stringify({ headers, approvalResp, errA, rejectionResp, errR }, null, 2)}
       </pre>
-      <div><b>Computed functions URL</b>: {url ? \`${url.replace(/\/+$/, '')}/functions/v1` : "(missing URL)"}</div>
+      <div><b>Computed functions URL</b>: {computedFnUrl}</div>
     </div>
   );
 }
