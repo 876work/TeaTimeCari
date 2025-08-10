@@ -23,6 +23,7 @@ import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
 import { AdminInviteCodes } from './AdminInviteCodes';
+import FunctionPing from '../../dev/FunctionPing';
 
 // Type definitions
 interface DashboardStats {
@@ -300,6 +301,16 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
 
   if (activePage === 'invite-codes') {
     return <AdminInviteCodes />;
+  }
+
+  if (activePage === 'function-ping') {
+    return (
+      <AdminLayout activePage={activePage} onNavigate={onNavigate}>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <FunctionPing />
+        </div>
+      </AdminLayout>
+    );
   }
 
   // Default dashboard content

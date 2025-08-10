@@ -39,7 +39,7 @@ function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
   const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'verify-email-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
-  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs'>('dashboard');
+  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
@@ -161,7 +161,7 @@ function App() {
   };
 
   const handleAdminNavigate = (page: string) => {
-    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs');
+    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping');
   };
 
   const handleGoToUserProfile = (userId?: string) => {
@@ -413,6 +413,17 @@ function App() {
                   }`}
                 >
                   Post Thread
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentPage('admin');
+                    setAdminActivePage('function-ping');
+                  }}
+                  className={`px-3 py-1 text-xs rounded ${
+                    currentPage === 'admin' && adminActivePage === 'function-ping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Function Ping
                 </button>
               </div>
             </div>

@@ -46,6 +46,12 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
       label: 'Logs',
       icon: <FileText className="w-5 h-5" />,
       description: 'View moderation logs'
+    },
+    {
+      id: 'function-ping',
+      label: 'Function Ping (Dev)',
+      icon: <Shield className="w-5 h-5" />,
+      description: 'Test Edge Function connectivity'
     }
   ];
 
