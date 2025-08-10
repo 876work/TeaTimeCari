@@ -1,314 +1,69 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from "../_shared/cors.ts";
 
-interface RequestPayload {
-  email: string;
-  firstName: string;
-  reason: string;
+async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }) {
+  const apiKey = Deno.env.get("SENDGRID_API_KEY");
+  const fromEmail = Deno.env.get("SENDGRID_FROM_EMAIL");
+  if (!apiKey) throw new Error("Missing SENDGRID_API_KEY");
+  if (!fromEmail) throw new Error("Missing SENDGRID_FROM_EMAIL");
+
+  const payload = {
+    personalizations: [{ to: [{ email: to }] }],
+    from: { email: fromEmail },
+    subject,
+    content: [{ type: "text/plain", value: text }],
+  };
+
+  const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`SendGrid ${resp.status}: ${body}`);
+  }
 }
 
-Deno.serve(async (req: Request) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  let userId: string | null = null;
-  let deliveryStatus: string = 'failed';
-  let errorMessage: string | null = null;
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const { email, firstName, reason, dryRun } = await req.json();
 
-    const { email, firstName, reason }: RequestPayload = await req.json();
+    if (!email || !firstName) throw new Error("Missing required fields: email, firstName");
 
-    // Validate required fields
-    if (!email || !firstName || !reason) {
-      errorMessage = 'Email, firstName, and reason are required';
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: errorMessage
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      errorMessage = 'Invalid email format';
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: errorMessage
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Sanitize inputs
-    const sanitizedEmail = email.toLowerCase().trim();
-    const sanitizedFirstName = firstName.trim();
-    const sanitizedReason = reason.trim();
-
-    // Get user ID from registrations table
-    const { data: userData, error: userError } = await supabase
-      .from('registrations')
-      .select('id')
-      .eq('email', sanitizedEmail)
-      .single();
-
-    if (userError) {
-      if (userError.code === '42P01') {
-        console.warn('Registrations table not found, using mock user ID for demo');
-        userId = 'demo-user-id';
-      } else if (userError.code === 'PGRST116') {
-        errorMessage = 'No registration found with this email address';
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          }),
-          {
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      } else {
-        throw userError;
-      }
-    } else {
-      userId = userData.id;
-    }
-
-    const sendGridApiKey = Deno.env.get('SENDGRID_API_KEY') || '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';
-    const sendGridFromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@code.teatimecari.app';
-
-    if (!sendGridApiKey || sendGridApiKey === 'your-sendgrid-api-key') {
-      console.warn('SendGrid API key not configured, simulating email send');
-      deliveryStatus = 'simulated';
-
-      // Simulate email sending for development/demo purposes
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Log the simulated send
-      if (userId !== 'demo-user-id') {
-        try {
-          const { error: logError } = await supabase
-            .from('code_sends')
-            .insert({
-              user_id: userId,
-              code: null, // No specific code for rejection email
-              delivery_status: deliveryStatus,
-              error_message: null
-            });
-          if (logError) console.error('Error logging simulated code send:', logError);
-        } catch (logErr) {
-          console.error('Critical error logging simulated code send:', logErr);
-        }
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'Email simulated (SendGrid not configured)',
-          email: sanitizedEmail
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Compose email content
-    const emailSubject = 'Your account has been rejected';
-    const emailBody = `Hi ${sanitizedFirstName},
+    const subject = "Your account has been rejected";
+    const text = `Hi ${firstName},
 
 We're sorry, but your account didn't meet our requirements.
-Reason: ${sanitizedReason}
+Reason: ${reason ?? "Not specified"}
 
 If you have questions, reply to this email.
 
 Regards,
 The Team`;
 
-    // Send email via SendGrid API
-    try {
-      const sendGridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sendGridApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          personalizations: [
-            {
-              to: [
-                {
-                  email: sanitizedEmail,
-                  name: sanitizedFirstName
-                }
-              ],
-              subject: emailSubject
-            }
-          ],
-          from: {
-            email: sendGridFromEmail,
-            name: 'Tea Time Cari'
-          },
-          content: [
-            {
-              type: 'text/plain',
-              value: emailBody
-            }
-          ]
-        }),
-      });
-
-      if (!sendGridResponse.ok) {
-        const errorData = await sendGridResponse.text();
-        console.error('SendGrid API error:', errorData);
-        deliveryStatus = 'failed';
-        errorMessage = `SendGrid API error: ${sendGridResponse.status} - ${errorData}`;
-
-        // Log the failed send attempt
-        if (userId !== 'demo-user-id') {
-          try {
-            await supabase
-              .from('code_sends')
-              .insert({
-                user_id: userId,
-                code: null,
-                delivery_status: deliveryStatus,
-                error_message: errorMessage
-              });
-          } catch (logError) {
-            console.error('Error logging failed send:', logError);
-          }
-        }
-
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: errorMessage
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
-      }
-
-      console.log('Email sent successfully via SendGrid (rejection)');
-      deliveryStatus = 'success';
-
-    } catch (emailError: any) {
-      console.error('SendGrid sending error:', emailError);
-      deliveryStatus = 'failed';
-      errorMessage = `Email sending error: ${emailError.message}`;
-
-      // Log the failed send attempt
-      if (userId !== 'demo-user-id') {
-        try {
-          await supabase
-            .from('code_sends')
-            .insert({
-              user_id: userId,
-              code: null,
-              delivery_status: deliveryStatus,
-              error_message: errorMessage
-            });
-        } catch (logError) {
-          console.error('Error logging failed send:', logError);
-        }
-      }
-
+    if (dryRun) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: errorMessage
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ success: true, dryRun: true, preview: { to: email, subject, text } }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Log the successful send attempt
-    if (userId !== 'demo-user-id') {
-      try {
-        const { error: logError } = await supabase
-          .from('code_sends')
-          .insert({
-            user_id: userId,
-            code: null,
-            delivery_status: deliveryStatus,
-            error_message: null
-          });
-        if (logError) console.error('Error logging successful send:', logError);
-      } catch (logErr) {
-        console.error('Critical error logging successful send:', logErr);
-      }
-    }
+    await sendEmail({ to: email, subject, text });
 
-    // Return success response
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("[edge-fn] rejection email error:", err?.message || err);
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Rejection email sent successfully',
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-
-  } catch (error) {
-    console.error('Edge Function error:', error);
-
-    // Attempt to log general failure if userId was determined
-    if (userId && userId !== 'demo-user-id') {
-      try {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
-
-        const { error: logError } = await supabase
-          .from('code_sends')
-          .insert({
-            user_id: userId,
-            code: null,
-            delivery_status: 'failed',
-            error_message: `General function error: ${error.message || String(error)}`
-          });
-        if (logError) console.error('Error logging general function error:', logError);
-      } catch (logErr) {
-        console.error('Critical error logging general function error:', logErr);
-      }
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message || 'Internal Server Error'
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: false, error: String(err?.message || err) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
