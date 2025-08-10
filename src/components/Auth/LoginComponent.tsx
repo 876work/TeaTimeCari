@@ -157,31 +157,14 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
           // Handle different registration statuses
           switch (registrationData.status) {
             case 'pending':
-              setError('Your account is still pending admin approval. Please wait for approval notification.');
+              setError('Your application is under review. You\'ll receive an email with verification instructions once approved by our team.');
               await supabase.auth.signOut();
               return;
             
-            case 'verified':
-              // User has been approved by admin but needs to verify email code
-              if (registrationData.email_code && registrationData.email_code_expiry) {
-                // Check if code has expired
-                const expiryDate = new Date(registrationData.email_code_expiry);
-                if (expiryDate > new Date()) {
-                  // Code is still valid, redirect to email verification
-                  setError('Please verify your email code to complete account activation.');
-                  // Instead of signing out, we could redirect to email verification
-                  // For now, we'll show the error and let them navigate manually
-                  return;
-                } else {
-                  setError('Your verification code has expired. Please contact support for a new code.');
-                  await supabase.auth.signOut();
-                  return;
-                }
-              } else {
-                setError('Verification code not found. Please contact support.');
-                await supabase.auth.signOut();
-                return;
-              }
+            case 'approved':
+              setError('Your account has been approved! Please check your email for verification instructions.');
+              await supabase.auth.signOut();
+              return;
             
             case 'active':
               // User is fully verified and can access the app
