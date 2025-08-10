@@ -1,62 +1,52 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
-import { generate6DigitCode, randomToken, sha256Hex, expiresAt } from "../_shared/crypto.ts";
+import { generate6DigitCode, sha256Hex, expiresAt } from "../_shared/crypto.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
   try {
-    const { userId } = await req.json();
-    if (!userId) throw new Error("Missing userId");
+    const body = await req.json();
+    const registrationId = body.registrationId ?? body.userId ?? null;
+    const authUserId = body.authUserId ?? null;
+    const email = body.email ?? null;
 
-    // Lookup registration
-    const { data: reg, error: regErr } = await supabaseAdmin
-      .from('registrations')
-      .select('id, email, firstName')
-      .eq('id', userId)
-      .single();
-    if (regErr || !reg) throw new Error("Registration not found");
+    if (!registrationId && !authUserId && !email) {
+      throw new Error("Provide registrationId OR authUserId OR email");
+    }
 
-    // Create code + token, store hashes + expiry
+    let q = supabaseAdmin.from('registrations')
+      .select('id, email, first_name, auth_user_id')
+      .limit(1);
+
+    if (registrationId) q = q.eq('id', registrationId);
+    else if (authUserId) q = q.eq('auth_user_id', authUserId);
+    else if (email) q = q.eq('email', email);
+
+    const { data: rows, error: regErr } = await q;
+    if (regErr) throw new Error(`DB read error: ${regErr.message}`);
+    if (!rows || rows.length === 0) throw new Error("Registration not found");
+
+    const reg = rows[0];
+
     const code = generate6DigitCode();
-    const token = randomToken(32);
-    const [codeHash, tokenHash] = await Promise.all([sha256Hex(code), sha256Hex(token)]);
-    const expiry = expiresAt(24); // 24 hours
+    const codeHash = await sha256Hex(code);
+    const expiry = expiresAt(24);
 
     const { error: updErr } = await supabaseAdmin
       .from('registrations')
-      .update({ 
-        kyc_code_hash: codeHash, 
-        kyc_token_hash: tokenHash, 
-        kyc_expires_at: expiry, 
-        kyc_verified_at: null,
-        status: 'approved'
-      })
+      .update({ kyc_code_hash: codeHash, kyc_expires_at: expiry, kyc_verified_at: null })
       .eq('id', reg.id);
-    if (updErr) throw new Error("Failed to persist KYC data");
 
-    // Return plaintext code and token for admin to manually send
-    const siteUrl = (Deno.env.get("KYC_SITE_URL") ?? Deno.env.get("SITE_URL") ?? "").replace(/\/+$/,'');
-    const verifyLink = siteUrl ? `${siteUrl}/kyc-verification?token=${token}` : `[SITE_URL]/kyc-verification?token=${token}`;
+    if (updErr) throw new Error(`DB write error: ${updErr.message}`);
 
-    return new Response(JSON.stringify({ 
-      success: true,
-      code: code,
-      token: token,
-      verifyLink: verifyLink,
-      expiresAt: expiry,
-      userEmail: reg.email,
-      userName: reg.firstName
-    }), { 
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    return new Response(JSON.stringify({ success: true, code, expiresAt: expiry }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: String(err?.message ?? err) 
-    }), { 
-      status: 500, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+  } catch (err: any) {
+    console.error('[kyc-approve] fail:', err?.message || err);
+    return new Response(
+      JSON.stringify({ success: false, error: String(err?.message || err) }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
