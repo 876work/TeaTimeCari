@@ -11,7 +11,7 @@ import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
 import { InviteStep, InviteStepData } from './components/Register/InviteStep';
 import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
-import { PendingApproval } from './components/Register/PendingApproval';
+import PendingApproval from './components/Register/PendingApproval';
 import { VerifySmsCode } from './components/Auth/VerifySmsCode';
 import { VerifyEmailCode } from './components/Auth/VerifyEmailCode';
 import { GenderFeed } from './components/Feed/GenderFeed';
