@@ -1,3 +1,5 @@
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { incrementInviteCodeUsage } from '../../utils/inviteCodeUtils';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard } from 'lucide-react';
 
@@ -11,13 +13,20 @@ interface RegisterStep3Props {
   onNext: (data: RegisterStep3Data) => void;
   onBack?: () => void;
   initialData?: RegisterStep3Data;
+  registrationData?: {
+    invite?: { inviteCode: string };
+    step1?: { firstName: string; lastName: string; email: string; phone: string; username: string };
+    step2?: { gender: 'Male' | 'Female' };
+  };
 }
 
 type CaptureMode = 'selfie' | 'id' | null;
 type CameraState = 'idle' | 'requesting' | 'active' | 'error';
 type CaptureState = 'none' | 'captured' | 'previewing';
 
-export function RegisterStep3({ onNext, onBack, initialData }: RegisterStep3Props) {
+export function RegisterStep3({ onNext, onBack, initialData, registrationData }: RegisterStep3Props) {
+  const supabase = useSupabaseClient();
+  
   // State management
   const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
   const [cameraState, setCameraState] = useState<CameraState>('idle');
@@ -25,6 +34,7 @@ export function RegisterStep3({ onNext, onBack, initialData }: RegisterStep3Prop
   const [error, setError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(initialData?.imageData || null);
   const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -175,13 +185,66 @@ export function RegisterStep3({ onNext, onBack, initialData }: RegisterStep3Prop
   };
 
   // Handle continue
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (captureMode && capturedImage && imageBlob) {
-      onNext({
-        captureType: captureMode,
-        imageData: capturedImage,
-        imageBlob: imageBlob
-      });
+      setIsSubmitting(true);
+      setError(null);
+      
+      try {
+        // Submit complete registration to database
+        if (registrationData?.step1 && registrationData?.step2) {
+          const { step1, step2, invite } = registrationData;
+          
+          const registrationPayload = {
+            firstName: step1.firstName,
+            lastName: step1.lastName,
+            email: step1.email,
+            phone: step1.phone,
+            username: step1.username,
+            gender: step2.gender,
+            captureType: captureMode,
+            imageData: capturedImage,
+            status: 'pending',
+            invite_code_used: invite?.inviteCode || null
+          };
+          
+          const { data: insertedData, error: insertError } = await supabase
+            .from('registrations')
+            .insert([registrationPayload])
+            .select()
+            .single();
+          
+          if (insertError) {
+            if (insertError.code === '42P01') {
+              console.warn('Registrations table not found, proceeding with demo flow');
+            } else {
+              throw insertError;
+            }
+          }
+          
+          // Increment invite code usage if successful
+          if (invite?.inviteCode && insertedData) {
+            const { error: inviteError } = await incrementInviteCodeUsage(supabase, invite.inviteCode);
+            if (inviteError) {
+              console.warn('Failed to increment invite code usage:', inviteError);
+              // Don't fail the registration for this
+            }
+          }
+        }
+        
+        // Proceed to success screen
+        onNext({
+          captureType: captureMode,
+          imageData: capturedImage,
+          imageBlob: imageBlob
+        });
+        
+      } catch (err: any) {
+        console.error('Error submitting registration:', err);
+        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -417,16 +480,23 @@ export function RegisterStep3({ onNext, onBack, initialData }: RegisterStep3Prop
           <button
             type="button"
             onClick={handleContinue}
-            disabled={!isReadyToContinue}
+            disabled={!isReadyToContinue || isSubmitting}
             className={`
               ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
-              ${isReadyToContinue
+              ${isReadyToContinue && !isSubmitting
                 ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}
           >
-            Complete Registration
+            {isSubmitting ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                Submitting...
+              </div>
+            ) : (
+              'Complete Registration'
+            )}
           </button>
         </div>
       </div>

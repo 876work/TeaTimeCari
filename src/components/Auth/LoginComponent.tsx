@@ -157,12 +157,12 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
           // Handle different registration statuses
           switch (registrationData.status) {
             case 'pending':
-              setError('Your application is under review. You\'ll receive an email with verification instructions once approved by our team.');
+              setError('Your application is still under review. Please wait for approval - you\'ll receive an email with verification instructions once approved by our team.');
               await supabase.auth.signOut();
               return;
             
             case 'approved':
-              setError('Your account has been approved! Please check your email for verification instructions.');
+              setError('Your account has been approved! Please check your email for a verification code and link to complete setup.');
               await supabase.auth.signOut();
               return;
             

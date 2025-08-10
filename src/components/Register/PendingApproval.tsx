@@ -48,9 +48,9 @@ export function PendingApproval({ registrationData, onGoHome, onGoBackToStep1 }:
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
           <div className="text-center">
             <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-3" />
-            <h2 className="text-lg font-bold text-green-900 mb-2">Thank You!</h2>
+            <h2 className="text-lg font-bold text-green-900 mb-2">Application Submitted</h2>
             <p className="text-green-800">
-              A team member will review your application. If approved, you'll receive an email with a 6-digit code and a verification link.
+              Thanks! A team member will review your application. If approved, you'll receive an email with a 6-digit code and a verification link.
             </p>
           </div>
         </div>

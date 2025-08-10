@@ -248,6 +248,7 @@ function App() {
                               onNext={handleStep3Complete}
                               onBack={handleBackToStep2}
                               initialData={registrationData.step3}
+                              registrationData={registrationData}
                             />
                           )}
                           {currentStep === 4 && (
