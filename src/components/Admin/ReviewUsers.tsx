@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
+import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -40,6 +41,8 @@ export function AdminUserReview() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGender, setFilterGender] = useState<'all' | 'Male' | 'Female'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'banned'>('all');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   // Simple admin check - in production, implement proper role-based access control
   const isAdmin = session?.user?.email?.includes('admin'); // TODO: Implement proper admin role check
@@ -435,6 +438,18 @@ export function AdminUserReview() {
     return matchesSearch && matchesGender;
   });
 
+  // Open image modal
+  const openImageModal = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setIsImageModalOpen(true);
+  };
+
+  // Close image modal
+  const closeImageModal = () => {
+    setSelectedImage(null);
+    setIsImageModalOpen(false);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -652,7 +667,9 @@ export function AdminUserReview() {
                             <img
                               src={user.imageData}
                               alt={`${user.captureType} thumbnail`}
-                              className="h-16 w-16 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                              className="h-16 w-16 object-cover rounded-lg border-2 border-gray-200 shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => openImageModal(user.imageData)}
+                              title="Click to view full size"
                             />
                             <div className="absolute -top-1 -right-1 bg-blue-500 text-white p-1 rounded-full">
                               <Camera className="w-3 h-3" />
@@ -810,6 +827,25 @@ export function AdminUserReview() {
             </div>
           )}
         </div>
+
+        {/* Image Modal */}
+        {isImageModalOpen && selectedImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="relative max-w-4xl max-h-full">
+              <button
+                onClick={closeImageModal}
+                className="absolute top-4 right-4 w-10 h-10 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-full flex items-center justify-center transition-colors z-10"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img
+                src={selectedImage}
+                alt="Full size registration photo"
+                className="max-w-full max-h-full object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         {filteredUsers.length > 0 && (
