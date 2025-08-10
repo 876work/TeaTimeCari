@@ -6,6 +6,7 @@ import { AdminLayout } from './AdminLayout';
 
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' } as const;
+const FN_HEADERS2 = {
   Authorization: `Bearer ${ANON}`,
   apikey: ANON,
   'Content-Type': 'application/json',
@@ -315,8 +316,6 @@ export function AdminUserReview() {
       
       alert(`${userName} has been banned successfully.`);
 
-      alert(`${userName} has been banned successfully.`);
-
     } catch (err: any) {
       console.error('Error banning user:', err);
       setError(`Failed to ban user: ${err.message || err.toString()}`);
@@ -348,8 +347,6 @@ export function AdminUserReview() {
         user.id === userId ? { ...user, status: 'verified' } : user
       ));
       
-      alert(`${userName} has been unbanned successfully.`);
-
       alert(`${userName} has been unbanned successfully.`);
 
     } catch (err: any) {
