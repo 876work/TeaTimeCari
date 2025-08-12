@@ -26,6 +26,7 @@ import KycVerification from './pages/KycVerification';
 import SetPassword from './pages/SetPassword';
 import KycSummary from './pages/KycSummary';
 import ContactUs from './pages/ContactUs';
+import KycPending from './pages/KycPending';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
@@ -187,6 +188,7 @@ function App() {
               <Route path="/kyc-summary" element={<KycSummary />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/contact-us" element={<ContactUs />} />
+              <Route path="/kyc-pending" element={<KycPending />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />

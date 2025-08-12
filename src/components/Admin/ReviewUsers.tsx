@@ -6,11 +6,6 @@ import { AdminLayout } from './AdminLayout';
 
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' } as const;
-const FN_HEADERS2 = {
-  Authorization: `Bearer ${ANON}`,
-  apikey: ANON,
-  'Content-Type': 'application/json',
-} as const;
 
 // Define a type for the user data fetched from Supabase
 interface User {
@@ -46,6 +41,14 @@ export function AdminUserReview() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string|null>(null);
   const [generatedExpiry, setGeneratedExpiry] = useState<string|null>(null);
+  const [discourseBaseUrl, setDiscourseBaseUrl] = useState<string>('');
+
+  // Get Discourse base URL from environment
+  useEffect(() => {
+    // In a real app, this would come from your environment
+    // For demo purposes, we'll use a placeholder
+    setDiscourseBaseUrl(import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://forum.example.com');
+  }, []);
 
   // Simple admin check - in production, implement proper role-based access control
   const isAdmin = session?.user?.email?.includes('admin'); // TODO: Implement proper admin role check
@@ -222,32 +225,69 @@ export function AdminUserReview() {
   const handleApprove = async (userId: string, phoneNumber: string, userName: string) => {
     if (!confirm(`Are you sure you want to approve ${userName}?`)) return;
 
+    // Get user data for gender selection
+    const userToApprove = pendingUsers.find(u => u.id === userId);
+    if (!userToApprove) {
+      setError('User not found');
+      return;
+    }
+
+    // Simple gender mapping - in production, you might want a more sophisticated UI
+    const genderMapping = userToApprove.gender === 'Male' ? 'men' : 'women';
+
     setProcessingUserId(userId);
     setError(null);
     try {
+      // Update registration status first
       await supabase.from('registrations').update({ status: 'approved' }).eq('id', userId);
 
-      const { data, error } = await supabase.functions.invoke('kyc-approve', {
+      // Call the new approve-and-sync function
+      const res = await supabase.functions.invoke('approve-and-sync', {
         headers: FN_HEADERS,
-        body: { registrationId: userId }
+        body: { 
+          user_id: userId, 
+          gender: genderMapping,
+          xaccess: false // Default to false, can be made configurable later
+        }
       });
 
-      if (error) {
-        // Pull status/body if available
+      if (res.error) {
+        // Try to pull status/body from the error's response
         // @ts-ignore
-        const ctx = error.context; let extra='';
-        try { if (ctx?.response) extra = ` [status=${ctx.response.status}] ${await ctx.response.text()}`; } catch {}
-        throw new Error(`Failed to approve user: ${error.message || 'Edge error'}${extra}`);
+        const ctx = res.error?.context;
+        let extra = '';
+        try {
+          if (ctx?.response) {
+            const status = ctx.response.status;
+            const text = await ctx.response.text();
+            extra = ` [status=${status}] ${text}`;
+          }
+        } catch (e) {
+          console.warn('Failed to parse error context response:', e);
+        }
+        console.error('approve-and-sync error:', res.error?.name, res.error?.message, extra);
+        throw new Error(`Failed to approve user: ${res.error?.message || 'Edge error'}${extra}`);
       }
-      if (!data?.success) throw new Error(`Failed to approve user: ${data?.error || 'Unknown error'}`);
 
-      setGeneratedCode(data.code);
-      setGeneratedExpiry(data.expiresAt);
+      if (!res.data || res.data.status === 'failed') {
+        console.error('approve-and-sync non-success:', res.data);
+        throw new Error(`Failed to approve user: ${res.data?.error || 'Unknown error'}`);
+      }
+
+      // Handle partial success (approved but Discourse sync failed)
+      if (res.data.status === 'approved_with_sync_error') {
+        setError(`User approved but Discourse sync failed: ${res.data.error}`);
+      }
 
       // Remove approved user from the list
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
       
-      alert(`${userName} has been approved successfully! Check the code display in the bottom-right corner.`);
+      // Show success message with Discourse link
+      const successMessage = res.data.status === 'synced' 
+        ? `${userName} has been approved and synced to Discourse successfully!`
+        : `${userName} has been approved but there was an issue with Discourse sync.`;
+      
+      alert(successMessage);
 
     } catch (err: any) {
       console.error('Error approving user:', err);
@@ -687,7 +727,7 @@ export function AdminUserReview() {
                           {user.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleApprove(user.id, user.phone, `${user.firstName} ${user.lastName}`)}
+                                onClick={() => handleApprove(user.id, user.phone, user.username)}
                                 disabled={processingUserId === user.id}
                                 className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
                                   processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
@@ -701,7 +741,7 @@ export function AdminUserReview() {
                                 Approve
                               </button>
                               <button
-                                onClick={() => handleReject(user.id, `${user.firstName} ${user.lastName}`)}
+                                onClick={() => handleReject(user.id, user.username)}
                                 disabled={processingUserId === user.id}
                                 className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
                                   processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
@@ -719,7 +759,7 @@ export function AdminUserReview() {
                           
                           {user.status === 'verified' && (
                             <button
-                              onClick={() => handleBan(user.id, `${user.firstName} ${user.lastName}`)}
+                              onClick={() => handleBan(user.id, user.username)}
                               disabled={processingUserId === user.id}
                               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
                                 processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
@@ -736,7 +776,7 @@ export function AdminUserReview() {
                           
                           {user.status === 'banned' && (
                             <button
-                              onClick={() => handleUnban(user.id, `${user.firstName} ${user.lastName}`)}
+                              onClick={() => handleUnban(user.id, user.username)}
                               disabled={processingUserId === user.id}
                               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
                                 processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
@@ -789,15 +829,19 @@ export function AdminUserReview() {
         )}
       </div>
 
-      {/* Code Display Banner */}
-      {generatedCode && (
+      {/* Success Banner with Discourse Link */}
+      {discourseBaseUrl && (
         <div className="fixed bottom-4 right-4 bg-white border shadow p-4 rounded">
-          <div className="font-medium mb-1">KYC code generated</div>
-          <div className="mb-2">Code: <span className="font-mono">{generatedCode}</span></div>
-          {generatedExpiry && <div className="text-xs text-gray-600">Expires: {new Date(generatedExpiry).toLocaleString()}</div>}
-          <button className="mt-2 px-3 py-1 border rounded" onClick={() => navigator.clipboard.writeText(generatedCode!)}>
-            Copy
+          <div className="font-medium mb-2">User Management</div>
+          <button 
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+            onClick={() => window.open(discourseBaseUrl, '_blank')}
+          >
+            Open Community Forum
           </button>
+          <div className="text-xs text-gray-500 mt-1 text-center">
+            View approved users in Discourse
+          </div>
         </div>
       )}
     </AdminLayout>
