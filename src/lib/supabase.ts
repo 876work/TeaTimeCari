@@ -3,16 +3,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-// Guardrails: warn fast if misconfigured
-if (!supabaseUrl?.startsWith('https://') || !supabaseUrl.includes('.supabase.co')) {
-  console.warn('[Supabase] VITE_SUPABASE_URL looks wrong:', supabaseUrl);
-}
+// Normalize base URL by trimming any trailing slash
+const baseUrl = supabaseUrl.replace(/\/$/, '');
 
-const baseUrl = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
+// Compute correct Functions URL.
+// - Hosted projects use the `functions` subdomain
+// - Local CLI or custom domains use the proxy path
+const functionsUrl = baseUrl.includes('.supabase.co')
+  ? baseUrl.replace('.supabase.co', '.functions.supabase.co')
+  : `${baseUrl}/functions/v1`;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   functions: {
-    // Always use the proxy path under the primary domain (no cross-domain CORS headaches)
-    url: `${baseUrl}/functions/v1`,
+    url: functionsUrl,
   },
 });
