@@ -7,7 +7,6 @@ import { StripeProvider } from './components/Payment/StripeProvider';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
-import { InviteStep, InviteStepData } from './components/Register/InviteStep';
 import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
 import PendingApproval from './components/Register/PendingApproval';
@@ -30,23 +29,17 @@ import { supabase } from './lib/supabase';
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
-  const [currentStep, setCurrentStep] = React.useState(0); // Start with invite step
+  const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
-    invite?: InviteStepData;
     step1?: RegisterStep1Data;
     step2?: RegisterStep2Data;
     step3?: RegisterStep3Data;
   }>({});
 
-  const handleInviteComplete = (data: InviteStepData) => {
-    console.log('Invite step completed:', data);
-    setRegistrationData(prev => ({ ...prev, invite: data }));
-    setCurrentStep(1);
-  };
 
   const handleGoToLogin = () => {
     setCurrentPage('login');
@@ -54,7 +47,7 @@ function App() {
 
   const handleBackToRegister = () => {
     setCurrentPage('register');
-    setCurrentStep(0); // Reset to invite step
+    setCurrentStep(1); // Reset to basic info step
   };
 
   const handleLoginSuccess = () => {
@@ -96,7 +89,7 @@ function App() {
 
   const handleGoHome = () => {
     setCurrentPage('register');
-    setCurrentStep(0); // Reset to invite step
+    setCurrentStep(1); // Reset to basic info step
     setShowWelcomePage(true); // Show welcome page again
     setRegistrationData({});
   };
@@ -164,9 +157,6 @@ function App() {
     setCurrentStep(1);
   };
 
-  const handleBackToInvite = () => {
-    setCurrentStep(0);
-  };
 
   const handleBackToStep2 = () => {
     setCurrentStep(2);
@@ -209,17 +199,10 @@ function App() {
                     <AppLayout>
                       {currentPage === 'register' && (
                         <>
-                          {currentStep === 0 && (
-                            <InviteStep 
-                              onNext={handleInviteComplete} 
-                              onGoToLogin={handleGoToLogin}
-                              initialData={registrationData.invite}
-                            />
-                          )}
                           {currentStep === 1 && (
                             <RegisterStep1 
                               onNext={handleStep1Complete}
-                              onBack={handleBackToInvite}
+                              onGoToLogin={handleGoToLogin}
                               initialData={registrationData.step1}
                             />
                           )}

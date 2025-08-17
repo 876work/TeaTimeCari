@@ -14,7 +14,6 @@ interface RegisterStep3Props {
   onBack?: () => void;
   initialData?: RegisterStep3Data;
   registrationData?: {
-    invite?: { inviteCode: string };
     step1?: { firstName: string; lastName: string; email: string; phone: string; username: string };
     step2?: { gender: 'Male' | 'Female' };
   };
@@ -193,7 +192,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
       try {
         // Submit complete registration to database
         if (registrationData?.step1 && registrationData?.step2) {
-          const { step1, step2, invite } = registrationData;
+          const { step1, step2 } = registrationData;
           
           const registrationPayload = {
             firstName: step1.firstName,
@@ -205,7 +204,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
             captureType: captureMode,
             imageData: capturedImage,
             status: 'pending',
-            invite_code_used: invite?.inviteCode || null
+            invite_code_used: null
           };
           
           const { data: insertedData, error: insertError } = await supabase
@@ -222,14 +221,6 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
             }
           }
           
-          // Increment invite code usage if successful
-          if (invite?.inviteCode && insertedData) {
-            const { error: inviteError } = await incrementInviteCodeUsage(supabase, invite.inviteCode);
-            if (inviteError) {
-              console.warn('Failed to increment invite code usage:', inviteError);
-              // Don't fail the registration for this
-            }
-          }
         }
         
         // Proceed to success screen
