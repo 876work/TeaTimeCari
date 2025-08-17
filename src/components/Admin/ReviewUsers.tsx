@@ -4,9 +4,6 @@ import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, 
 import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
-const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' } as const;
-
 // Define a type for the user data fetched from Supabase
 interface User {
   id: string;
@@ -223,11 +220,12 @@ export function AdminUserReview() {
   const handleApprove = async (user: User) => {
     if (!confirm(`Are you sure you want to approve ${user.username}?`)) return;
 
-    // Simple gender mapping - in production, you might want a more sophisticated UI
-    const genderMapping = user.gender === 'Male' ? 'men' : 'women';
+    // Map gender to the format expected by the Edge Function
+    const genderMapping: 'men' | 'women' = user.gender === 'Male' ? 'men' : 'women';
 
     setProcessingUserId(user.id);
     setError(null);
+    
     try {
       // Update registration status first
       const { error: updateError } = await supabase
@@ -240,68 +238,57 @@ export function AdminUserReview() {
         throw new Error(updateError.message);
       }
 
-      // Call the new approve-and-sync function
-      const res = await supabase.functions.invoke('approve-and-sync', {
-        headers: FN_HEADERS,
+      // Call the approve-and-sync Edge Function with proper JSON body
+      const { data, error: functionError } = await supabase.functions.invoke('approve-and-sync', {
         body: {
           user_id: user.id,
           gender: genderMapping,
-          xaccess: false // Default to false, can be made configurable later
+          xaccess: false // Default to false for now
         }
       });
 
-      if (res.error) {
-        // Try to pull status/body from the error's response
-        // @ts-ignore
-        const ctx = res.error?.context;
-        let extra = '';
-        try {
-          if (ctx?.response) {
-            const status = ctx.response.status;
-            const text = await ctx.response.text();
-            extra = ` [status=${status}] ${text}`;
-          }
-        } catch (e) {
-          console.warn('Failed to parse error context response:', e);
-        }
-        console.error('approve-and-sync error:', res.error?.name, res.error?.message, extra);
-        throw new Error(`${res.error?.message || 'Edge error'}${extra}`);
+      if (functionError) {
+        console.error('approve-and-sync function error:', functionError);
+        throw new Error(functionError.message || 'Failed to call approve-and-sync function');
       }
 
-      if (!res.data || res.data.status === 'failed') {
-        console.error('approve-and-sync non-success:', res.data);
-        throw new Error(res.data?.error || 'Unknown error');
+      if (!data || data.status === 'failed') {
+        console.error('approve-and-sync failed:', data);
+        throw new Error(data?.error || 'Approval process failed');
       }
 
-      // Handle partial success (approved but Discourse sync failed)
-      if (res.data.status === 'approved_with_sync_error') {
-        setError(`User approved but Discourse sync failed: ${res.data.error}`);
+      // Handle different response statuses
+      if (data.status === 'approved_with_sync_error') {
+        setError(`User approved but Discourse sync failed: ${data.error || 'Unknown sync error'}`);
+      } else if (data.status === 'synced') {
+        console.log('User approved and synced successfully:', data);
       }
 
       // Send approval email with verification code
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
-        headers: FN_HEADERS,
         body: { email: user.email, firstName: user.firstName }
       });
 
       if (emailError || !emailData?.success) {
         console.error('send-approval-email error:', emailError, emailData);
-        setError(`User approved but email failed: ${emailError?.message || emailData?.error || 'Unknown error'}`);
+        setError(`User approved but email notification failed: ${emailError?.message || emailData?.error || 'Unknown email error'}`);
       }
 
       // Remove approved user from the list
       setPendingUsers(prev => prev.filter(u => u.id !== user.id));
 
-      // Show success message with Discourse link
-      const successMessage = res.data.status === 'synced'
-        ? `${user.username} has been approved and synced to Discourse successfully!`
-        : `${user.username} has been approved but there was an issue with Discourse sync.`;
+      // Show success message
+      const successMessage = data.status === 'synced'
+        ? `✅ ${user.username} has been approved and synced to Discourse successfully!`
+        : data.status === 'approved_with_sync_error'
+        ? `⚠️ ${user.username} has been approved but Discourse sync failed. Check error above.`
+        : `✅ ${user.username} has been approved successfully!`;
 
       alert(successMessage);
 
     } catch (err: any) {
       console.error('Error approving user:', err);
-      setError(`Failed to approve user: ${err.message || err.toString()}`);
+      setError(`Failed to approve ${user.username}: ${err.message || 'Unknown error'}`);
     } finally {
       setProcessingUserId(null);
     }
