@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
+import { createClient } from '@supabase/supabase-js';
 import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
 import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
 const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const FUNCTIONS_URL =
+  import.meta.env.VITE_SUPABASE_FUNCTIONS_URL ??
+  `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1`;
+const fnClient = createClient(SUPABASE_URL, ANON, { functions: { url: FUNCTIONS_URL } });
 const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' } as const;
 
 // Define a type for the user data fetched from Supabase
@@ -233,7 +239,7 @@ export function AdminUserReview() {
       await supabase.from('registrations').update({ status: 'approved' }).eq('id', user.id);
 
       // Call the new approve-and-sync function
-      const res = await supabase.functions.invoke('approve-and-sync', {
+      const res = await fnClient.functions.invoke('approve-and-sync', {
         headers: FN_HEADERS,
         body: {
           user_id: user.id,
@@ -271,7 +277,7 @@ export function AdminUserReview() {
       }
 
       // Send approval email with verification code
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
+      const { data: emailData, error: emailError } = await fnClient.functions.invoke('send-approval-email', {
         headers: FN_HEADERS,
         body: { email: user.email, firstName: user.firstName }
       });
