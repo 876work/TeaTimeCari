@@ -230,7 +230,15 @@ export function AdminUserReview() {
     setError(null);
     try {
       // Update registration status first
-      await supabase.from('registrations').update({ status: 'approved' }).eq('id', user.id);
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ status: 'approved' })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating registration status:', updateError);
+        throw new Error(updateError.message);
+      }
 
       // Call the new approve-and-sync function
       const res = await supabase.functions.invoke('approve-and-sync', {
