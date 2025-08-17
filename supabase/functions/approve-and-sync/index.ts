@@ -1,5 +1,10 @@
-import { corsHeaders } from "../_shared/cors.ts";
-// ^ keep this one at top; it should be a plain object and safe to import
+// No top-level imports at all. This ensures preflight can't crash.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-admin-secret, content-type, apikey, x-client-info",
+  "Vary": "Origin",
+};
 
 interface ApprovalRequest {
   user_id: string;
@@ -8,14 +13,17 @@ interface ApprovalRequest {
 }
 
 Deno.serve(async (req) => {
-  // Always answer CORS preflight without touching any env-dependent code
+  // Always answer CORS preflight before touching any env/clients
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // ⬇️ Move env/secret-using imports *after* preflight
-  const { supabaseAdmin } = await import("../_shared/supabaseAdmin.ts");
-  const { syncUserToDiscourse, buildDiscourseGroups } = await import("../_shared/sso.ts");
+  // Load modules that use env/clients only AFTER the preflight guard
+  const [{ supabaseAdmin }, { syncUserToDiscourse, buildDiscourseGroups }] =
+    await Promise.all([
+      import("../_shared/supabaseAdmin.ts"),
+      import("../_shared/sso.ts"),
+    ]);
 
   try {
     if (req.method !== "POST") {
@@ -52,19 +60,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // --- (Optional auth gate was here) ---
-    // // const adminSecret = Deno.env.get("ADMIN_APPROVE_SECRET");
-    // // if (adminSecret) {
-    // //   const incoming = req.headers.get("x-admin-secret");
-    // //   if (incoming !== adminSecret) {
-    // //     return new Response(JSON.stringify({ error: "unauthorized" }), {
-    // //       status: 401,
-    // //       headers: { ...corsHeaders, "Content-Type": "application/json" },
-    // //     });
-    // //   }
-    // // }
-
-    // Pull basic user info from registrations
+    // Fetch registration record
     const { data: registration, error: regError } = await supabaseAdmin
       .from("registrations")
       .select("id, email, username, firstName, lastName")
@@ -78,7 +74,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Upsert the profile with approval fields
+    // Upsert profile as approved
     const profileData = {
       id: user_id,
       email: registration.email,
@@ -102,7 +98,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build & send Discourse SSO sync
+    // Build Discourse SSO payload & sync
     const groups = buildDiscourseGroups(gender, xaccess);
 
     const payload: Record<string, string> = {
