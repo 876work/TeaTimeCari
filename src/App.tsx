@@ -31,7 +31,12 @@ import KycPending from './pages/KycPending';
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const baseUrl = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  functions: {
+    url: `${baseUrl}/functions/v1`,
+  },
+});
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
