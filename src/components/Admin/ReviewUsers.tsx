@@ -229,10 +229,8 @@ export function AdminUserReview() {
     setProcessingUserId(user.id);
     setError(null);
     try {
-      // Update registration status first
-      await supabase.from('registrations').update({ status: 'approved' }).eq('id', user.id);
-
-      // Call the new approve-and-sync function
+      // Call the approve-and-sync function before updating registration status.
+      // This prevents marking the user as approved if the function fails.
       const res = await supabase.functions.invoke('approve-and-sync', {
         headers: FN_HEADERS,
         body: {
@@ -270,6 +268,10 @@ export function AdminUserReview() {
         setError(`User approved but Discourse sync failed: ${res.data.error}`);
       }
 
+      // Update registration status only after the function succeeds.
+      // This ensures the status remains pending if approve-and-sync fails.
+      await supabase.from('registrations').update({ status: 'approved' }).eq('id', user.id);
+
       // Send approval email with verification code
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
         headers: FN_HEADERS,
@@ -293,6 +295,7 @@ export function AdminUserReview() {
 
     } catch (err: any) {
       console.error('Error approving user:', err);
+      // Status remains unchanged since the update happens after successful function completion
       setError(`Failed to approve user: ${err.message || err.toString()}`);
     } finally {
       setProcessingUserId(null);
