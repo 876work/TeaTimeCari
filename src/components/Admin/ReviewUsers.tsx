@@ -265,12 +265,12 @@ export function AdminUserReview() {
           console.warn('Failed to parse error context response:', e);
         }
         console.error('approve-and-sync error:', res.error?.name, res.error?.message, extra);
-        throw new Error(`Failed to approve user: ${res.error?.message || 'Edge error'}${extra}`);
+        throw new Error(`${res.error?.message || 'Edge error'}${extra}`);
       }
 
       if (!res.data || res.data.status === 'failed') {
         console.error('approve-and-sync non-success:', res.data);
-        throw new Error(`Failed to approve user: ${res.data?.error || 'Unknown error'}`);
+        throw new Error(res.data?.error || 'Unknown error');
       }
 
       // Handle partial success (approved but Discourse sync failed)
