@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { FileText } from 'lucide-react';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -27,16 +26,7 @@ import SetPassword from './pages/SetPassword';
 import KycSummary from './pages/KycSummary';
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
-
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
-const baseUrl = supabaseUrl.endsWith('/') ? supabaseUrl.slice(0, -1) : supabaseUrl;
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  functions: {
-    url: `${baseUrl}/functions/v1`,
-  },
-});
+import { supabase } from './lib/supabase';
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
