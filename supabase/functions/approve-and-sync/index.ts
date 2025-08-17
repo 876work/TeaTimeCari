@@ -1,29 +1,60 @@
-// No top-level imports at all. This ensures preflight can't crash.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-admin-secret, content-type, apikey, x-client-info",
-  "Vary": "Origin",
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { syncUserToDiscourse, buildDiscourseGroups } from "../_shared/sso.ts";
 
 interface ApprovalRequest {
-  user_id: string;
+  user_id: string;            // registration.id (NOT auth id)
   gender: "men" | "women";
   xaccess?: boolean;
 }
 
+function mustEnv(k: string): string {
+  const v = Deno.env.get(k);
+  if (!v) throw new Error(`missing env: ${k}`);
+  return v;
+}
+
+// Ensure an auth.users record exists for the email.
+// Returns the auth user id (existing or newly created).
+async function ensureAuthUserIdForEmail(email: string): Promise<string> {
+  const SUPABASE_URL = mustEnv("SUPABASE_URL");
+  const SRK = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  // 1) Try to find by email via Admin REST
+  const lookup = await fetch(
+    `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+    { headers: { apikey: SRK, Authorization: `Bearer ${SRK}` } }
+  );
+  const lookupJson = await lookup.json().catch(() => ({} as any));
+  const existing = lookupJson?.users?.find((u: any) =>
+    (u?.email || "").toLowerCase() === email.toLowerCase()
+  );
+  if (existing?.id) return existing.id as string;
+
+  // 2) Create if not found (email already verified; your app controls access via KYC)
+  const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: "POST",
+    headers: {
+      apikey: SRK,
+      Authorization: `Bearer ${SRK}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, email_confirm: true }),
+  });
+  const createJson = await createRes.json().catch(() => ({} as any));
+  if (!createRes.ok || !createJson?.id) {
+    throw new Error(
+      `admin create user failed: ${createJson?.msg || createRes.status}`
+    );
+  }
+  return createJson.id as string;
+}
+
 Deno.serve(async (req) => {
-  // Always answer CORS preflight before touching any env/clients
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-
-  // Load modules that use env/clients only AFTER the preflight guard
-  const [{ supabaseAdmin }, { syncUserToDiscourse, buildDiscourseGroups }] =
-    await Promise.all([
-      import("../_shared/supabaseAdmin.ts"),
-      import("../_shared/sso.ts"),
-    ]);
 
   try {
     if (req.method !== "POST") {
@@ -33,10 +64,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse JSON body
-    let requestData: ApprovalRequest;
+    let body: ApprovalRequest;
     try {
-      requestData = await req.json();
+      body = await req.json();
     } catch {
       return new Response(
         JSON.stringify({ error: "Invalid JSON in request body" }),
@@ -44,10 +74,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { user_id, gender, xaccess = false } = requestData;
+    const { user_id: registrationId, gender, xaccess = false } = body;
 
-    // Validate input
-    if (!user_id || !gender) {
+    if (!registrationId || !gender) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: user_id, gender" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -60,79 +89,86 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch registration record
-    const { data: registration, error: regError } = await supabaseAdmin
+    // Load the pending registration (source of truth before approval)
+    const { data: reg, error: regErr } = await supabaseAdmin
       .from("registrations")
       .select("id, email, username, firstName, lastName")
-      .eq("id", user_id)
+      .eq("id", registrationId)
       .single();
 
-    if (regError || !registration) {
+    if (regErr || !reg) {
       return new Response(
         JSON.stringify({ error: "Registration not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Upsert profile as approved
-    const profileData = {
-      id: user_id,
-      email: registration.email,
-      username: registration.username,
-      full_name: `${registration.firstName} ${registration.lastName}`,
-      kyc_status: "approved",
-      gender,
-      xaccess,
-      approved_at: new Date().toISOString(),
-    };
+    // Get or create auth user for this email
+    const authUserId = await ensureAuthUserIdForEmail(reg.email);
 
-    const { error: upsertError } = await supabaseAdmin
+    // Upsert the approved profile using the AUTH USER ID as PK (FK to auth.users)
+    const { error: upErr } = await supabaseAdmin
       .from("profiles")
-      .upsert(profileData, { onConflict: "id" });
+      .upsert(
+        {
+          id: authUserId,
+          email: reg.email,
+          username: reg.username,
+          full_name: `${reg.firstName ?? ""} ${reg.lastName ?? ""}`.trim(),
+          kyc_status: "approved",
+          approved_at: new Date().toISOString(),
+          // add these columns to profiles if you want them stored; otherwise remove:
+          // gender,
+          // xaccess,
+        },
+        { onConflict: "id" }
+      );
 
-    if (upsertError) {
-      console.error("Error upserting profile:", upsertError);
+    if (upErr) {
       return new Response(
-        JSON.stringify({ error: `Failed to update profile: ${upsertError.message}` }),
+        JSON.stringify({ error: `Failed to update profile: ${upErr.message}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Build Discourse SSO payload & sync
+    // Build Discourse groups and payload; use authUserId as external_id
     const groups = buildDiscourseGroups(gender, xaccess);
-
     const payload: Record<string, string> = {
-      external_id: user_id,
-      email: registration.email,
-      username: registration.username,
-      name: `${registration.firstName} ${registration.lastName}`,
+      external_id: authUserId,
+      email: reg.email,
+      username: reg.username,
+      name: `${reg.firstName ?? ""} ${reg.lastName ?? ""}`.trim(),
       add_groups: groups,
     };
     if ((Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "").toLowerCase() === "true") {
       payload.require_activation = "true";
     }
 
+    // Try syncing to Discourse; if it fails, still report approval success
     try {
       await syncUserToDiscourse(payload);
-    } catch (discourseError: any) {
-      console.error("Discourse sync failed:", discourseError);
+    } catch (e: any) {
+      console.error("Discourse sync failed:", e);
       return new Response(
         JSON.stringify({
           status: "approved_with_sync_error",
-          error: `User approved but Discourse sync failed: ${discourseError?.message || discourseError}`,
+          error: `User approved but Discourse sync failed: ${e?.message || e}`,
           profile_updated: true,
           discourse_synced: false,
+          external_id: authUserId,
+          groups,
         }),
         { status: 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Success
+    // All good
     return new Response(
       JSON.stringify({
         status: "synced",
         profile_updated: true,
         discourse_synced: true,
+        external_id: authUserId,
         groups,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -141,8 +177,8 @@ Deno.serve(async (req) => {
     console.error("[approve-and-sync] Error:", err?.message || err);
     return new Response(
       JSON.stringify({
-        error: `Approval and sync failed: ${err?.message || err}`,
         status: "failed",
+        error: `Approval and sync failed: ${err?.message || err}`,
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
