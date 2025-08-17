@@ -1,6 +1,14 @@
-import { corsHeaders } from "../_shared/cors.ts";
+// import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { syncUserToDiscourse, buildDiscourseGroups } from "../_shared/sso.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-admin-secret, apikey, x-client-info, content-type",
+  "Access-Control-Max-Age": "86400",
+};
 
 interface ApprovalRequest {
   user_id: string;
