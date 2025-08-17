@@ -39,8 +39,6 @@ export function AdminUserReview() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'banned'>('all');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string|null>(null);
-  const [generatedExpiry, setGeneratedExpiry] = useState<string|null>(null);
   const [discourseBaseUrl, setDiscourseBaseUrl] = useState<string>('');
 
   // Get Discourse base URL from environment
@@ -222,30 +220,23 @@ export function AdminUserReview() {
     setLoading(false);
   };
 
-  const handleApprove = async (userId: string, phoneNumber: string, userName: string) => {
-    if (!confirm(`Are you sure you want to approve ${userName}?`)) return;
-
-    // Get user data for gender selection
-    const userToApprove = pendingUsers.find(u => u.id === userId);
-    if (!userToApprove) {
-      setError('User not found');
-      return;
-    }
+  const handleApprove = async (user: User) => {
+    if (!confirm(`Are you sure you want to approve ${user.username}?`)) return;
 
     // Simple gender mapping - in production, you might want a more sophisticated UI
-    const genderMapping = userToApprove.gender === 'Male' ? 'men' : 'women';
+    const genderMapping = user.gender === 'Male' ? 'men' : 'women';
 
-    setProcessingUserId(userId);
+    setProcessingUserId(user.id);
     setError(null);
     try {
       // Update registration status first
-      await supabase.from('registrations').update({ status: 'approved' }).eq('id', userId);
+      await supabase.from('registrations').update({ status: 'approved' }).eq('id', user.id);
 
       // Call the new approve-and-sync function
       const res = await supabase.functions.invoke('approve-and-sync', {
         headers: FN_HEADERS,
-        body: { 
-          user_id: userId, 
+        body: {
+          user_id: user.id,
           gender: genderMapping,
           xaccess: false // Default to false, can be made configurable later
         }
@@ -279,14 +270,25 @@ export function AdminUserReview() {
         setError(`User approved but Discourse sync failed: ${res.data.error}`);
       }
 
+      // Send approval email with verification code
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
+        headers: FN_HEADERS,
+        body: { email: user.email, firstName: user.firstName }
+      });
+
+      if (emailError || !emailData?.success) {
+        console.error('send-approval-email error:', emailError, emailData);
+        setError(`User approved but email failed: ${emailError?.message || emailData?.error || 'Unknown error'}`);
+      }
+
       // Remove approved user from the list
-      setPendingUsers(prev => prev.filter(user => user.id !== userId));
-      
+      setPendingUsers(prev => prev.filter(u => u.id !== user.id));
+
       // Show success message with Discourse link
-      const successMessage = res.data.status === 'synced' 
-        ? `${userName} has been approved and synced to Discourse successfully!`
-        : `${userName} has been approved but there was an issue with Discourse sync.`;
-      
+      const successMessage = res.data.status === 'synced'
+        ? `${user.username} has been approved and synced to Discourse successfully!`
+        : `${user.username} has been approved but there was an issue with Discourse sync.`;
+
       alert(successMessage);
 
     } catch (err: any) {
@@ -727,7 +729,7 @@ export function AdminUserReview() {
                           {user.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleApprove(user.id, user.phone, user.username)}
+                                onClick={() => handleApprove(user)}
                                 disabled={processingUserId === user.id}
                                 className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
                                   processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''
