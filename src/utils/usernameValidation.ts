@@ -53,15 +53,18 @@ export function generateUsernameSuggestions(baseUsername: string): string[] {
 }
 
 export function validatePhoneNumber(phone: string): { isValid: boolean; error: string | null } {
-  if (!phone) {
+  // Ensure we have a non-empty value after trimming whitespace
+  if (!phone || !phone.trim()) {
     return { isValid: false, error: 'Phone number is required' };
   }
-  
+
+  // Remove any non-numeric characters so formatted numbers like "758-123-4567" work
+  const digitsOnly = phone.replace(/\D/g, '');
   const phoneRegex = /^758\d{7}$/;
-  if (!phoneRegex.test(phone)) {
+  if (!phoneRegex.test(digitsOnly)) {
     return { isValid: false, error: 'Phone number must be in format: 758xxxxxxx' };
   }
-  
+
   return { isValid: true, error: null };
 }
 
