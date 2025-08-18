@@ -206,7 +206,81 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     setIsCheckingEmail(true);
     
     try {
-      const { count, error } = await supabase
+      // Check both registrations and profiles tables for existing email
+      const [registrationsResult, profilesResult] = await Promise.all([
+        supabase
+          .from('registrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('email', email.toLowerCase()),
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('email', email.toLowerCase())
+      ]);
+      
+      // Check for errors in either query
+      if (registrationsResult.error && registrationsResult.error.code !== '42P01') {
+        throw registrationsResult.error;
+      }
+      
+      if (profilesResult.error && profilesResult.error.code !== '42P01') {
+        throw profilesResult.error;
+      }
+      
+      // Calculate total count from both tables
+      const registrationsCount = registrationsResult.count || 0;
+      const profilesCount = profilesResult.count || 0;
+      const totalCount = registrationsCount + profilesCount;
+      
+      const isAvailable = totalCount === 0;
+      
+      // Debug logging
+      console.log('Email availability check:', { 
+        email, 
+        registrationsCount, 
+        profilesCount, 
+        totalCount, 
+        isAvailable 
+      });
+      
+      setEmailStatus(prev => ({
+        ...prev,
+        isAvailable,
+        error: isAvailable ? null : "You're unable to register with this email address. Please use another and try again."
+      }));
+      
+      // Log for debugging
+      if (!isAvailable) {
+        console.log('Email availability check: Email already exists in database:', email, 'Total count:', totalCount);
+      }
+      
+      return isAvailable;
+      
+    } catch (error) {
+      // Handle table not found errors gracefully for demo purposes
+      if (error.code === '42P01') {
+        console.warn('Table not found, assuming email is available for demo');
+        setEmailStatus(prev => ({
+          ...prev,
+          isAvailable: true,
+          error: null
+        }));
+        return true;
+      }
+      
+      console.error('Error checking email availability:', error);
+      setGlobalError('Failed to check email availability. Please try again.');
+      setEmailStatus(prev => ({
+        ...prev,
+        isAvailable: false
+      }));
+      return false;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+  
+  // Effect for username availability checking
         .from('registrations')
         .select('*', { count: 'exact', head: true })
         .eq('email', email.toLowerCase())
