@@ -36,12 +36,6 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
       description: 'Moderate reported content'
     },
     {
-      id: 'invite-codes',
-      label: 'Invite Codes',
-      icon: <Key className="w-5 h-5" />,
-      description: 'Manage invitation codes'
-    },
-    {
       id: 'logs',
       label: 'Logs',
       icon: <FileText className="w-5 h-5" />,

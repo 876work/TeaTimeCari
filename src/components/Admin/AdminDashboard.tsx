@@ -22,7 +22,6 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
-import { AdminInviteCodes } from './AdminInviteCodes';
 import FunctionPing from '../../dev/FunctionPing';
 
 // Type definitions
@@ -242,11 +241,6 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     }
   };
 
-  const handleGoToInviteCodes = () => {
-    if (onNavigate) {
-      onNavigate('invite-codes');
-    }
-  };
 
   // Quick actions configuration
   const quickActions: QuickAction[] = [
@@ -268,14 +262,6 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       count: stats.flaggedPosts,
       action: handleGoToFlaggedPosts
     },
-    {
-      title: 'Manage Invite Codes',
-      description: 'Create and manage invitation codes',
-      icon: <Key className="w-6 h-6" />,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50 hover:bg-purple-100',
-      action: handleGoToInviteCodes
-    }
   ];
 
   if (!isAdmin) {
@@ -297,10 +283,6 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
 
   if (activePage === 'flagged-posts') {
     return <ReviewFlaggedPosts />;
-  }
-
-  if (activePage === 'invite-codes') {
-    return <AdminInviteCodes />;
   }
 
   if (activePage === 'function-ping') {
@@ -563,7 +545,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {quickActions.map((action, index) => (
               <button
                 key={index}
