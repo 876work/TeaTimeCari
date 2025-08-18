@@ -280,55 +280,56 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
         {/* Success Message and Actions */}
         <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h1>
-        <p className="text-sm text-gray-600 mb-4">
-          Thank you! A team member will review your application. If approved, you'll receive an email with verification instructions.
-        </p>
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h1>
+          <p className="text-sm text-gray-600 mb-4">
+            Thank you! A team member will review your application. If approved, you'll receive an email with verification instructions.
+          </p>
 
-        <div className="text-sm text-gray-600 mb-6">
-          You can close this page. We'll notify you via email when it's your turn.
-        </div>
+          <div className="text-sm text-gray-600 mb-6">
+            You can close this page. We'll notify you via email when it's your turn.
+          </div>
 
-        <div className="space-y-3">
-          {/* Download Summary Button */}
-          <button
-            onClick={downloadSummaryAsImage}
-            disabled={isDownloading}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !isDownloading
-                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isDownloading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Generating Download...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <Download className="w-5 h-5 mr-2" />
-                Download Summary as Image
-              </div>
-            )}
-          </button>
+          <div className="space-y-3">
+            {/* Download Summary Button */}
+            <button
+              onClick={downloadSummaryAsImage}
+              disabled={isDownloading}
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                !isDownloading
+                  ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isDownloading ? (
+                <div className="flex items-center justify-center">
+                  <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                  Generating Download...
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Download className="w-5 h-5 mr-2" />
+                  Download Summary as Image
+                </div>
+              )}
+            </button>
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-3">
-          <button
-            onClick={onGoHome}
-            className="inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-black text-white"
-          >
-            Go to Home
-          </button>
-          <Link
-            to="/help"
-            className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"
-          >
-            Need help?
-          </Link>
-        </div>
+            {/* Navigation Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onGoHome}
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-black text-white"
+              >
+                Go to Home
+              </button>
+              <Link
+                to="/help"
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"
+              >
+                Need help?
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
