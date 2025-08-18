@@ -302,11 +302,11 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     // Check if no errors exist
     const hasNoErrors = Object.values(errors).every(error => !error);
     
-    // Check username availability
-    const isUsernameAvailable = usernameStatus.isValid && usernameStatus.isAvailable === true;
+    // Check username availability (must not be checking and must be available)
+    const isUsernameAvailable = usernameStatus.isValid && usernameStatus.isAvailable === true && !isCheckingUsername;
     
-    // Check email availability
-    const isEmailAvailable = emailStatus.isValid && emailStatus.isAvailable === true;
+    // Check email availability (must not be checking and must be available)
+    const isEmailAvailable = emailStatus.isValid && emailStatus.isAvailable === true && !isCheckingEmail;
     
     // Check password match
     const passwordsMatch = formData.password === formData.confirmPassword && formData.password.length >= 6;
