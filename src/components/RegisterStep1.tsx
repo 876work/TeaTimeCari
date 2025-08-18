@@ -187,6 +187,10 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     } catch (error) {
       console.error('Error checking username availability:', error);
       setGlobalError('Failed to check username availability. Please try again.');
+      setUsernameStatus(prev => ({
+        ...prev,
+        isAvailable: false
+      }));
       return false;
     } finally {
       setIsCheckingUsername(false);
@@ -195,7 +199,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   
   // Check email availability
   const checkEmailAvailability = async (email: string) => {
-    if (!username || !validateUsername(username).isValid) {
+    if (!email || !validateEmail(email).isValid) {
       return false;
     }
     
@@ -240,6 +244,10 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     } catch (error) {
       console.error('Error checking email availability:', error);
       setGlobalError('Failed to check email availability. Please try again.');
+      setEmailStatus(prev => ({
+        ...prev,
+        isAvailable: false
+      }));
       return false;
     } finally {
       setIsCheckingEmail(false);
