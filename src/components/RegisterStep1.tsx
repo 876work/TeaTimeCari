@@ -206,13 +206,12 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     setIsCheckingEmail(true);
     
     try {
-      const { data, error } = await supabase
+      const { count, error } = await supabase
         .from('registrations')
-        .select('email')
+        .select('*', { count: 'exact', head: true })
         .eq('email', email.toLowerCase())
-        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      if (error) {
         if (error.code === '42P01') {
           // Table doesn't exist, assume email is available for demo
           console.warn('Registrations table not found, assuming email is available for demo');
@@ -226,7 +225,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
         throw error;
       }
       
-      const isAvailable = !data;
+      const isAvailable = (count || 0) === 0;
       
       setEmailStatus(prev => ({
         ...prev,
@@ -236,7 +235,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       
       // Log for debugging
       if (!isAvailable) {
-        console.log('Email availability check: Email already exists in database:', email);
+        console.log('Email availability check: Email already exists in database:', email, 'Count:', count);
       }
       
       return isAvailable;
