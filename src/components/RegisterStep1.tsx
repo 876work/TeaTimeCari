@@ -393,6 +393,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
               Full Name
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              💡 Enter your first and last name as they appear on your ID
+            </p>
             <input
               type="text"
               id="fullName"
@@ -404,7 +407,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                   ? 'border-[#E0A3A3] bg-red-50'
                   : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
-              placeholder="Enter your full name"
+              placeholder="e.g., John Smith"
               aria-invalid={errors.fullName && touched.fullName ? 'true' : 'false'}
             />
             {errors.fullName && touched.fullName && (
@@ -419,6 +422,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              📧 We'll use this to send you important updates and verification codes
+            </p>
             <div className="relative">
               <input
                 type="email"
@@ -433,7 +439,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                     ? 'border-[#A3C6E0] bg-blue-50'
                     : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
-                placeholder="Enter your email address"
+                placeholder="e.g., john@example.com"
                 aria-invalid={(errors.email && touched.email) || emailStatus.error ? 'true' : 'false'}
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -472,6 +478,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
               Phone Number
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              📱 Saint Lucia format required - we may send verification codes here
+            </p>
             <input
               type="text"
               id="phone"
@@ -483,7 +492,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                   ? 'border-[#E0A3A3] bg-red-50'
                   : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
-              placeholder="758xxxxxxx"
+              placeholder="758-123-4567 or 7581234567"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
             />
             {errors.phone && touched.phone && (
@@ -498,6 +507,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
               Username
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              🏷️ Choose a unique name - letters, numbers, and underscores only (3-20 characters)
+            </p>
             <div className="relative">
               <input
                 type="text"
@@ -514,7 +526,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                     ? 'border-[#E0A3A3] bg-red-50'
                     : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
-                placeholder="Choose a username"
+                placeholder="e.g., john_smith or johnsmith123"
                 aria-invalid={errors.username && touched.username ? 'true' : 'false'}
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -572,6 +584,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Password
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              🔒 Create a secure password - minimum 6 characters for account protection
+            </p>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -587,7 +602,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                     ? 'border-[#E0A3A3] bg-red-50'
                     : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
-                placeholder="Enter your password"
+                placeholder="Create a secure password"
                 required
                 autoComplete="new-password"
                 minLength={6}
@@ -618,6 +633,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
               Confirm Password
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+              🔄 Re-enter your password to make sure it's correct
+            </p>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -635,7 +653,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                     ? 'border-[#A3C6E0] bg-blue-50'
                     : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
                 }`}
-                placeholder="Confirm your password"
+                placeholder="Type your password again"
                 required
                 autoComplete="new-password"
                 aria-invalid={errors.confirmPassword && touched.confirmPassword ? 'true' : 'false'}
@@ -666,8 +684,11 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
           </div>
 
           {/* Password Requirements */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 font-medium mb-2">Password Requirements:</p>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800 font-medium mb-3 flex items-center">
+              <span className="mr-2">🛡️</span>
+              Password Security Requirements:
+            </p>
             <ul className="text-sm text-blue-700 space-y-1">
               <li className={`flex items-center ${formData.password.length >= 6 ? 'text-green-700' : ''}`}>
                 <span className="mr-2">{formData.password.length >= 6 ? '✅' : '•'}</span>
@@ -676,6 +697,10 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
               <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? 'text-green-700' : ''}`}>
                 <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? '✅' : '•'}</span>
                 Passwords must match
+              </li>
+              <li className="flex items-center text-blue-600">
+                <span className="mr-2">💡</span>
+                <span className="text-xs">Tip: Use a mix of letters, numbers, and symbols for better security</span>
               </li>
             </ul>
           </div>
