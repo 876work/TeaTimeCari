@@ -583,9 +583,6 @@ export function AdminUserReview() {
                       Photo
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email Code Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -649,58 +646,6 @@ export function AdminUserReview() {
                             <span className="text-xs text-gray-400">No photo</span>
                           </div>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          {user.email_code ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center">
-                                <span className="text-gray-600 text-xs mr-2">Code:</span>
-                                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                                  {user.email_code}
-                                </span>
-                              </div>
-                              {user.email_code_expiry && (
-                                <div className="flex items-center">
-                                  <span className="text-gray-600 text-xs mr-2">Expires:</span>
-                                  <span className={`text-xs font-medium ${
-                                    new Date(user.email_code_expiry) < new Date()
-                                      ? 'text-red-600 font-bold'
-                                      : 'text-green-600'
-                                  }`}>
-                                    {new Date(user.email_code_expiry).toLocaleString()}
-                                  </span>
-                                </div>
-                              )}
-                              {user.last_code_sent_at && (
-                                <div className="flex items-center">
-                                  <span className="text-gray-600 text-xs mr-2">Last Sent:</span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(user.last_code_sent_at).toLocaleString()}
-                                  </span>
-                                </div>
-                              )}
-                              {user.last_code_delivery_status && (
-                                <div className="flex items-center">
-                                  <span className="text-gray-600 text-xs mr-2">Status:</span>
-                                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                    user.last_code_delivery_status === 'success'
-                                      ? 'bg-green-100 text-green-800'
-                                      : user.last_code_delivery_status === 'failed'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {user.last_code_delivery_status}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-500">
-                              No code generated
-                            </div>
-                          )}
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
