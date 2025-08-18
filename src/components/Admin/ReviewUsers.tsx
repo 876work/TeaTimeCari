@@ -7,8 +7,7 @@ import { AdminLayout } from './AdminLayout';
 // Define a type for the user data fetched from Supabase
 interface User {
   id: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
   username: string;
@@ -17,6 +16,7 @@ interface User {
   imageData: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  password_temp?: string;
   rejection_reason?: string;
   email_code?: string | null;
   email_code_expiry?: string | null;
@@ -64,7 +64,7 @@ export function AdminUserReview() {
     try {
       let query = supabase
         .from('registrations')
-        .select('*, email_code, email_code_expiry');
+        .select('*, email_code, email_code_expiry, password_temp');
       
       // Apply status filter if not 'all'
       if (filterStatus !== 'all') {
@@ -138,8 +138,7 @@ export function AdminUserReview() {
     const mockUsers: User[] = [
       {
         id: '1',
-        firstName: 'John',
-        lastName: 'Doe',
+        fullName: 'John Doe',
         email: 'john.doe@example.com',
         phone: '758-123-4567',
         username: 'johndoe',
@@ -148,6 +147,7 @@ export function AdminUserReview() {
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+Cjwvc3ZnPgo8L3N2Zz4K',
         status: 'pending',
         created_at: new Date().toISOString(),
+        password_temp: 'demo123',
         email_code: null,
         email_code_expiry: null,
         last_code_sent_at: null,
@@ -155,8 +155,7 @@ export function AdminUserReview() {
       },
       {
         id: '2',
-        firstName: 'Jane',
-        lastName: 'Smith',
+        fullName: 'Jane Smith',
         email: 'jane.smith@example.com',
         phone: '758-987-6543',
         username: 'janesmith',
@@ -165,6 +164,7 @@ export function AdminUserReview() {
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iOCIgZmlsbD0iI0YzRjRGNiIvPgo8c3ZnIHg9IjE2IiB5PSIxNiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZCNzM4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cmVjdCB4PSIyIiB5PSIzIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiIHJ4PSIyIiByeT0iMiIvPgo8bGluZSB4MT0iOCIgeTE9IjIxIiB4Mj0iMTYiIHkyPSIyMSIvPgo8bGluZSB4MT0iMTIiIHkxPSIxNyIgeDI9IjEyIiB5Mj0iMjEiLz4KPC9zdmc+Cjwvc3ZnPgo=',
         status: 'verified',
         created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        password_temp: 'secure456',
         email_code: 'SLU123456',
         email_code_expiry: fiveMinutesFromNow.toISOString(),
         last_code_sent_at: tenMinutesAgo.toISOString(),
@@ -172,8 +172,7 @@ export function AdminUserReview() {
       },
       {
         id: '3',
-        firstName: 'Mike',
-        lastName: 'Johnson',
+        fullName: 'Mike Johnson',
         email: 'mike.johnson@example.com',
         phone: '758-555-1234',
         username: 'mikej',
@@ -182,6 +181,7 @@ export function AdminUserReview() {
         imageData: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMzIiIGZpbGw9IiNGM0Y0RjYiLz4KPHN2ZyB4PSIxNiIgeT0iMTYiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+Cjwvc3ZnPgo8L3N2Zz4K',
         status: 'banned',
         created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+        password_temp: 'mypass789',
         email_code: 'SLU789012',
         email_code_expiry: expiredTime.toISOString(),
         last_code_sent_at: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
@@ -189,8 +189,7 @@ export function AdminUserReview() {
       },
       {
         id: '4',
-        firstName: 'Sarah',
-        lastName: 'Wilson',
+        fullName: 'Sarah Wilson',
         email: 'sarah.wilson@example.com',
         phone: '758-777-8888',
         username: 'sarahw',
@@ -200,6 +199,7 @@ export function AdminUserReview() {
         status: 'rejected',
         rejection_reason: 'Incomplete documentation',
         created_at: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+        password_temp: null,
         email_code: null,
         email_code_expiry: null,
         last_code_sent_at: null,
@@ -243,7 +243,8 @@ export function AdminUserReview() {
         body: {
           user_id: user.id,
           gender: genderMapping,
-          xaccess: false // Default to false for now
+          xaccess: false, // Default to false for now
+          password: user.password_temp // Pass the temporary password
         }
       });
 
@@ -265,8 +266,9 @@ export function AdminUserReview() {
       }
 
       // Send approval email with verification code
+      const firstName = user.fullName.split(' ')[0] || user.fullName;
       const { data: emailData, error: emailError } = await supabase.functions.invoke('send-approval-email', {
-        body: { email: user.email, firstName: user.firstName }
+        body: { email: user.email, firstName: firstName }
       });
 
       if (emailError || !emailData?.success) {
@@ -605,7 +607,7 @@ export function AdminUserReview() {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {user.firstName} {user.lastName}
+                              {user.fullName}
                             </div>
                             <div className="text-sm text-gray-500">@{user.username}</div>
                           </div>

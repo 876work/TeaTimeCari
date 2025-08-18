@@ -190,39 +190,6 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
       setError(null);
       
       try {
-        // Submit complete registration to database
-        if (registrationData?.step1 && registrationData?.step2) {
-          const { step1, step2 } = registrationData;
-          
-          const registrationPayload = {
-            firstName: step1.firstName,
-            lastName: step1.lastName,
-            email: step1.email,
-            phone: step1.phone,
-            username: step1.username,
-            gender: step2.gender,
-            captureType: captureMode,
-            imageData: capturedImage,
-            status: 'pending',
-            invite_code_used: null
-          };
-          
-          const { data: insertedData, error: insertError } = await supabase
-            .from('registrations')
-            .insert([registrationPayload])
-            .select()
-            .single();
-          
-          if (insertError) {
-            if (insertError.code === '42P01') {
-              console.warn('Registrations table not found, proceeding with demo flow');
-            } else {
-              throw insertError;
-            }
-          }
-          
-        }
-        
         // Proceed to success screen
         onNext({
           captureType: captureMode,

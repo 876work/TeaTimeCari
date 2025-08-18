@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { Check, X, AlertCircle, Loader2, User, LogIn } from 'lucide-react';
+import { Check, X, AlertCircle, Loader2, User, LogIn, Eye, EyeOff, Lock } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import {
   validateUsername,
@@ -17,11 +17,12 @@ interface EmailValidationResult {
 }
 
 export interface RegisterStep1Data {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
   username: string;
+  password: string;
+  confirmPassword: string;
 }
 
 interface RegisterStep1Props {
@@ -36,11 +37,12 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   
   // Form state
   const [formData, setFormData] = useState<RegisterStep1Data>({
-    firstName: initialData?.firstName || '',
-    lastName: initialData?.lastName || '',
+    fullName: initialData?.fullName || '',
     email: initialData?.email || '',
     phone: initialData?.phone || '',
-    username: initialData?.username || ''
+    username: initialData?.username || '',
+    password: initialData?.password || '',
+    confirmPassword: initialData?.confirmPassword || ''
   });
   
   // Validation state
@@ -66,6 +68,10 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   
   // Global error state
   const [globalError, setGlobalError] = useState<string | null>(null);
+  
+  // Password visibility state
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Debounce username for API calls
   const debouncedUsername = useDebounce(formData.username, 500);
@@ -107,10 +113,11 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     let error: string | null = null;
     
     switch (field) {
-      case 'firstName':
-      case 'lastName':
+      case 'fullName':
         if (!value.trim()) {
-          error = `${field === 'firstName' ? 'First' : 'Last'} name is required`;
+          error = 'Full name is required';
+        } else if (value.trim().split(' ').length < 2) {
+          error = 'Please enter your full name (first and last name)';
         }
         break;
       case 'email':
@@ -124,6 +131,20 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       case 'username':
         const usernameValidation = validateUsername(value);
         error = usernameValidation.error;
+        break;
+      case 'password':
+        if (!value) {
+          error = 'Password is required';
+        } else if (value.length < 6) {
+          error = 'Password must be at least 6 characters';
+        }
+        break;
+      case 'confirmPassword':
+        if (!value) {
+          error = 'Please confirm your password';
+        } else if (value !== formData.password) {
+          error = 'Passwords do not match';
+        }
         break;
     }
     
@@ -270,7 +291,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   
   // Validate entire form
   const isFormValid = () => {
-    const requiredFields: (keyof RegisterStep1Data)[] = ['firstName', 'lastName', 'email', 'phone', 'username'];
+    const requiredFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
     
     // Check if all fields have values
     const hasAllValues = requiredFields.every(field => formData[field].trim());
@@ -284,7 +305,10 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     // Check email availability
     const isEmailAvailable = emailStatus.isValid && emailStatus.isAvailable === true;
     
-    return hasAllValues && hasNoErrors && isUsernameAvailable && isEmailAvailable;
+    // Check password match
+    const passwordsMatch = formData.password === formData.confirmPassword && formData.password.length >= 6;
+    
+    return hasAllValues && hasNoErrors && isUsernameAvailable && isEmailAvailable && passwordsMatch;
   };
   
   // Handle form submission
@@ -292,7 +316,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     e.preventDefault();
     
     // Mark all fields as touched
-    const allFields: (keyof RegisterStep1Data)[] = ['firstName', 'lastName', 'email', 'phone', 'username'];
+    const allFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
     const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
     setTouched(newTouched);
     
@@ -364,54 +388,28 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
         )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* First Name */}
+          {/* Full Name */}
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-              First Name
+            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
             </label>
             <input
               type="text"
-              id="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange('firstName')}
-              onBlur={handleBlur('firstName')}
+              id="fullName"
+              value={formData.fullName}
+              onChange={handleInputChange('fullName')}
+              onBlur={handleBlur('fullName')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.firstName && touched.firstName
+                errors.fullName && touched.fullName
                   ? 'border-[#E0A3A3] bg-red-50'
                   : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
               }`}
-              placeholder="Enter your first name"
-              aria-invalid={errors.firstName && touched.firstName ? 'true' : 'false'}
+              placeholder="Enter your full name"
+              aria-invalid={errors.fullName && touched.fullName ? 'true' : 'false'}
             />
-            {errors.firstName && touched.firstName && (
+            {errors.fullName && touched.fullName && (
               <p className="mt-2 text-sm text-red-600" role="alert">
-                {errors.firstName}
-              </p>
-            )}
-          </div>
-          
-          {/* Last Name */}
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-              Last Name
-            </label>
-            <input
-              type="text"
-              id="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange('lastName')}
-              onBlur={handleBlur('lastName')}
-              className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.lastName && touched.lastName
-                  ? 'border-[#E0A3A3] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
-              }`}
-              placeholder="Enter your last name"
-              aria-invalid={errors.lastName && touched.lastName ? 'true' : 'false'}
-            />
-            {errors.lastName && touched.lastName && (
-              <p className="mt-2 text-sm text-red-600" role="alert">
-                {errors.lastName}
+                {errors.fullName}
               </p>
             )}
           </div>
@@ -569,6 +567,119 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             )}
           </div>
           
+          {/* Password */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                onBlur={handleBlur('password')}
+                className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.password && touched.password
+                    ? 'border-[#E0A3A3] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                }`}
+                placeholder="Enter your password"
+                required
+                autoComplete="new-password"
+                minLength={6}
+                aria-invalid={errors.password && touched.password ? 'true' : 'false'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+            {errors.password && touched.password && (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {errors.password}
+              </p>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange('confirmPassword')}
+                onBlur={handleBlur('confirmPassword')}
+                className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.confirmPassword && touched.confirmPassword
+                    ? 'border-[#E0A3A3] bg-red-50'
+                    : touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword
+                    ? 'border-[#A3C6E0] bg-blue-50'
+                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                }`}
+                placeholder="Confirm your password"
+                required
+                autoComplete="new-password"
+                aria-invalid={errors.confirmPassword && touched.confirmPassword ? 'true' : 'false'}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+            {errors.confirmPassword && touched.confirmPassword && (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {errors.confirmPassword}
+              </p>
+            )}
+            {touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 6 && (
+              <p className="mt-2 text-sm text-green-600" role="status">
+                ✅ Passwords match
+              </p>
+            )}
+          </div>
+
+          {/* Password Requirements */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800 font-medium mb-2">Password Requirements:</p>
+            <ul className="text-sm text-blue-700 space-y-1">
+              <li className={`flex items-center ${formData.password.length >= 6 ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{formData.password.length >= 6 ? '✅' : '•'}</span>
+                At least 6 characters long
+              </li>
+              <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? '✅' : '•'}</span>
+                Passwords must match
+              </li>
+            </ul>
+          </div>
+
           {/* Submit Button */}
           <div className="flex space-x-4">
             {onGoToLogin && (

@@ -6,6 +6,7 @@ interface ApprovalRequest {
   user_id: string;            // registration.id (NOT auth id)
   gender: "men" | "women";
   xaccess?: boolean;
+  password?: string;
 }
 
 function mustEnv(k: string): string {
@@ -16,7 +17,7 @@ function mustEnv(k: string): string {
 
 // Ensure an auth.users record exists for the email.
 // Returns the auth user id (existing or newly created).
-async function ensureAuthUserIdForEmail(email: string): Promise<string> {
+async function ensureAuthUserIdForEmail(email: string, password?: string): Promise<string> {
   const SUPABASE_URL = mustEnv("SUPABASE_URL");
   const SRK = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -32,6 +33,11 @@ async function ensureAuthUserIdForEmail(email: string): Promise<string> {
   if (existing?.id) return existing.id as string;
 
   // 2) Create if not found (email already verified; your app controls access via KYC)
+  const createPayload: any = { email, email_confirm: true };
+  if (password) {
+    createPayload.password = password;
+  }
+  
   const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: "POST",
     headers: {
@@ -39,7 +45,7 @@ async function ensureAuthUserIdForEmail(email: string): Promise<string> {
       Authorization: `Bearer ${SRK}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email, email_confirm: true }),
+    body: JSON.stringify(createPayload),
   });
   const createJson = await createRes.json().catch(() => ({} as any));
   if (!createRes.ok || !createJson?.id) {
@@ -74,7 +80,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { user_id: registrationId, gender, xaccess = false } = body;
+    const { user_id: registrationId, gender, xaccess = false, password } = body;
 
     if (!registrationId || !gender) {
       return new Response(
@@ -92,7 +98,7 @@ Deno.serve(async (req) => {
     // Load the pending registration (source of truth before approval)
     const { data: reg, error: regErr } = await supabaseAdmin
       .from("registrations")
-      .select("id, email, username, firstName, lastName")
+      .select("id, email, username, fullName, password_temp")
       .eq("id", registrationId)
       .single();
 
@@ -104,7 +110,7 @@ Deno.serve(async (req) => {
     }
 
     // Get or create auth user for this email
-    const authUserId = await ensureAuthUserIdForEmail(reg.email);
+    const authUserId = await ensureAuthUserIdForEmail(reg.email, password || reg.password_temp);
 
     // Upsert the approved profile using the AUTH USER ID as PK (FK to auth.users)
     const { error: upErr } = await supabaseAdmin
@@ -114,7 +120,7 @@ Deno.serve(async (req) => {
           id: authUserId,
           email: reg.email,
           username: reg.username,
-          full_name: `${reg.firstName ?? ""} ${reg.lastName ?? ""}`.trim(),
+          full_name: reg.fullName || reg.username,
           kyc_status: "approved",
           approved_at: new Date().toISOString(),
           // add these columns to profiles if you want them stored; otherwise remove:
@@ -137,7 +143,7 @@ Deno.serve(async (req) => {
       external_id: authUserId,
       email: reg.email,
       username: reg.username,
-      name: `${reg.firstName ?? ""} ${reg.lastName ?? ""}`.trim(),
+      name: reg.fullName || reg.username,
       add_groups: groups,
     };
     if ((Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "").toLowerCase() === "true") {
