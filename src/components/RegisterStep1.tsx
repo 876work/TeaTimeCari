@@ -227,6 +227,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       
       const isAvailable = (count || 0) === 0;
       
+      // Debug logging
+      console.log('Email availability check:', { email, count, isAvailable });
+      
       setEmailStatus(prev => ({
         ...prev,
         isAvailable,

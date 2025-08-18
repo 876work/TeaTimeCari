@@ -107,9 +107,21 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           .single();
         
         if (insertError) {
+          // Log the full error for debugging
+          console.error('Registration insertion error:', insertError);
+          
           if (insertError.code === '42P01') {
             console.warn('Registrations table not found, proceeding with demo flow');
             setIsSubmitted(true);
+          } else if (insertError.code === '23505') {
+            // Handle unique constraint violations (duplicate email/username)
+            if (insertError.message?.includes('email')) {
+              throw new Error('This email address is already registered. Please use a different email or try logging in instead.');
+            } else if (insertError.message?.includes('username')) {
+              throw new Error('This username is already taken. Please choose a different username.');
+            } else {
+              throw new Error('This information is already registered. Please check your details and try again.');
+            }
           } else {
             throw insertError;
           }
