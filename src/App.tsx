@@ -125,6 +125,11 @@ function App() {
     setAdminActivePage('user-reviews');
   };
 
+  const handleGoToAdminInviteCodes = () => {
+    setCurrentPage('admin');
+    setAdminActivePage('invite-codes');
+  };
+
 
   const handleGoToAdminLogs = () => {
     setCurrentPage('admin');
