@@ -281,56 +281,6 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   };
   
   // Effect for username availability checking
-        .from('registrations')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email.toLowerCase())
-      
-      if (error) {
-        if (error.code === '42P01') {
-          // Table doesn't exist, assume email is available for demo
-          console.warn('Registrations table not found, assuming email is available for demo');
-          setEmailStatus(prev => ({
-            ...prev,
-            isAvailable: true,
-            error: null
-          }));
-          return true;
-        }
-        throw error;
-      }
-      
-      const isAvailable = (count || 0) === 0;
-      
-      // Debug logging
-      console.log('Email availability check:', { email, count, isAvailable });
-      
-      setEmailStatus(prev => ({
-        ...prev,
-        isAvailable,
-        error: isAvailable ? null : "You're unable to register with this email address. Please use another and try again."
-      }));
-      
-      // Log for debugging
-      if (!isAvailable) {
-        console.log('Email availability check: Email already exists in database:', email, 'Count:', count);
-      }
-      
-      return isAvailable;
-      
-    } catch (error) {
-      console.error('Error checking email availability:', error);
-      setGlobalError('Failed to check email availability. Please try again.');
-      setEmailStatus(prev => ({
-        ...prev,
-        isAvailable: false
-      }));
-      return false;
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  };
-  
-  // Effect for username availability checking
   useEffect(() => {
     const usernameValidation = validateUsername(debouncedUsername);
     
