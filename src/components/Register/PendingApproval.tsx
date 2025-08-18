@@ -119,7 +119,13 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         
       } catch (err: any) {
         console.error('Error submitting registration:', err);
-        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+        
+        // Handle specific database errors
+        if (err.code === '23505' && err.message?.includes('registrations_email_key')) {
+          setError('This email address is already registered. Please use a different email or try logging in instead.');
+        } else {
+          setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+        }
       } finally {
         setIsSubmitting(false);
       }
