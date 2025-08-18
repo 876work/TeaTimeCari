@@ -375,14 +375,6 @@ function App() {
                             User Profile
                           </button>
                           <button
-                            onClick={() => handleGoToPostThread()}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'post-thread' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Post Thread
-                          </button>
-                          <button
                             onClick={() => {
                               setCurrentPage('admin');
                               setAdminActivePage('function-ping');
