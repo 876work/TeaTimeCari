@@ -157,21 +157,19 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   // Check username availability
   const checkUsernameAvailability = async (username: string) => {
     if (!username || !validateUsername(username).isValid) {
-      return;
+      return false;
     }
     
     setIsCheckingUsername(true);
     
     try {
-      // Check if username exists in a users table
-      // Note: This assumes you have a users table with a username column
       const { data, error } = await supabase
         .from('registrations')
         .select('username')
         .eq('username', username.toLowerCase())
         .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
       
@@ -184,9 +182,12 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
         suggestions
       }));
       
+      return isAvailable;
+      
     } catch (error) {
       console.error('Error checking username availability:', error);
       setGlobalError('Failed to check username availability. Please try again.');
+      return false;
     } finally {
       setIsCheckingUsername(false);
     }
@@ -194,14 +195,13 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   
   // Check email availability
   const checkEmailAvailability = async (email: string) => {
-    if (!email || !validateEmail(email).isValid) {
-      return;
+    if (!username || !validateUsername(username).isValid) {
+      return false;
     }
     
     setIsCheckingEmail(true);
     
     try {
-      // Check if email exists in registrations table
       const { data, error } = await supabase
         .from('registrations')
         .select('email')
@@ -217,7 +217,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
             isAvailable: true,
             error: null
           }));
-          return;
+          return true;
         }
         throw error;
       }
@@ -235,9 +235,12 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
         console.log('Email availability check: Email already exists in database:', email);
       }
       
+      return isAvailable;
+      
     } catch (error) {
       console.error('Error checking email availability:', error);
       setGlobalError('Failed to check email availability. Please try again.');
+      return false;
     } finally {
       setIsCheckingEmail(false);
     }
@@ -314,6 +317,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGlobalError(null);
     
     // Mark all fields as touched
     const allFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
@@ -323,47 +327,58 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     // Validate all fields
     allFields.forEach(field => validateField(field, formData[field]));
     
-    // Perform immediate re-check of email and username availability before submission
-    setGlobalError(null);
-    
-    try {
-      // Re-check email availability
-      if (formData.email) {
-        const emailValidation = validateEmail(formData.email);
-        if (emailValidation.isValid) {
-          await checkEmailAvailability(formData.email);
-        }
-      }
-      
-      // Re-check username availability
-      if (formData.username) {
-        const usernameValidation = validateUsername(formData.username);
-        if (usernameValidation.isValid) {
-          await checkUsernameAvailability(formData.username);
-        }
-      }
-      
-      // Wait a moment for state updates to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-    } catch (err: any) {
-      console.error('Error during final availability check:', err);
-      setGlobalError('Failed to verify availability. Please try again.');
+    // Check for basic validation errors first
+    const hasBasicErrors = Object.values(errors).some(error => error);
+    if (hasBasicErrors) {
+      setGlobalError('Please fix the errors above before continuing.');
       return;
     }
     
-    // Re-validate form after the immediate checks
-    if (isFormValid()) {
-      onNext(formData);
-    } else {
-      // If form is no longer valid after re-check, show appropriate error
-      if (emailStatus.error) {
-        setGlobalError(emailStatus.error);
-      } else if (!usernameStatus.isAvailable) {
-        setGlobalError('Username is no longer available. Please choose a different username.');
-      } else {
-        setGlobalError('Please fix the errors above before continuing.');
+    // Perform synchronous availability checks before submission
+    let emailAvailable = false;
+    let usernameAvailable = false;
+    
+    try {
+      // Check email availability and wait for result
+      if (formData.email) {
+        const emailValidation = validateEmail(formData.email);
+        if (emailValidation.isValid) {
+          emailAvailable = await checkEmailAvailability(formData.email);
+        } else {
+          setGlobalError('Please enter a valid email address.');
+          return;
+        }
       }
+      
+      // Check username availability and wait for result
+      if (formData.username) {
+        const usernameValidation = validateUsername(formData.username);
+        if (usernameValidation.isValid) {
+          usernameAvailable = await checkUsernameAvailability(formData.username);
+        } else {
+          setGlobalError('Please enter a valid username.');
+          return;
+        }
+      }
+      
+      // Check if email and username are available
+      if (!emailAvailable) {
+        setGlobalError('This email address is already registered. Please use a different email or try signing in.');
+        return;
+      }
+      
+      if (!usernameAvailable) {
+        setGlobalError('This username is already taken. Please choose a different username.');
+        return;
+      }
+      
+      // All validations passed, proceed to next step
+      onNext(formData);
+      
+    } catch (err: any) {
+      console.error('Error during availability check:', err);
+      setGlobalError('Failed to verify email and username availability. Please try again.');
+      return;
     }
   };
   
