@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Link } from "react-router-dom";
 import { CheckCircle, Loader2, AlertCircle, Download, User, Mail, Phone, Camera, Calendar, Shield } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
 import { RegisterStep1Data } from '../RegisterStep1';
 import { RegisterStep2Data } from './Step2';
 import { RegisterStep3Data } from './Step3';
@@ -22,11 +23,13 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   onGoHome, 
   onGoBackToStep1 
 }) => {
-  const supabase = useSupabaseClient();
+  const didRun = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [alreadyExists, setAlreadyExists] = useState(false);
 
   // Download registration summary as image
   const downloadSummaryAsImage = async () => {
@@ -70,7 +73,14 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
   // Submit registration data when component mounts
   useEffect(() => {
-    const submitRegistration = async () => {
+    // Prevent double execution in React StrictMode
+    if (didRun.current) return;
+    didRun.current = true;
+
+    const handleSubmission = async () => {
+      // Prevent re-submission if already in progress
+      if (isSubmitting) return;
+      
       if (!registrationData.step1 || !registrationData.step2 || !registrationData.step3) {
         setError('Incomplete registration data. Please start over.');
         return;
@@ -78,6 +88,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
       setIsSubmitting(true);
       setError(null);
+      setSuccessMessage('');
 
       try {
         const { step1, step2, step3 } = registrationData;
@@ -87,64 +98,47 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
         
-        const registrationPayload = {
+        const registrationPayload: RegistrationPayload = {
           firstName,
           lastName,
           email: step1.email,
           phone: step1.phone,
           username: step1.username,
-          password_temp: step1.password, // Store temporarily for admin approval
+          password_temp: step1.password,
           gender: step2.gender,
           captureType: step3.captureType,
           imageData: step3.imageData,
           status: 'pending'
         };
         
-        const { data: insertedData, error: insertError } = await supabase
-          .from('registrations')
-          .insert([registrationPayload])
-          .select()
-          .single();
+        console.log('Submitting registration data...');
+        const result = await submitRegistration(registrationPayload);
         
-        if (insertError) {
-          // Log the full error for debugging
-          console.error('Registration insertion error:', insertError);
-          
-          if (insertError.code === '42P01') {
-            console.warn('Registrations table not found, proceeding with demo flow');
-            setIsSubmitted(true);
-          } else if (insertError.code === '23505') {
-            // Handle unique constraint violations (duplicate email/username)
-            if (insertError.message?.includes('email')) {
-              throw new Error('This email address is already registered. Please use a different email or try logging in instead.');
-            } else if (insertError.message?.includes('username')) {
-              throw new Error('This username is already taken. Please choose a different username.');
-            } else {
-              throw new Error('This information is already registered. Please check your details and try again.');
-            }
-          } else {
-            throw insertError;
-          }
+        // Set success state and message based on whether record already existed
+        setIsSubmitted(true);
+        setAlreadyExists(result.alreadyExists);
+        
+        if (result.alreadyExists) {
+          setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
         } else {
-          setIsSubmitted(true);
+          setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue.");
         }
+        
+        console.log('Registration submission completed:', {
+          alreadyExists: result.alreadyExists,
+          isNewSubmission: result.isNewSubmission
+        });
         
       } catch (err: any) {
         console.error('Error submitting registration:', err);
-        
-        // Handle specific database errors
-        if (err.code === '23505' && err.message?.includes('registrations_email_key')) {
-          setError('This email address is already registered. Please use a different email or try logging in instead.');
-        } else {
-          setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
-        }
+        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
       } finally {
         setIsSubmitting(false);
       }
     };
 
-    submitRegistration();
-  }, [registrationData, supabase]);
+    handleSubmission();
+  }, [registrationData, isSubmitting]);
 
   // Loading state
   if (isSubmitting) {
@@ -299,22 +293,27 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         {/* Success Message and Actions */}
         <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h1>
-          <p className="text-sm text-gray-600 mb-4">
-            Thank you! A team member will review your application. If approved, you'll receive an email with verification instructions.
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {alreadyExists ? 'Application Already Submitted!' : 'Application Submitted!'}
+          </h1>
+          <p className="text-sm text-gray-600 mb-4 font-medium">
+            {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with verification instructions."}
           </p>
 
           <div className="text-sm text-gray-600 mb-6">
-            You can close this page. We'll notify you via email when it's your turn.
+            {alreadyExists 
+              ? "Your application is already in our system. No need to resubmit - we'll contact you once reviewed."
+              : "You can close this page. We'll notify you via email when it's your turn."
+            }
           </div>
 
           <div className="space-y-3">
             {/* Download Summary Button */}
             <button
               onClick={downloadSummaryAsImage}
-              disabled={isDownloading}
+              disabled={isDownloading || isSubmitting}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                !isDownloading
+                !isDownloading && !isSubmitting
                   ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
@@ -336,6 +335,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
             <div className="flex items-center gap-3">
               <button
                 onClick={onGoHome}
+                disabled={isSubmitting}
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-black text-white"
               >
                 Go to Home

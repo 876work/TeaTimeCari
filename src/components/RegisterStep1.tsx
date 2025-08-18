@@ -206,16 +206,19 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     setIsCheckingEmail(true);
     
     try {
+      // Normalize email for consistency
+      const normalizedEmail = email.trim().toLowerCase();
+      
       // Check both registrations and profiles tables for existing email
       const [registrationsResult, profilesResult] = await Promise.all([
         supabase
           .from('registrations')
           .select('*', { count: 'exact', head: true })
-          .eq('email', email.toLowerCase()),
+          .eq('email', normalizedEmail),
         supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true })
-          .eq('email', email.toLowerCase())
+          .eq('email', normalizedEmail)
       ]);
       
       // Check for errors in either query
@@ -236,7 +239,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       
       // Debug logging
       console.log('Email availability check:', { 
-        email, 
+        email: normalizedEmail, 
         registrationsCount, 
         profilesCount, 
         totalCount, 
@@ -251,7 +254,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       
       // Log for debugging
       if (!isAvailable) {
-        console.log('Email availability check: Email already exists in database:', email, 'Total count:', totalCount);
+        console.log('Email availability check: Email already exists in database:', normalizedEmail, 'Total count:', totalCount);
       }
       
       return isAvailable;
