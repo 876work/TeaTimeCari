@@ -11,10 +11,7 @@ If the origin is not in ALLOWED_ORIGINS, the browser blocks the call and the Edg
 Set/update allowed origins in Supabase:
 
 ```bash
-supabase secrets set ALLOWED_ORIGINS="https://community.teatimecari.app"
-supabase secrets set DISCOURSE_MALE_GROUP="men-SLU"
-supabase secrets set DISCOURSE_FEMALE_GROUP="women-SLU"
-supabase secrets set DISCOURSE_XACCESS_GROUP="xaccess-SLU"
+supabase secrets set ALLOWED_ORIGINS="https://community.teatimecari.app,https://localhost:5173"
 ```
 
 ## Required Environment Variables
@@ -27,9 +24,8 @@ The following environment variables must be set in your Supabase project:
 - `DISCOURSE_ADMIN_API_KEY`: Discourse admin API key
 - `DISCOURSE_ADMIN_API_USERNAME`: Discourse API username (usually 'system')
 - `DISCOURSE_MODE`: Set to "invite" or "create"
-- `DISCOURSE_MALE_GROUP`: Name of male users group (e.g., "men-SLU")
-- `DISCOURSE_FEMALE_GROUP`: Name of female users group (e.g., "women-SLU")
-- `DISCOURSE_XACCESS_GROUP`: Name of cross-access group (e.g., "xaccess-SLU")
+- `DISCOURSE_MALE_GROUP_ID`: Numeric ID of male users group
+- `DISCOURSE_FEMALE_GROUP_ID`: Numeric ID of female users group
 - `ALLOWED_ORIGINS`: Comma-separated list of allowed domains
 
 Do not hardcode secrets anywhere in the repo.

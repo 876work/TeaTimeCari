@@ -11,9 +11,8 @@ const DISCOURSE_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME")!;
 
 const MODE = (Deno.env.get("DISCOURSE_MODE") || "invite").toLowerCase(); // "invite" | "create"
-const GROUP_MALE = Deno.env.get("DISCOURSE_MALE_GROUP") || "men-SLU";
-const GROUP_FEMALE = Deno.env.get("DISCOURSE_FEMALE_GROUP") || "women-SLU";
-const GROUP_XACCESS = Deno.env.get("DISCOURSE_XACCESS_GROUP") || "xaccess-SLU";
+const GROUP_MALE = Number(Deno.env.get("DISCOURSE_MALE_GROUP_ID") || "0");
+const GROUP_FEMALE = Number(Deno.env.get("DISCOURSE_FEMALE_GROUP_ID") || "0");
 
 const ALLOWED = (Deno.env.get("ALLOWED_ORIGINS") || "")
   .split(",").map(s => s.trim()).filter(Boolean);
@@ -30,7 +29,7 @@ function corsHeaders(origin: string | null) {
   };
 }
 
-async function inviteUserToDiscourse(email: string, groupName: string) {
+async function inviteUserToDiscourse(email: string, groupId: number) {
   const res = await fetch(`${DISCOURSE_BASE}/invites.json`, {
     method: "POST",
     headers: {
@@ -38,15 +37,15 @@ async function inviteUserToDiscourse(email: string, groupName: string) {
       "Api-Key": DISCOURSE_KEY,
       "Api-Username": DISCOURSE_USER,
     },
-    body: JSON.stringify({ email, group_names: [groupName] }),
+    body: JSON.stringify({ email, group_ids: [groupId] }),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Discourse invite failed: ${res.status} ${text}`);
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-async function addUserToGroup(groupName: string, usernames: string[]) {
-  const res = await fetch(`${DISCOURSE_BASE}/groups/${groupName}/members.json`, {
+async function addUserToGroup(groupId: number, usernames: string[]) {
+  const res = await fetch(`${DISCOURSE_BASE}/groups/${groupId}/members.json`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -124,8 +123,8 @@ serve(async (req) => {
 
     // Convert gender to lowercase for group selection
     const genderLower = reg.gender.toLowerCase() as "male" | "female";
-    const groupName = genderLower === "male" ? GROUP_MALE : GROUP_FEMALE;
-    if (!groupName) return new Response(JSON.stringify({ error: "Group name not configured" }), { status: 500, headers });
+    const groupId = genderLower === "male" ? GROUP_MALE : GROUP_FEMALE;
+    if (!groupId) return new Response(JSON.stringify({ error: "Group ID not configured" }), { status: 500, headers });
 
     // Mark approved locally (dashboard reflects action)
     const { error: updErr } = await supa
@@ -138,7 +137,7 @@ serve(async (req) => {
     const fullName = `${reg.firstName} ${reg.lastName}`.trim();
 
     if (MODE === "invite") {
-      result = await inviteUserToDiscourse(reg.email, groupName); // Discourse sends the email
+      result = await inviteUserToDiscourse(reg.email, groupId); // Discourse sends the email
       // Note: discourse_invite_id column may not exist in registrations table
       try {
         await supa.from("registrations").update({ 
@@ -150,7 +149,7 @@ serve(async (req) => {
     } else {
       const created = await createUserInDiscourse(fullName, reg.email, reg.username);
       const createdUsername = created?.user?.username || created?.username || reg.username;
-      if (createdUsername) await addUserToGroup(groupName, [createdUsername]);
+      if (createdUsername) await addUserToGroup(groupId, [createdUsername]);
       // Note: discourse_user_id and discourse_username columns may not exist
       try {
         await supa.from("registrations").update({
