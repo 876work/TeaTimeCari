@@ -124,8 +124,6 @@ serve(async (req) => {
 
     // Convert gender to lowercase for group selection
     const genderLower = reg.gender.toLowerCase() as "male" | "female";
-    // Convert gender to lowercase for group selection
-    const genderLower = reg.gender.toLowerCase() as "male" | "female";
     const groupName = genderLower === "male" ? GROUP_MALE : GROUP_FEMALE;
     if (!groupName) return new Response(JSON.stringify({ error: "Group name not configured" }), { status: 500, headers });
 
@@ -138,18 +136,10 @@ serve(async (req) => {
 
     let result: any = null;
     const fullName = `${reg.firstName} ${reg.lastName}`.trim();
-    const fullName = `${reg.firstName} ${reg.lastName}`.trim();
 
     if (MODE === "invite") {
       result = await inviteUserToDiscourse(reg.email, groupName); // Discourse sends the email
       // Note: discourse_invite_id column may not exist in registrations table
-      try {
-        await supa.from("registrations").update({ 
-          // discourse_invite_id: result?.invite?.id ?? null 
-        }).eq("id", reg.id);
-      } catch (e) {
-        console.warn("Could not update discourse_invite_id:", e);
-      }
       try {
         await supa.from("registrations").update({ 
           // discourse_invite_id: result?.invite?.id ?? null 
@@ -165,11 +155,6 @@ serve(async (req) => {
       try {
         await supa.from("registrations").update({
           // discourse_user_id: created?.user_id ?? created?.id ?? null,
-          // discourse_username: createdUsername ?? null,
-        }).eq("id", reg.id);
-      } catch (e) {
-        console.warn("Could not update discourse fields:", e);
-      }
           // discourse_username: createdUsername ?? null,
         }).eq("id", reg.id);
       } catch (e) {
