@@ -1,192 +1,172 @@
-import { corsHeaders } from "../_shared/cors.ts";
-import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
-import { syncUserToDiscourse, buildDiscourseGroups } from "../_shared/sso.ts";
+// deno-lint-ignore-file no-explicit-any
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-interface ApprovalRequest {
-  user_id: string;            // registration.id (NOT auth id)
-  gender: "men" | "women";
-  xaccess?: boolean;
-  password?: string;
+// --- Env ---
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const DISCOURSE_BASE = Deno.env.get("DISCOURSE_BASE_URL")!;
+const DISCOURSE_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
+const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME")!;
+
+const MODE = (Deno.env.get("DISCOURSE_MODE") || "invite").toLowerCase(); // "invite" | "create"
+const GROUP_MALE = Number(Deno.env.get("DISCOURSE_MALE_GROUP_ID") || "0");
+const GROUP_FEMALE = Number(Deno.env.get("DISCOURSE_FEMALE_GROUP_ID") || "0");
+
+const ALLOWED = (Deno.env.get("ALLOWED_ORIGINS") || "")
+  .split(",").map(s => s.trim()).filter(Boolean);
+
+// --- Helpers ---
+function corsHeaders(origin: string | null) {
+  const allowOrigin = origin && (ALLOWED.includes("*") || ALLOWED.includes(origin))
+    ? origin
+    : (ALLOWED[0] || "*");
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
 }
 
-function mustEnv(k: string): string {
-  const v = Deno.env.get(k);
-  if (!v) throw new Error(`missing env: ${k}`);
-  return v;
-}
-
-// Ensure an auth.users record exists for the email.
-// Returns the auth user id (existing or newly created).
-async function ensureAuthUserIdForEmail(email: string, password?: string): Promise<string> {
-  const SUPABASE_URL = mustEnv("SUPABASE_URL");
-  const SRK = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-  // 1) Try to find by email via Admin REST
-  const lookup = await fetch(
-    `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-    { headers: { apikey: SRK, Authorization: `Bearer ${SRK}` } }
-  );
-  const lookupJson = await lookup.json().catch(() => ({} as any));
-  const existing = lookupJson?.users?.find((u: any) =>
-    (u?.email || "").toLowerCase() === email.toLowerCase()
-  );
-  if (existing?.id) return existing.id as string;
-
-  // 2) Create if not found (email already verified; your app controls access via KYC)
-  const createPayload: any = { email, email_confirm: true };
-  if (password) {
-    createPayload.password = password;
-  }
-  
-  const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+async function inviteUserToDiscourse(email: string, groupId: number) {
+  const res = await fetch(`${DISCOURSE_BASE}/invites.json`, {
     method: "POST",
     headers: {
-      apikey: SRK,
-      Authorization: `Bearer ${SRK}`,
       "Content-Type": "application/json",
+      "Api-Key": DISCOURSE_KEY,
+      "Api-Username": DISCOURSE_USER,
     },
-    body: JSON.stringify(createPayload),
+    body: JSON.stringify({ email, group_ids: [groupId] }),
   });
-  const createJson = await createRes.json().catch(() => ({} as any));
-  if (!createRes.ok || !createJson?.id) {
-    throw new Error(
-      `admin create user failed: ${createJson?.msg || createRes.status}`
-    );
-  }
-  return createJson.id as string;
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Discourse invite failed: ${res.status} ${text}`);
+  try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-Deno.serve(async (req) => {
-  // CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+async function addUserToGroup(groupId: number, usernames: string[]) {
+  const res = await fetch(`${DISCOURSE_BASE}/groups/${groupId}/members.json`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": DISCOURSE_KEY,
+      "Api-Username": DISCOURSE_USER,
+    },
+    body: JSON.stringify({ usernames: usernames.join(",") }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Add-to-group failed: ${res.status} ${text}`);
+  try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+async function createUserInDiscourse(name: string, email: string, username: string) {
+  const res = await fetch(`${DISCOURSE_BASE}/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": DISCOURSE_KEY,
+      "Api-Username": DISCOURSE_USER,
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      username,
+      password: crypto.randomUUID() + "Aa1!",
+      active: true,
+      approved: true,
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Create user failed: ${res.status} ${text}`);
+  try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+serve(async (req) => {
+  const headers = corsHeaders(req.headers.get("origin"));
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
   }
 
   try {
-    if (req.method !== "POST") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: corsHeaders,
-      });
+    const body = await req.json() as { registration_id?: string };
+    if (!body?.registration_id) {
+      return new Response(JSON.stringify({ error: "registration_id is required" }), { status: 400, headers });
     }
 
-    let body: ApprovalRequest;
-    try {
-      body = await req.json();
-    } catch {
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON in request body" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Use service role for DB, but pass caller's JWT for admin check
+    const supa = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+    });
+
+    // Caller must be an authenticated admin
+    const { data: auth } = await supa.auth.getUser();
+    if (!auth?.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+
+    const { data: profile, error: profErr } = await supa
+      .from("profiles").select("id,is_admin").eq("id", auth.user.id).single();
+    if (profErr || !profile?.is_admin) {
+      return new Response(JSON.stringify({ error: "Forbidden: admin only" }), { status: 403, headers });
     }
 
-    const { user_id: registrationId, gender, xaccess = false, password } = body;
-
-    if (!registrationId || !gender) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: user_id, gender" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    if (!["men", "women"].includes(gender)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid gender value. Must be 'men' or 'women'" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Load the pending registration (source of truth before approval)
-    const { data: reg, error: regErr } = await supabaseAdmin
+    // Load registration - use firstName and lastName instead of full_name
+    const { data: reg, error: regErr } = await supa
       .from("registrations")
-      .select("id, email, username, fullName, password_temp")
-      .eq("id", registrationId)
+      .select("id,email,firstName,lastName,username,gender,status")
+      .eq("id", body.registration_id)
       .single();
-
-    if (regErr || !reg) {
-      return new Response(
-        JSON.stringify({ error: "Registration not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (regErr || !reg) return new Response(JSON.stringify({ error: "Registration not found" }), { status: 404, headers });
+    if (reg.status !== "pending") {
+      return new Response(JSON.stringify({ error: `Cannot approve from status ${reg.status}` }), { status: 409, headers });
     }
 
-    // Get or create auth user for this email
-    const authUserId = await ensureAuthUserIdForEmail(reg.email, password || reg.password_temp);
+    // Convert gender to lowercase for group selection
+    const genderLower = reg.gender.toLowerCase() as "male" | "female";
+    const groupId = genderLower === "male" ? GROUP_MALE : GROUP_FEMALE;
+    if (!groupId) return new Response(JSON.stringify({ error: "Group ID not configured" }), { status: 500, headers });
 
-    // Upsert the approved profile using the AUTH USER ID as PK (FK to auth.users)
-    const { error: upErr } = await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: authUserId,
-          email: reg.email,
-          username: reg.username,
-          full_name: reg.fullName || reg.username,
-          kyc_status: "approved",
-          approved_at: new Date().toISOString(),
-          // add these columns to profiles if you want them stored; otherwise remove:
-          // gender,
-          // xaccess,
-        },
-        { onConflict: "id" }
-      );
+    // Mark approved locally (dashboard reflects action)
+    const { error: updErr } = await supa
+      .from("registrations")
+      .update({ status: "approved", updated_at: new Date().toISOString() })
+      .eq("id", reg.id);
+    if (updErr) return new Response(JSON.stringify({ error: `DB update failed: ${updErr.message}` }), { status: 500, headers });
 
-    if (upErr) {
-      return new Response(
-        JSON.stringify({ error: `Failed to update profile: ${upErr.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let result: any = null;
+    const fullName = `${reg.firstName} ${reg.lastName}`.trim();
+
+    if (MODE === "invite") {
+      result = await inviteUserToDiscourse(reg.email, groupId); // Discourse sends the email
+      // Note: discourse_invite_id column may not exist in registrations table
+      try {
+        await supa.from("registrations").update({ 
+          // discourse_invite_id: result?.invite?.id ?? null 
+        }).eq("id", reg.id);
+      } catch (e) {
+        console.warn("Could not update discourse_invite_id:", e);
+      }
+    } else {
+      const created = await createUserInDiscourse(fullName, reg.email, reg.username);
+      const createdUsername = created?.user?.username || created?.username || reg.username;
+      if (createdUsername) await addUserToGroup(groupId, [createdUsername]);
+      // Note: discourse_user_id and discourse_username columns may not exist
+      try {
+        await supa.from("registrations").update({
+          // discourse_user_id: created?.user_id ?? created?.id ?? null,
+          // discourse_username: createdUsername ?? null,
+        }).eq("id", reg.id);
+      } catch (e) {
+        console.warn("Could not update discourse fields:", e);
+      }
+      result = { created };
     }
 
-    // Build Discourse groups and payload; use authUserId as external_id
-    const groups = buildDiscourseGroups(gender, xaccess);
-    const payload: Record<string, string> = {
-      external_id: authUserId,
-      email: reg.email,
-      username: reg.username,
-      name: reg.fullName || reg.username,
-      add_groups: groups,
-    };
-    if ((Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "").toLowerCase() === "true") {
-      payload.require_activation = "true";
-    }
-
-    // Try syncing to Discourse; if it fails, still report approval success
-    try {
-      await syncUserToDiscourse(payload);
-    } catch (e: any) {
-      console.error("Discourse sync failed:", e);
-      return new Response(
-        JSON.stringify({
-          status: "approved_with_sync_error",
-          error: `User approved but Discourse sync failed: ${e?.message || e}`,
-          profile_updated: true,
-          discourse_synced: false,
-          external_id: authUserId,
-          groups,
-        }),
-        { status: 207, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // All good
-    return new Response(
-      JSON.stringify({
-        status: "synced",
-        profile_updated: true,
-        discourse_synced: true,
-        external_id: authUserId,
-        groups,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err: any) {
-    console.error("[approve-and-sync] Error:", err?.message || err);
-    return new Response(
-      JSON.stringify({
-        status: "failed",
-        error: `Approval and sync failed: ${err?.message || err}`,
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ ok: true, mode: MODE, registration_id: reg.id, discourse: result }), {
+      status: 200, headers,
+    });
+  } catch (e: any) {
+    console.error("approve-and-sync error:", e?.message, e?.stack);
+    return new Response(JSON.stringify({ error: e?.message ?? "Unknown error" }), { status: 500, headers });
   }
 });

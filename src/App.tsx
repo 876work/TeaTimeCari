@@ -20,6 +20,7 @@ import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { LoginComponent } from './components/Auth/LoginComponent';
 import { ResetPasswordComponent } from './components/Auth/ResetPasswordComponent';
+import RegistrationsPage from './features/admin/registrations/RegistrationsPage';
 import KycVerification from './pages/KycVerification';
 import SetPassword from './pages/SetPassword';
 import KycSummary from './pages/KycSummary';
@@ -178,6 +179,7 @@ function App() {
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
+              <Route path="/admin/registrations" element={<RegistrationsPage />} />
               
               {/* Password Reset Route */}
               <Route 
