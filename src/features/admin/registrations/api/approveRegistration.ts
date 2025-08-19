@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../../lib/supabaseClient.ts';
 
 export async function approveRegistration(registrationId: string) {
   const { data: { session } } = await supabase.auth.getSession();
