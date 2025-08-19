@@ -14,33 +14,6 @@ const GROUP_MALE = Deno.env.get("DISCOURSE_MALE_GROUP") || "men-SLU";
 const GROUP_FEMALE = Deno.env.get("DISCOURSE_FEMALE_GROUP") || "women-SLU";
 const GROUP_XACCESS = Deno.env.get("DISCOURSE_XACCESS_GROUP") || "xaccess-SLU";
 
-// --- CORS (safe) ---
-function corsFor(req: Request) {
-  const origin = req.headers.get("origin") ?? "";
-  const allowedList = (Deno.env.get("ALLOWED_ORIGINS") || "*")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
-
-  const allowAny = allowedList.includes("*");
-  const allowOrigin = allowAny
-    ? (origin || "*")
-    : (origin && allowedList.includes(origin) ? origin : "");
-
-  // Reflect what the browser asked for, or provide sane defaults.
-  const requestedHeaders =
-    req.headers.get("access-control-request-headers") ??
-    "authorization, content-type, x-client-info, apikey, x-supabase-api-version";
-
-  return {
-    "Access-Control-Allow-Origin": allowOrigin || "*", // never empty
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": requestedHeaders,
-    "Access-Control-Max-Age": "600",
-    "Vary": "Origin, Access-Control-Request-Headers",
-  };
-}
-
 // --- Helpers ---
 async function inviteUserToDiscourse(email: string, groupName: string) {
   const res = await fetch(`${DISCOURSE_BASE}/invites.json`, {
@@ -92,6 +65,33 @@ async function createUserInDiscourse(name: string, email: string, username: stri
   const text = await res.text();
   if (!res.ok) throw new Error(`Create user failed: ${res.status} ${text}`);
   try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+// --- CORS (safe) ---
+function corsFor(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedList = (Deno.env.get("ALLOWED_ORIGINS") || "*")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const allowAny = allowedList.includes("*");
+  const allowOrigin = allowAny
+    ? (origin || "*")
+    : (origin && allowedList.includes(origin) ? origin : "");
+
+  // Reflect what the browser asked for, or provide sane defaults.
+  const requestedHeaders =
+    req.headers.get("access-control-request-headers") ??
+    "authorization, content-type, x-client-info, apikey, x-supabase-api-version";
+
+  return {
+    "Access-Control-Allow-Origin": allowOrigin || "*", // never empty
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": requestedHeaders,
+    "Access-Control-Max-Age": "600",
+    "Vary": "Origin, Access-Control-Request-Headers",
+  };
 }
 
 Deno.serve(async (req) => {
