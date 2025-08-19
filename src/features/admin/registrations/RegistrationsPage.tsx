@@ -6,6 +6,7 @@ type Row = {
   id: string;
   firstName: string;
   lastName: string;
+  lastName: string;
   email: string;
   gender: 'Male' | 'Female';
   created_at: string;
@@ -41,6 +42,8 @@ export default function RegistrationsPage() {
       setBusyId(null);
     }
   }
+
+  const getFullName = (row: Row) => `${row.firstName} ${row.lastName}`.trim();
 
   const getFullName = (row: Row) => `${row.firstName} ${row.lastName}`.trim();
 
