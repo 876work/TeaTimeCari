@@ -1,5 +1,4 @@
 // deno-lint-ignore-file no-explicit-any
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // --- Env ---
@@ -15,21 +14,34 @@ const GROUP_MALE = Deno.env.get("DISCOURSE_MALE_GROUP") || "men-SLU";
 const GROUP_FEMALE = Deno.env.get("DISCOURSE_FEMALE_GROUP") || "women-SLU";
 const GROUP_XACCESS = Deno.env.get("DISCOURSE_XACCESS_GROUP") || "xaccess-SLU";
 
-const ALLOWED = (Deno.env.get("ALLOWED_ORIGINS") || "")
-  .split(",").map(s => s.trim()).filter(Boolean);
+// --- CORS (safe) ---
+function corsFor(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedList = (Deno.env.get("ALLOWED_ORIGINS") || "*")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
 
-// --- Helpers ---
-function corsHeaders(origin: string | null) {
-  const allowOrigin = origin && (ALLOWED.includes("*") || ALLOWED.includes(origin))
-    ? origin
-    : (ALLOWED[0] || "*");
+  const allowAny = allowedList.includes("*");
+  const allowOrigin = allowAny
+    ? (origin || "*")
+    : (origin && allowedList.includes(origin) ? origin : "");
+
+  // Reflect what the browser asked for, or provide sane defaults.
+  const requestedHeaders =
+    req.headers.get("access-control-request-headers") ??
+    "authorization, content-type, x-client-info, apikey, x-supabase-api-version";
+
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Origin": allowOrigin || "*", // never empty
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": requestedHeaders,
+    "Access-Control-Max-Age": "600",
+    "Vary": "Origin, Access-Control-Request-Headers",
   };
 }
 
+// --- Helpers ---
 async function inviteUserToDiscourse(email: string, groupName: string) {
   const res = await fetch(`${DISCOURSE_BASE}/invites.json`, {
     method: "POST",
@@ -82,10 +94,15 @@ async function createUserInDiscourse(name: string, email: string, username: stri
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-serve(async (req) => {
-  const headers = corsHeaders(req.headers.get("origin"));
+Deno.serve(async (req) => {
+  // Handle preflight first; don't do anything else that might throw.
+  if (req.method === "OPTIONS") {
+    const headers = corsFor(req);
+    return new Response(null, { status: 204, headers });
+  }
 
-  if (req.method === "OPTIONS") return new Response("ok", { headers });
+  const headers = corsFor(req);
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
   }
