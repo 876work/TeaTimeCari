@@ -26,12 +26,13 @@ import SetPassword from './pages/SetPassword';
 import KycSummary from './pages/KycSummary';
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
+import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
-  const [currentPage, setCurrentPage] = React.useState<'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('register');
+  const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
@@ -81,6 +82,7 @@ function App() {
 
   const handleGetStarted = () => {
     setShowWelcomePage(false);
+    setCurrentPage('user-type-selection');
   };
 
   const handleVerificationComplete = () => {
@@ -89,7 +91,7 @@ function App() {
   };
 
   const handleGoHome = () => {
-    setCurrentPage('register');
+    setCurrentPage('user-type-selection');
     setCurrentStep(1); // Reset to basic info step
     setShowWelcomePage(true); // Show welcome page again
     setRegistrationData({});
@@ -164,6 +166,15 @@ function App() {
     setCurrentStep(2);
   };
 
+  const handleNewUser = () => {
+    setCurrentPage('register');
+    setCurrentStep(1);
+  };
+
+  const handleReturningUser = () => {
+    setCurrentPage('login');
+  };
+
   return (
     <SessionContextProvider supabaseClient={supabase}>
       <StripeProvider>
@@ -200,6 +211,13 @@ function App() {
                     <HomePage onGetStarted={handleGetStarted} />
                   ) : (
                     <AppLayout>
+                      {currentPage === 'user-type-selection' && (
+                        <UserTypeSelection 
+                          onNewUser={handleNewUser}
+                          onReturningUser={handleReturningUser}
+                        />
+                      )}
+                      
                       {currentPage === 'register' && (
                         <>
                           {currentStep === 1 && (
@@ -285,6 +303,14 @@ function App() {
                       <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
                         <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
                         <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => setCurrentPage('user-type-selection')}
+                            className={`px-3 py-1 text-xs rounded ${
+                              currentPage === 'user-type-selection' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            User Type
+                          </button>
                           <button
                             onClick={() => setCurrentPage('register')}
                             className={`px-3 py-1 text-xs rounded ${
