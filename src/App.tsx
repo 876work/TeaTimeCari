@@ -48,8 +48,7 @@ function App() {
   };
 
   const handleBackToRegister = () => {
-    setCurrentPage('register');
-    setCurrentStep(1); // Reset to basic info step
+    setCurrentPage('user-type-selection');
   };
 
   const handleLoginSuccess = () => {
