@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview --port 4173",
+    "preview": "vite preview --port 4173"
     "supabase": "supabase",
     "deploy:functions": "supabase functions deploy",
     "deploy:rejection": "supabase functions deploy send-rejection-email"
