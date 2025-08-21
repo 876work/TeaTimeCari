@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --ignore-path .eslintignore .",
     "preview": "vite preview --port 4173",
     "supabase": "supabase",
     "deploy:functions": "supabase functions deploy",

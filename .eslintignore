@@ -1,0 +1,7 @@
+supabase/functions/**
+!supabase/functions/approve-and-sync
+!supabase/functions/approve-and-sync/**
+!supabase/functions/send-approval-email
+!supabase/functions/send-approval-email/**
+db/**
+docs/**
