@@ -1,6 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// --- Error Helper ---
+function jsonError(headers: HeadersInit, status: number, msg: string) {
+  const h = { ...headers, "Content-Type": "application/json", "X-Error-Message": msg };
+  return new Response(JSON.stringify({ error: msg }), { status, headers: h });
+}
+
 // --- Env ---
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -104,13 +110,13 @@ Deno.serve(async (req) => {
   const headers = corsFor(req);
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });
+    return jsonError(headers, 405, "Method not allowed");
   }
 
   try {
     const body = await req.json() as { registration_id?: string };
     if (!body?.registration_id) {
-      return new Response(JSON.stringify({ error: "registration_id is required" }), { status: 400, headers });
+      return jsonError(headers, 400, "registration_id is required");
     }
 
     // Use service role for DB, but pass caller's JWT for admin check
@@ -120,12 +126,12 @@ Deno.serve(async (req) => {
 
     // Caller must be an authenticated admin
     const { data: auth } = await supa.auth.getUser();
-    if (!auth?.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers });
+    if (!auth?.user) return jsonError(headers, 401, "Unauthorized");
 
     const { data: profile, error: profErr } = await supa
       .from("profiles").select("id,is_admin").eq("id", auth.user.id).single();
     if (profErr || !profile?.is_admin) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin only" }), { status: 403, headers });
+      return jsonError(headers, 403, "Forbidden: admin only");
     }
 
     // Load registration - use firstName and lastName instead of full_name
@@ -134,22 +140,22 @@ Deno.serve(async (req) => {
       .select("id,email,firstName,lastName,username,gender,status")
       .eq("id", body.registration_id)
       .single();
-    if (regErr || !reg) return new Response(JSON.stringify({ error: "Registration not found" }), { status: 404, headers });
+    if (regErr || !reg) return jsonError(headers, 404, "Registration not found");
     if (reg.status !== "pending") {
-      return new Response(JSON.stringify({ error: `Cannot approve from status ${reg.status}` }), { status: 409, headers });
+      return jsonError(headers, 409, `Cannot approve from status ${reg.status}`);
     }
 
     // Convert gender to lowercase for group selection
     const genderLower = reg.gender.toLowerCase() as "male" | "female";
     const groupName = genderLower === "male" ? GROUP_MALE : GROUP_FEMALE;
-    if (!groupName) return new Response(JSON.stringify({ error: "Group name not configured" }), { status: 500, headers });
+    if (!groupName) return jsonError(headers, 500, "Group name not configured");
 
     // Mark approved locally (dashboard reflects action)
     const { error: updErr } = await supa
       .from("registrations")
       .update({ status: "approved", updated_at: new Date().toISOString() })
       .eq("id", reg.id);
-    if (updErr) return new Response(JSON.stringify({ error: `DB update failed: ${updErr.message}` }), { status: 500, headers });
+    if (updErr) return jsonError(headers, 500, `DB update failed: ${updErr.message}`);
 
     let result: any = null;
     const fullName = `${reg.firstName} ${reg.lastName}`.trim();
@@ -184,7 +190,8 @@ Deno.serve(async (req) => {
       status: 200, headers,
     });
   } catch (e: any) {
+    const msg = e?.message ?? "Unknown error";
     console.error("approve-and-sync error:", e?.message, e?.stack);
-    return new Response(JSON.stringify({ error: e?.message ?? "Unknown error" }), { status: 500, headers });
+    return jsonError(headers, 500, msg);
   }
 });
