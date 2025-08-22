@@ -7,6 +7,7 @@ type Row = {
   id: string;
   firstName?: string | null;
   lastName?: string | null;
+  fullName?: string | null;   // <-- add this
   email?: string | null;
   gender?: 'Male' | 'Female' | null;
   created_at?: string | null;
@@ -25,29 +26,34 @@ export default function RegistrationsPage() {
       .eq('status', 'pending')
       .order('created_at', { ascending: true });
 
-    if (error) setErr(error.message);
-    else setRows(data ?? []);
+    if (error) {
+      setErr(error.message);
+    } else {
+      const mapped: Row[] = (data ?? []).map((r: any) => {
+        const full = [r.firstName?.trim(), r.lastName?.trim()]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        return { ...r, fullName: full || null }; // ensure fullName is always present (string or null)
+      });
+      setRows(mapped);
+    }
   }
 
   useEffect(() => { load(); }, []);
 
-  const getDisplayName = (row: Row) => {
-    const full = [row.firstName?.trim(), row.lastName?.trim()]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    if (full) return full;
-    if (row.email) return row.email;
-    return 'user';
-  };
+  const getDisplayName = (row: Row) =>
+    (row.fullName && row.fullName.trim()) ||
+    [row.firstName, row.lastName].filter(Boolean).join(' ').trim() ||
+    row.email ||
+    'user';
 
   const getFirstName = (row: Row) => {
-    const full = [row.firstName?.trim(), row.lastName?.trim()]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
+    const full = (row.fullName && row.fullName.trim())
+      || [row.firstName, row.lastName].filter(Boolean).join(' ').trim()
+      || '';
     if (full) {
-      const parts = full.split(' ').filter(Boolean); // always a string here
+      const parts = full.split(' ').filter(Boolean);
       return parts[0] || 'user';
     }
     if (row.email) {
@@ -62,15 +68,12 @@ export default function RegistrationsPage() {
       setBusyId(id);
       setErr(null);
 
-      // find the row so we can show a safe success message
       const row = rows.find(r => r.id === id);
 
       await approveRegistration(id);
       await load();
 
-      // show a safe confirmation (no unsafe .split calls)
-      const name = row ? getFirstName(row) : 'user';
-      alert(`Approved ${name}`);
+      alert(`Approved ${row ? getFirstName(row) : 'user'}`);
     } catch (e: any) {
       setErr(e?.message ?? 'Failed to approve');
     } finally {
