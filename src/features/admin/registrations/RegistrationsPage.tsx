@@ -31,23 +31,52 @@ export default function RegistrationsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const getDisplayName = (row: Row) => {
+    const full = [row.firstName?.trim(), row.lastName?.trim()]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (full) return full;
+    if (row.email) return row.email;
+    return 'user';
+  };
+
+  const getFirstName = (row: Row) => {
+    const full = [row.firstName?.trim(), row.lastName?.trim()]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (full) {
+      const parts = full.split(' ').filter(Boolean); // always a string here
+      return parts[0] || 'user';
+    }
+    if (row.email) {
+      const at = row.email.indexOf('@');
+      return at > 0 ? row.email.slice(0, at) : row.email;
+    }
+    return 'user';
+  };
+
   async function handleApprove(id: string) {
     try {
       setBusyId(id);
       setErr(null);
+
+      // find the row so we can show a safe success message
+      const row = rows.find(r => r.id === id);
+
       await approveRegistration(id);
       await load();
+
+      // show a safe confirmation (no unsafe .split calls)
+      const name = row ? getFirstName(row) : 'user';
+      alert(`Approved ${name}`);
     } catch (e: any) {
       setErr(e?.message ?? 'Failed to approve');
     } finally {
       setBusyId(null);
     }
   }
-
-  const getDisplayName = (row: Row) =>
-    [row.firstName, row.lastName].filter(Boolean).join(' ').trim() ||
-    row.email ||
-    'user';
 
   return (
     <div className="p-4">
