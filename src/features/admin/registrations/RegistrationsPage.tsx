@@ -1,14 +1,15 @@
+// src/features/admin/registrations/RegistrationsPage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { approveRegistration } from './api/approveRegistration';
 
 type Row = {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  gender: 'Male' | 'Female';
-  created_at: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  gender?: 'Male' | 'Female' | null;
+  created_at?: string | null;
   status: 'pending' | 'approved' | 'rejected';
 };
 
@@ -23,6 +24,7 @@ export default function RegistrationsPage() {
       .select('id,firstName,lastName,email,gender,created_at,status')
       .eq('status', 'pending')
       .order('created_at', { ascending: true });
+
     if (error) setErr(error.message);
     else setRows(data ?? []);
   }
@@ -42,28 +44,35 @@ export default function RegistrationsPage() {
     }
   }
 
-  const getFullName = (row: Row) => `${row.firstName} ${row.lastName}`.trim();
+  const getDisplayName = (row: Row) =>
+    [row.firstName, row.lastName].filter(Boolean).join(' ').trim() ||
+    row.email ||
+    'user';
 
   return (
     <div className="p-4">
       <h1>Pending Registrations</h1>
-      {err && <div style={{color:'red'}}>{err}</div>}
+      {err && <div style={{ color: 'red' }}>{err}</div>}
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Gender</th><th>Submitted</th><th /></tr></thead>
-        <tbody>
-        {rows.map(r => (
-          <tr key={r.id}>
-            <td>{getFullName(r)}</td>
-            <td>{r.email}</td>
-            <td>{r.gender}</td>
-            <td>{new Date(r.created_at).toLocaleString()}</td>
-            <td>
-              <button disabled={busyId===r.id} onClick={() => handleApprove(r.id)}>
-                {busyId===r.id ? 'Approving…' : 'Approve'}
-              </button>
-            </td>
+        <thead>
+          <tr>
+            <th>Name</th><th>Email</th><th>Gender</th><th>Submitted</th><th />
           </tr>
-        ))}
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{getDisplayName(r)}</td>
+              <td>{r.email ?? ''}</td>
+              <td>{r.gender ?? ''}</td>
+              <td>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>
+              <td>
+                <button disabled={busyId === r.id} onClick={() => handleApprove(r.id)}>
+                  {busyId === r.id ? 'Approving…' : 'Approve'}
+                </button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
