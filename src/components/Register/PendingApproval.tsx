@@ -94,13 +94,9 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         const { step1, step2, step3 } = registrationData;
         
         // Split fullName into firstName and lastName for database compatibility
-        const nameParts = step1.fullName.trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
         
         const registrationPayload: RegistrationPayload = {
-          firstName,
-          lastName,
+          fullName: step1.fullName,
           email: step1.email,
           phone: step1.phone,
           username: step1.username,

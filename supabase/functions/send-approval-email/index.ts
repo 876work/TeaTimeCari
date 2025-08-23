@@ -135,11 +135,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const { email, firstName, dryRun } = requestData;
+    
+    // Handle both fullName and firstName for backward compatibility
+    let actualFirstName = firstName;
+    if (!actualFirstName && requestData.fullName) {
+      actualFirstName = getFirstNameFromFull(requestData.fullName);
+    }
+    if (!actualFirstName) {
+      actualFirstName = 'user';
+    }
 
     // Validate required fields
     const missingFields: string[] = [];
     if (!email) missingFields.push("email");
-    if (!firstName) missingFields.push("firstName");
+    if (!actualFirstName || actualFirstName === 'user') missingFields.push("firstName or fullName");
 
     if (missingFields.length > 0) {
       return new Response(
@@ -208,6 +217,7 @@ Deno.serve(async (req: Request) => {
 
     const subject = "Your account has been approved";
     const text = `Hi ${firstName},
+    const text = `Hi ${actualFirstName},
 
 Good news — your account has been approved! 
 

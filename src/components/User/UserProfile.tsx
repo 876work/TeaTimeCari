@@ -24,8 +24,7 @@ import { isValidUUID } from '../../utils/validationUtils';
 // Type definitions
 interface UserProfileData {
   id: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
   username: string;
   gender: 'Male' | 'Female';
   status: string;
@@ -161,7 +160,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Fetch profile user data
         const { data: profileData, error: profileError } = await supabase
           .from('registrations')
-          .select('*')
+          .select('id, fullName, username, gender, status, created_at')
           .eq('id', userId)
           .maybeSingle();
 
@@ -258,8 +257,7 @@ export function UserProfile({ userId }: UserProfileProps) {
     if (!profileData) {
       const mockProfileUser: UserProfileData = {
         id: userId,
-        firstName: 'Demo',
-        lastName: 'User',
+        fullName: 'Demo User',
         username: 'demo_user',
         gender: 'Male',
         status: 'verified',
@@ -463,7 +461,7 @@ export function UserProfile({ userId }: UserProfileProps) {
               <div>
                 <div className="flex items-center">
                   <h1 className="text-2xl font-bold text-gray-900 mr-3">
-                    {profileUser.firstName} {profileUser.lastName}
+                    {profileUser.fullName}
                   </h1>
                   {isBanned && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">

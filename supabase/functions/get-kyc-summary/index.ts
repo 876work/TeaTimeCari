@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     // Fetch user registration data
     const { data: registration, error } = await supabaseAdmin
       .from('registrations')
-      .select('firstName, lastName, email, phone, username, gender, captureType, created_at')
+      .select('fullName, email, phone, username, gender, captureType, created_at')
       .eq('id', userId)
       .single();
 
@@ -29,8 +29,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       data: {
-        firstName: registration.firstName,
-        lastName: registration.lastName,
+        fullName: registration.fullName,
         email: registration.email,
         phone: registration.phone,
         username: registration.username,

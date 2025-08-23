@@ -9,8 +9,7 @@ const ANON = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 const FN_HEADERS = { Authorization: `Bearer ${ANON}`, apikey: ANON, 'Content-Type': 'application/json' };
 
 interface KycSummaryData {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
   username: string;
@@ -184,7 +183,7 @@ export default function KycSummary() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <p className="text-gray-900 font-medium">{summaryData.firstName} {summaryData.lastName}</p>
+                  <p className="text-gray-900 font-medium">{summaryData.fullName}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>

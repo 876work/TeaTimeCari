@@ -1,8 +1,7 @@
 import { supabase } from './supabase';
 
 export interface RegistrationPayload {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
   phone: string;
   username: string;
@@ -47,8 +46,7 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
   try {
     // First, check if the record already exists
     const { data: existingRecord, error: checkError } = await supabase
-      .from('registrations')
-      .select('id, email, status, created_at')
+      fullName: payload.fullName.trim(),
       .eq('email', normalizedPayload.email)
       .maybeSingle();
 
