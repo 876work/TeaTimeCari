@@ -184,6 +184,9 @@ Deno.serve(async (req: Request) => {
     const subject = "Your account application has been reviewed";
     const text = `Hi ${firstName},
     const text = `Hi ${actualFirstName},
+  }
+}
+)
 
 Thank you for your interest in joining Tea Time Cari.
 
@@ -272,7 +275,7 @@ The Tea Time Cari Team`;
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: `Unexpected error: ${err?.message || err}`,
+        error: \`Unexpected error: ${err?.message || err}`,
         details: { 
           errorType: err?.constructor?.name || 'Unknown',
           stack: err?.stack 

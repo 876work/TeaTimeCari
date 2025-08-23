@@ -218,6 +218,9 @@ Deno.serve(async (req: Request) => {
     const subject = "Your account has been approved";
     const text = `Hi ${firstName},
     const text = `Hi ${actualFirstName},
+  }
+}
+)
 
 Good news — your account has been approved! 
 
@@ -300,7 +303,7 @@ The Tea Time Cari Team`;
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: `Unexpected error: ${err?.message || err}`,
+        error: \`Unexpected error: ${err?.message || err}`,
         details: { 
           errorType: err?.constructor?.name || 'Unknown',
           stack: err?.stack 
