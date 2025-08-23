@@ -274,7 +274,7 @@ The Tea Time Cari Team`;
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: \`Unexpected error: ${err?.message || err}`,
+        error: `Unexpected error: ${err?.message || err}`,
         details: { 
           errorType: err?.constructor?.name || 'Unknown',
           stack: err?.stack 
