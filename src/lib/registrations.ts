@@ -46,7 +46,8 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
   try {
     // First, check if the record already exists
     const { data: existingRecord, error: checkError } = await supabase
-      fullName: payload.fullName.trim(),
+      .from('registrations')
+      .select('*')
       .eq('email', normalizedPayload.email)
       .maybeSingle();
 

@@ -216,7 +216,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const subject = "Your account has been approved";
-    const text = `Hi ${firstName},
     const text = `Hi ${actualFirstName},
   }
 }

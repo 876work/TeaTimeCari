@@ -182,7 +182,6 @@ Deno.serve(async (req: Request) => {
     const rejectionReason = reason || "Your application did not meet our requirements";
     
     const subject = "Your account application has been reviewed";
-    const text = `Hi ${firstName},
     const text = `Hi ${actualFirstName},
   }
 }
