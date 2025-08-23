@@ -19,10 +19,15 @@ export interface RegistrationResult {
 }
 
 export async function submitRegistration(payload: RegistrationPayload): Promise<RegistrationResult> {
+  // Split fullName into firstName and lastName for database compatibility
+  const nameParts = payload.fullName.trim().split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
   // Normalize input data
   const normalizedPayload: any = {
-    firstName: payload.firstName.trim(),
-    lastName: payload.lastName.trim(),
+    firstName: firstName,
+    lastName: lastName,
     email: payload.email.trim().toLowerCase(),
     phone: payload.phone.trim(),
     username: payload.username.trim().toLowerCase(),
