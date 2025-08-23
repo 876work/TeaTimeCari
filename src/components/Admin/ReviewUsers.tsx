@@ -77,7 +77,7 @@ export function AdminUserReview() {
     try {
       let query = supabase
         .from('registrations')
-        .select('id, fullName, firstName, lastName, email, phone, username, gender, captureType, imageData, status, created_at, password_temp');
+        .select('id, firstName, lastName, email, phone, username, gender, captureType, imageData, status, created_at, password_temp, rejection_reason, email_code, email_code_expiry');
 
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
@@ -97,6 +97,9 @@ export function AdminUserReview() {
       // add last code info if table exists (best-effort)
       const usersWithCodeInfo: UserRow[] = await Promise.all(
         (data ?? []).map(async (user: any) => {
+          // Create fullName from firstName and lastName
+          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || null;
+          
           try {
             const { data: lastCodeSend } = await supabase
               .from('code_sends')
@@ -108,11 +111,12 @@ export function AdminUserReview() {
 
             return {
               ...user,
+              fullName,
               last_code_sent_at: lastCodeSend?.sent_at || null,
               last_code_delivery_status: lastCodeSend?.delivery_status || null,
             } as UserRow;
           } catch {
-            return { ...user } as UserRow;
+            return { ...user, fullName } as UserRow;
           }
         })
       );
