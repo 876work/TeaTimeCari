@@ -1,5 +1,6 @@
 // src/features/admin/registrations/RegistrationsPage.tsx
 import { useEffect, useState } from 'react';
+import { CheckCircle, AlertCircle, X } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { approveRegistration } from './api/approveRegistration';
 
@@ -18,6 +19,8 @@ export default function RegistrationsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function load() {
     const { data, error } = await supabase
@@ -67,23 +70,80 @@ export default function RegistrationsPage() {
     try {
       setBusyId(id);
       setErr(null);
+      setSuccessMessage(null);
+      setErrorMessage(null);
 
       const row = rows.find(r => r.id === id);
 
       await approveRegistration(id);
       await load();
 
-      alert(`Approved ${row ? getFirstName(row) : 'user'}`);
+      const userName = row ? getFirstName(row) : 'user';
+      setSuccessMessage(`✅ ${userName} has been approved successfully and will receive an email with verification instructions.`);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
     } catch (e: any) {
-      setErr(e?.message ?? 'Failed to approve');
+      const userName = rows.find(r => r.id === id) ? getFirstName(rows.find(r => r.id === id)!) : 'user';
+      setErrorMessage(`Failed to approve ${userName}: ${e?.message ?? 'Unknown error'}`);
+      
+      // Clear error message after 8 seconds
+      setTimeout(() => {
+        setErrorMessage(null);
+      }, 8000);
     } finally {
       setBusyId(null);
     }
   }
 
+  const clearSuccessMessage = () => {
+    setSuccessMessage(null);
+  };
+
+  const clearErrorMessage = () => {
+    setErrorMessage(null);
+  };
+
   return (
     <div className="p-4">
       <h1>Pending Registrations</h1>
+      
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between" role="alert">
+          <div className="flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+            <span className="text-green-700 text-sm font-medium">{successMessage}</span>
+          </div>
+          <button
+            onClick={clearSuccessMessage}
+            className="text-green-500 hover:text-green-700 transition-colors"
+            aria-label="Close success message"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between" role="alert">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+            <span className="text-red-700 text-sm font-medium">{errorMessage}</span>
+          </div>
+          <button
+            onClick={clearErrorMessage}
+            className="text-red-500 hover:text-red-700 transition-colors"
+            aria-label="Close error message"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      
       {err && <div style={{ color: 'red' }}>{err}</div>}
       <table>
         <thead>
