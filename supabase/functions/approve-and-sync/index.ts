@@ -1,3 +1,4 @@
+// supabase/functions/approve-and-sync/index.ts
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -10,6 +11,7 @@ function cors(req: Request) {
   const allowOrigin = allowAny ? (origin || "*") : (allowed.includes(origin) ? origin : "");
   const reqHeaders = req.headers.get("access-control-request-headers")
     ?? "authorization, content-type, apikey, x-client-info, x-supabase-api-version";
+
   return {
     "Access-Control-Allow-Origin": allowOrigin || "*",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -31,22 +33,11 @@ const DISCOURSE_BASE = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(/\/+$/
 const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME")!;
 
-// Group names (exact slugs/names as they exist in Discourse)
-const GROUP_MALE_NAME   = Deno.env.get("DISCOURSE_MALE_GROUP")   || "man-SLU";
-const GROUP_FEMALE_NAME = Deno.env.get("DISCOURSE_FEMALE_GROUP") || "woman-SLU";
+// ✅ Use NUMERIC group IDs you already have in Supabase
+const GROUP_MALE_ID   = Number(Deno.env.get("MEN_GROUP")   || "0");
+const GROUP_FEMALE_ID = Number(Deno.env.get("WOMEN_GROUP") || "0");
 
 /* ------------- Discourse helpers ------------- */
-async function getGroupIdByName(name: string) {
-  const res = await fetch(`${DISCOURSE_BASE}/groups/${encodeURIComponent(name)}.json`, {
-    headers: { "Api-Key": DISCOURSE_KEY, "Api-Username": DISCOURSE_USER },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Fetch group '${name}' failed: ${res.status} ${text}`);
-  const json = JSON.parse(text);
-  const id = json?.group?.id ?? json?.basic_group?.id;
-  if (!id) throw new Error(`Could not resolve id for group '${name}'`);
-  return id as number;
-}
 
 async function createDiscourseUser(name: string, email: string, username: string, password: string) {
   const res = await fetch(`${DISCOURSE_BASE}/users`, {
@@ -57,7 +48,7 @@ async function createDiscourseUser(name: string, email: string, username: string
       "Api-Username": DISCOURSE_USER,
     },
     body: JSON.stringify({
-      name,           // = username
+      name,           // set display name = username (your requirement)
       email,
       username,
       password,       // plaintext password
@@ -70,15 +61,18 @@ async function createDiscourseUser(name: string, email: string, username: string
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-async function addUsernamesToGroup(groupId: number, usernames: string[]) {
+// IMPORTANT: Discourse expects x-www-form-urlencoded here, not JSON
+async function addUsernamesToGroupId(groupId: number, usernames: string[]) {
+  const form = new URLSearchParams();
+  form.set("usernames", usernames.join(","));
   const res = await fetch(`${DISCOURSE_BASE}/groups/${groupId}/members.json`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
       "Api-Key": DISCOURSE_KEY,
       "Api-Username": DISCOURSE_USER,
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: JSON.stringify({ usernames: usernames.join(",") }),
+    body: form.toString(),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Add-to-group failed: ${res.status} ${text}`);
@@ -120,7 +114,7 @@ Deno.serve(async (req) => {
     // Normalize fields
     const username = String(reg.username || "").trim();
     const email    = String(reg.email || "").trim();
-    const password = String(reg.password_temp || body.password || "").trim(); // fallback if you pass password in body
+    const password = String(reg.password_temp || body.password || "").trim(); // fallback if provided in body
     const gender   = String(reg.gender || "").toLowerCase();
 
     if (!username || !email || !password) {
@@ -130,17 +124,17 @@ Deno.serve(async (req) => {
       return jerr(headers, 400, "gender must be 'male' or 'female'");
     }
 
-    // Resolve Discourse group id by group name
-    const groupName = gender === "male" ? GROUP_MALE_NAME : GROUP_FEMALE_NAME;
-    const groupId = await getGroupIdByName(groupName);
+    // Choose numeric group id from secrets
+    const groupId = gender === "male" ? GROUP_MALE_ID : GROUP_FEMALE_ID;
+    if (!groupId) return jerr(headers, 500, "Group ID not configured (MEN_GROUP/WOMEN_GROUP)");
 
     // Create user in Discourse (name = username)
     const created = await createDiscourseUser(username, email, username, password);
     const createdUsername = created?.user?.username || created?.username || username;
 
-    // Add to gender group
+    // Add to gender group by numeric ID
     if (createdUsername) {
-      await addUsernamesToGroup(groupId, [createdUsername]);
+      await addUsernamesToGroupId(groupId, [createdUsername]);
     }
 
     // Mark approved now that Discourse succeeded
@@ -149,7 +143,7 @@ Deno.serve(async (req) => {
       .update({ status: "approved", updated_at: new Date().toISOString() })
       .eq("id", reg.id);
 
-    // Optionally persist returned IDs if you have columns (wrapped to avoid breaking if absent)
+    // Optionally persist returned IDs if those columns exist
     try {
       await supa.from("registrations")
         .update({
@@ -162,8 +156,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       registration_id: reg.id,
-      discourse: { created: !!createdUsername, username: createdUsername, group: groupName },
+      discourse: { created: !!createdUsername, username: createdUsername, group_id: groupId },
     }), { status: 200, headers });
+
   } catch (e: any) {
     console.error("approve-and-sync error:", e?.message, e?.stack);
     return jerr(headers, 500, e?.message ?? "Unknown error");
