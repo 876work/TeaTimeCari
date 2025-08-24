@@ -293,7 +293,16 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       error: usernameValidation.error
     }));
     
-    if (usernameValidation.isValid && debouncedUsername) {
+    // Check if username is forbidden first
+    if (usernameValidation.isForbidden) {
+      setUsernameStatus(prev => ({
+        ...prev,
+        isValid: true,
+        isAvailable: false,
+        error: null,
+        suggestions: generateUsernameSuggestions(debouncedUsername)
+      }));
+    } else if (usernameValidation.isValid && debouncedUsername) {
       checkUsernameAvailability(debouncedUsername);
     } else {
       setUsernameStatus(prev => ({

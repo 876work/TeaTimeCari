@@ -13,31 +13,32 @@ export interface UsernameValidationResult {
   isAvailable: boolean | null;
   error: string | null;
   suggestions: string[];
+  isForbidden?: boolean;
 }
 
-export function validateUsername(username: string): Pick<UsernameValidationResult, 'isValid' | 'error'> {
+export function validateUsername(username: string): Pick<UsernameValidationResult, 'isValid' | 'error' | 'isForbidden'> {
   if (!username) {
-    return { isValid: false, error: 'Username is required' };
+    return { isValid: false, error: 'Username is required', isForbidden: false };
   }
   
   if (username.length < 3) {
-    return { isValid: false, error: 'Username must be at least 3 characters' };
+    return { isValid: false, error: 'Username must be at least 3 characters', isForbidden: false };
   }
   
   if (username.length > 20) {
-    return { isValid: false, error: 'Username must be 20 characters or less' };
+    return { isValid: false, error: 'Username must be 20 characters or less', isForbidden: false };
   }
   
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    return { isValid: false, error: 'Username can only contain letters, numbers, and underscores' };
+    return { isValid: false, error: 'Username can only contain letters, numbers, and underscores', isForbidden: false };
   }
   
   // Check if username is forbidden (case-insensitive)
   if (FORBIDDEN_USERNAMES.includes(username.toLowerCase())) {
-    return { isValid: false, error: 'This username is reserved and cannot be used' };
+    return { isValid: true, error: null, isForbidden: true };
   }
   
-  return { isValid: true, error: null };
+  return { isValid: true, error: null, isForbidden: false };
 }
 
 export function generateUsernameSuggestions(baseUsername: string): string[] {
