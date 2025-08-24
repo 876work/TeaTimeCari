@@ -1,3 +1,13 @@
+// List of forbidden usernames that cannot be used during registration
+const FORBIDDEN_USERNAMES = [
+  'admin', 'moderator', 'administrator', 'mod', 'sys', 'system', 'you', 'name', 
+  'username', 'user', 'nickname', 'discourse', 'discourseorg', 'discourseforum', 
+  'all', 'here', 'info', 'wamil', 'wamil2025', 'wamil1999', 'don', 'vado', 
+  'donvado', 'owner', 'root', 'moderators', 'staff', 'team', 'support', 'help', 
+  'security', 'abuse', 'webmaster', 'postmaster', 'mailer-daemon', 'no-reply', 
+  'noreply', 'contact', 'news', 'updates', 'notices', 'discobot'
+];
+
 export interface UsernameValidationResult {
   isValid: boolean;
   isAvailable: boolean | null;
@@ -20,6 +30,11 @@ export function validateUsername(username: string): Pick<UsernameValidationResul
   
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
     return { isValid: false, error: 'Username can only contain letters, numbers, and underscores' };
+  }
+  
+  // Check if username is forbidden (case-insensitive)
+  if (FORBIDDEN_USERNAMES.includes(username.toLowerCase())) {
+    return { isValid: false, error: 'This username is reserved and cannot be used' };
   }
   
   return { isValid: true, error: null };
