@@ -22,7 +22,7 @@ function cors(req: Request) {
 function jerr(headers: HeadersInit, status: number, msg: string) {
   return new Response(JSON.stringify({ ok: false, error: msg }), { status, headers });
 }
-function ok(headers: HeadersInit, body: any) {
+  function ok(headers: HeadersInit, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status: 200, headers });
 }
 function safeJson(s: string) { try { return JSON.parse(s); } catch { return { raw: s }; } }
@@ -58,8 +58,8 @@ const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY") || "";
 const FROM_EMAIL       = Deno.env.get("FROM_EMAIL")       || "";
 
 /* ---------------- Discourse calls ---------------- */
-async function createUserLenient(name: string, email: string, username: string, password: string) {
-  const payload: any = {
+  async function createUserLenient(name: string, email: string, username: string, password: string) {
+    const payload: Record<string, unknown> = {
     name,
     email,
     username,
@@ -128,7 +128,11 @@ async function addUserIdToGroup(groupId: number, userId: number) {
   const form = new URLSearchParams();
   form.set("user_id", String(userId));
   const res = await fetch(`${DISCOURSE_BASE}/admin/groups/${groupId}/members.json`, {
-    method: "PUT",
+    // According to the Discourse API, adding a member to a group uses POST.
+    // Using PUT here causes a 404/405 which halts the approval flow before
+    // emails are sent and the registration is updated. Switching to POST
+    // ensures the user is added to the group and the rest of the logic runs.
+    method: "POST",
     headers: {
       "Api-Key": DISCOURSE_KEY,
       "Api-Username": DISCOURSE_USER,
@@ -305,7 +309,9 @@ Deno.serve(async (req) => {
       await supa.from("registrations")
         .update({ discourse_user_id: discourseUserId, discourse_username: username })
         .eq("id", reg.id);
-    } catch {}
+    } catch {
+      /* ignore Discourse ID update failures */
+    }
 
     return ok(headers, {
       ok: true,
@@ -323,8 +329,9 @@ Deno.serve(async (req) => {
         welcome:  emailWelcome,
       },
     });
-  } catch (e: any) {
-    console.error("approve-and-sync error:", e?.message, e?.stack);
-    return jerr(headers, 500, e?.message ?? "Unknown error");
+  } catch (e: unknown) {
+    const err = e as { message?: string; stack?: string };
+    console.error("approve-and-sync error:", err?.message, err?.stack);
+    return jerr(headers, 500, err?.message ?? "Unknown error");
   }
 });
