@@ -249,6 +249,17 @@ export function AdminUserReview() {
         setError(`User approved but Discourse sync failed: ${data?.error || 'Unknown sync error'}`);
       }
 
+      // Send approval email (use SAFE firstName)
+      const firstName = safeFirstName(user);
+      const { data: emailData, error: emailErr } = await supabase.functions.invoke('send-approval-email', {
+        body: { email: user.email, firstName },
+      });
+
+      if (emailErr || !emailData?.success) {
+        console.warn('send-approval-email issue:', emailErr, emailData);
+        // Don’t throw; approval already succeeded
+      }
+
       // Remove from list and notify
       setPendingUsers(prev => prev.filter(u => u.id !== user.id));
       const name = user.username ?? safeDisplayName(user);
