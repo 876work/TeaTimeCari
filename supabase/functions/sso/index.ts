@@ -185,13 +185,20 @@ Deno.serve(async (req) => {
         // Redirect to login
         const loginUrl = `${siteBaseUrl}/?next=${encodeURIComponent('/sso')}`;
         return new Response(null, {
+          status: 302,
+          headers: {
+            ...corsHeaders,
+            "Location": loginUrl
+          }
+        });
+
       // Fetch user profile
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('registrations')
         .select('*')
         .eq('id', user.id)
         .single();
-          status: 302,
+
       if (profileError || !profile) {
         console.error("Profile not found for user:", user.id);
         const pendingUrl = `${siteBaseUrl}/kyc-pending`;
@@ -203,7 +210,7 @@ Deno.serve(async (req) => {
           }
         });
       }
-          headers: {
+
       // Check KYC approval status
       if (profile.status !== 'verified') {
         const pendingUrl = `${siteBaseUrl}/kyc-pending`;
@@ -215,13 +222,13 @@ Deno.serve(async (req) => {
           }
         });
       }
-            ...corsHeaders,
+
       // Build Discourse groups
       const groups = buildDiscourseGroups(
         profile.gender === 'Male' ? 'men' : 'women', 
         false // xaccess - modify based on your business logic
       );
-            "Location": loginUrl
+
       // Build SSO response payload
       const responsePayload: Record<string, string> = {
         nonce: nonce,
@@ -231,10 +238,10 @@ Deno.serve(async (req) => {
         name: profile.fullName || profile.firstName + ' ' + profile.lastName || profile.username,
         add_groups: groups
       };
-          }
+
       // Sign the response
       const { b64, sig: responseSig } = await signSsoPayload(responsePayload, discourseSsoSecret);
-        });
+
       // Redirect back to Discourse
       const redirectUrl = `${returnSsoUrl}?sso=${encodeURIComponent(b64)}&sig=${responseSig}`;
       
