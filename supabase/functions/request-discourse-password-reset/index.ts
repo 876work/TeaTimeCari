@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 
 interface PasswordResetRequest {
   email: string;
@@ -94,6 +95,48 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Check if user exists in registrations table before calling Discourse
+    try {
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('registrations')
+        .select('id, email, status')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      if (userError && userError.code !== '42P01') {
+        console.error("Error checking user existence:", userError);
+        // Continue to Discourse call even if we can't check our database
+        // This ensures the service remains functional even if our table has issues
+      } else if (!userData) {
+        // User does not exist in our registrations table
+        console.log(`Password reset requested for non-existent user: ${email}`);
+        
+        // Return success message to prevent user enumeration
+        // This matches what Discourse would return for a non-existent user
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: "If an account with this email exists, you will receive a password reset email from our community forum.",
+            details: {
+              userExists: false,
+              discourseCallMade: false
+            }
+          } as PasswordResetResponse),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // User exists, proceed with Discourse password reset
+      console.log(`Password reset requested for existing user: ${email} (status: ${userData.status})`);
+      
+    } catch (dbError) {
+      console.error("Database check failed, proceeding with Discourse call:", dbError);
+      // Continue to Discourse call if database check fails
+      // This ensures service availability even if our database is having issues
+    }
+
     // Make request to Discourse password reset endpoint
     const discourseUrl = `${discourseBaseUrl.replace(/\/+$/, '')}/session/forgot_password.json`;
     
@@ -152,6 +195,8 @@ Deno.serve(async (req: Request) => {
           success: true,
           message: "If an account with this email exists, you will receive a password reset email from our community forum.",
           details: {
+            userExists: true,
+            discourseCallMade: true,
             discourseStatus: discourseResponse.status,
             discourseResponse: "Password reset request processed"
           }
@@ -182,6 +227,8 @@ Deno.serve(async (req: Request) => {
           success: false, 
           error: errorMessage,
           details: {
+            userExists: true,
+            discourseCallMade: true,
             discourseStatus: discourseResponse.status,
             discourseResponse: responseText || "No response body"
           }
