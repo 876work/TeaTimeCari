@@ -128,10 +128,10 @@ async function addUserIdToGroup(groupId: number, userId: number) {
   const form = new URLSearchParams();
   form.set("user_id", String(userId));
   const res = await fetch(`${DISCOURSE_BASE}/admin/groups/${groupId}/members.json`, {
-    // According to the Discourse API, adding a member to a group uses POST.
-    // Using PUT here causes a 404/405 which halts the approval flow before
-    // emails are sent and the registration is updated. Switching to POST
-    // ensures the user is added to the group and the rest of the logic runs.
+    // Discourse requires POST for adding members to a group. Using PUT results
+    // in a 404/405 response that stops the approval flow before emails are
+    // sent and the registration is updated. POST ensures group membership is
+    // applied and the rest of the logic can continue.
     method: "POST",
     headers: {
       "Api-Key": DISCOURSE_KEY,
