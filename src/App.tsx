@@ -53,7 +53,8 @@ function App() {
 
   const handleLoginSuccess = () => {
     console.log('Login successful');
-    setCurrentPage('feed'); // Redirect to feed after successful login
+    // Redirect to Discourse SSO for seamless login experience
+    window.location.href = '/sso';
   };
 
   const handleResetPasswordComplete = () => {

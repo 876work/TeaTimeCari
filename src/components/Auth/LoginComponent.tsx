@@ -193,8 +193,15 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
         if (onLoginSuccess) {
           onLoginSuccess();
         } else {
-          // Default redirect to main app
-          window.location.href = '/';
+          // Default redirect to Discourse SSO for seamless login
+          const token = data.session?.access_token;
+          if (token) {
+            // Redirect to SSO endpoint with auth token
+            window.location.href = `/sso?token=${encodeURIComponent(token)}`;
+          } else {
+            // Fallback to main app if no token
+            window.location.href = '/';
+          }
         }
       }
     } catch (err: any) {
