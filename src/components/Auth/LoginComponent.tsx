@@ -71,12 +71,13 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
     setError(null);
 
     try {
-      const { data, error: resetError } = await supabase.functions.invoke('request-discourse-password-reset', {
-        body: { email: formData.email }
+      // Use Supabase Auth for password reset instead of Discourse
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: `${window.location.origin}/reset-password`
       });
 
-      if (resetError || !data?.success) {
-        throw new Error(resetError?.message || data?.error || 'Failed to send password reset email');
+      if (resetError) {
+        throw resetError;
       }
 
       setResetEmailSent(true);
@@ -89,10 +90,10 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
       
       if (err.message?.includes('rate limit') || err.message?.includes('Too many')) {
         errorMessage = 'Too many reset requests. Please wait before trying again.';
-      } else if (err.message?.includes('not configured')) {
-        errorMessage = 'Password reset service is temporarily unavailable. Please contact support.';
       } else if (err.message?.includes('Invalid email format')) {
         errorMessage = 'Please enter a valid email address.';
+      } else if (err.message?.includes('User not found')) {
+        errorMessage = 'No account found with this email address.';
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -193,15 +194,8 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
         if (onLoginSuccess) {
           onLoginSuccess();
         } else {
-          // Default redirect to Discourse SSO for seamless login
-          const token = data.session?.access_token;
-          if (token) {
-            // Redirect to SSO endpoint with auth token
-            window.location.href = `/sso?token=${encodeURIComponent(token)}`;
-          } else {
-            // Fallback to main app if no token
-            window.location.href = '/';
-          }
+          // Default redirect to SSO endpoint for seamless Discourse login
+          window.location.href = '/sso';
         }
       }
     } catch (err: any) {
@@ -410,7 +404,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
             <p className="text-sm text-blue-800">
               <strong>Need help?</strong><br />
               {showPasswordReset 
-                ? 'You will receive a password reset email from our community forum. Check your spam folder if you don\'t see it.'
+                ? 'You will receive a password reset email with a link to reset your password. Check your spam folder if you don\'t see it.'
                 : 'If you\'re having trouble logging in, please contact support for assistance.'
               }
             </p>

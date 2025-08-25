@@ -140,6 +140,52 @@ export function ResetPasswordComponent({ onResetComplete, onBackToLogin }: Reset
 
       if (data.user) {
         console.log('Password reset successful for user:', data.user.email);
+        
+        // Sync the new password to Discourse
+        try {
+          const { data: syncData, error: syncError } = await supabase.functions.invoke('sync-discourse-password', {
+            body: { 
+              email: data.user.email,
+              password: formData.password 
+            }
+          });
+
+          if (syncError) {
+            console.warn('Discourse password sync failed:', syncError);
+            // Don't fail the reset if Discourse sync fails
+            // User can still log into the main app
+          } else if (syncData?.success) {
+            console.log('Password successfully synced to Discourse');
+          } else {
+            console.warn('Discourse sync returned error:', syncData?.error);
+          }
+        } catch (syncErr: any) {
+          console.warn('Discourse sync error:', syncErr);
+          // Continue with success even if Discourse sync fails
+        }
+        
+        
+        // Sync the new password to Discourse
+        try {
+          const { error: syncError } = await supabase.functions.invoke('sync-discourse-password', {
+            body: { 
+              email: data.user.email,
+              password: formData.password 
+            }
+          });
+
+          if (syncError) {
+            console.warn('Discourse password sync failed:', syncError);
+            // Don't fail the reset if Discourse sync fails
+            // User can still log into the main app
+          } else {
+            console.log('Password successfully synced to Discourse');
+          }
+        } catch (syncErr: any) {
+          console.warn('Discourse sync error:', syncErr);
+          // Continue with success even if Discourse sync fails
+        }
+        
         setIsComplete(true);
         
         // Auto-redirect after 3 seconds
@@ -426,7 +472,7 @@ export function ResetPasswordComponent({ onResetComplete, onBackToLogin }: Reset
         <div className="mt-8 text-center">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-amber-800">
-              <strong>Security Notice:</strong> After updating your password, you'll need to sign in again with your new credentials.
+              <strong>Security Notice:</strong> After updating your password, you'll be able to sign in to both the app and community forum with your new credentials.
             </p>
           </div>
         </div>
