@@ -71,12 +71,12 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
     setError(null);
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error: resetError } = await supabase.functions.invoke('request-discourse-password-reset', {
+        body: { email: formData.email }
       });
 
-      if (resetError) {
-        throw resetError;
+      if (resetError || !data?.success) {
+        throw new Error(resetError?.message || data?.error || 'Failed to send password reset email');
       }
 
       setResetEmailSent(true);
@@ -87,10 +87,12 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
       
       let errorMessage = 'Failed to send reset email. Please try again.';
       
-      if (err.message?.includes('Email not found')) {
-        errorMessage = 'No account found with this email address.';
-      } else if (err.message?.includes('Email rate limit exceeded')) {
+      if (err.message?.includes('rate limit') || err.message?.includes('Too many')) {
         errorMessage = 'Too many reset requests. Please wait before trying again.';
+      } else if (err.message?.includes('not configured')) {
+        errorMessage = 'Password reset service is temporarily unavailable. Please contact support.';
+      } else if (err.message?.includes('Invalid email format')) {
+        errorMessage = 'Please enter a valid email address.';
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -401,7 +403,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
             <p className="text-sm text-blue-800">
               <strong>Need help?</strong><br />
               {showPasswordReset 
-                ? 'If you don\'t receive the reset email, check your spam folder or contact support.'
+                ? 'You will receive a password reset email from our community forum. Check your spam folder if you don\'t see it.'
                 : 'If you\'re having trouble logging in, please contact support for assistance.'
               }
             </p>
