@@ -258,7 +258,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
               <div>
                 <span className="text-green-700 text-sm font-medium">Reset email sent!</span>
                 <p className="text-green-600 text-xs mt-1">
-                  Check your email for a password reset link. It may take a few minutes to arrive.
+                  For security, we can't confirm addresses. If registered, you'll receive a reset email shortly.
                 </p>
               </div>
             </div>
