@@ -252,7 +252,7 @@ export default function SetPassword() {
                 required
                 disabled={loading}
                 autoComplete="new-password"
-                minLength={6}
+                minLength={10}
               />
               <button
                 type="button"
@@ -300,6 +300,7 @@ export default function SetPassword() {
                 required
                 disabled={loading}
                 autoComplete="new-password"
+                minLength={10}
               />
               <button
                 type="button"
@@ -330,9 +331,9 @@ export default function SetPassword() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800 font-medium mb-2">Password Requirements:</p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li className={`flex items-center ${formData.password.length >= 6 ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{formData.password.length >= 6 ? '✅' : '•'}</span>
-                At least 6 characters long
+              <li className={`flex items-center ${formData.password.length >= 10 ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{formData.password.length >= 10 ? '✅' : '•'}</span>
+                At least 10 characters long
               </li>
               <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? 'text-green-700' : ''}`}>
                 <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? '✅' : '•'}</span>

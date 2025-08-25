@@ -135,8 +135,8 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
       case 'password':
         if (!value) {
           error = 'Password is required';
-        } else if (value.length < 6) {
-          error = 'Password must be at least 6 characters';
+        } else if (value.length < 10) {
+          error = 'Password must be at least 10 characters';
         }
         break;
       case 'confirmPassword':
@@ -355,7 +355,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
     const isEmailAvailable = emailStatus.isValid && emailStatus.isAvailable === true && !isCheckingEmail;
     
     // Check password match
-    const passwordsMatch = formData.password === formData.confirmPassword && formData.password.length >= 6;
+    const passwordsMatch = formData.password === formData.confirmPassword && formData.password.length >= 10;
     
     return hasAllValues && hasNoErrors && isUsernameAvailable && isEmailAvailable && passwordsMatch;
   };
@@ -666,7 +666,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                 placeholder="Create a secure password"
                 required
                 autoComplete="new-password"
-                minLength={6}
+                minLength={10}
                 aria-invalid={errors.password && touched.password ? 'true' : 'false'}
               />
               <button
@@ -717,6 +717,7 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
                 placeholder="Type your password again"
                 required
                 autoComplete="new-password"
+                minLength={10}
                 aria-invalid={errors.confirmPassword && touched.confirmPassword ? 'true' : 'false'}
               />
               <button
@@ -751,9 +752,9 @@ export function RegisterStep1({ onNext, onGoToLogin, initialData }: RegisterStep
               Password Security Requirements:
             </p>
             <ul className="text-sm text-blue-700 space-y-1">
-              <li className={`flex items-center ${formData.password.length >= 6 ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{formData.password.length >= 6 ? '✅' : '•'}</span>
-                At least 6 characters long
+              <li className={`flex items-center ${formData.password.length >= 10 ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{formData.password.length >= 10 ? '✅' : '•'}</span>
+                At least 10 characters long
               </li>
               <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? 'text-green-700' : ''}`}>
                 <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? '✅' : '•'}</span>

@@ -54,7 +54,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
   // Validate form
   const isFormValid = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(formData.email) && (showPasswordReset || formData.password.length >= 6);
+    return emailRegex.test(formData.email) && (showPasswordReset || formData.password.length >= 10);
   };
 
   // Handle password reset request
@@ -121,7 +121,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
     setTouched({ email: true, password: true });
     
     if (!isFormValid()) {
-      setError('Please enter a valid email and password (minimum 6 characters)');
+      setError('Please enter a valid email and password (minimum 10 characters)');
       return;
     }
 
@@ -327,7 +327,7 @@ export function LoginComponent({ onLoginSuccess, onBackToRegister }: LoginCompon
             </div>
             {touched.password && formData.password.length > 0 && formData.password.length < 6 && (
               <p className="mt-2 text-sm text-red-600">
-                Password must be at least 6 characters
+                Password must be at least 10 characters
               </p>
             )}
           </div>
