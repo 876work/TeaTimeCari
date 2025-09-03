@@ -210,7 +210,6 @@ export function AdminUserReview() {
   const handleApprove = async (user: UserRow) => {
     if (!confirm(`Are you sure you want to approve ${user.username ?? safeDisplayName(user)}?`)) return;
 
-    const genderMapping: 'men' | 'women' = user.gender === 'Male' ? 'men' : 'women';
 
     setProcessingUserId(user.id);
     setError(null);
@@ -230,10 +229,7 @@ export function AdminUserReview() {
       // Call the approve function (your current stub responds 200)
       const { data, error: fnError } = await supabase.functions.invoke('approve-and-sync', {
         body: {
-          user_id: user.id,
-          gender: genderMapping,
-          xaccess: false,
-          password: user.password_temp ?? undefined,
+          registration_id: user.id,
         },
       });
 
