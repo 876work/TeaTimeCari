@@ -789,6 +789,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             >
               Next Step
             </button>
+          </div>
         </form>
       </div>
     </div>
