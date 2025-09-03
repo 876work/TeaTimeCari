@@ -771,11 +771,11 @@ export function RegisterStep1({ onNext, initialData }: RegisterStep1Props) {
             <button
               type="submit"
               disabled={!isFormValid()}
-              className="w-full py-3 px-4 rounded-lg font-medium transition-all ${
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 isFormValid()
                   ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              } transition-all duration-200"
+              }`}
             >
               Next Step
             </button>
