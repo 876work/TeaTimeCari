@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       }
 
       // Check KYC approval status
-      if (profile.status !== 'verified') {
+      if (profile.status !== 'approved') {
         const pendingUrl = `${siteBaseUrl}/kyc-pending`;
         return new Response(null, {
           status: 302,
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
       }
 
       // Check KYC approval status
-      if (profile.status !== 'verified') {
+      if (profile.status !== 'approved') {
         const pendingUrl = `${siteBaseUrl}/kyc-pending`;
         return new Response(null, {
           status: 302,
