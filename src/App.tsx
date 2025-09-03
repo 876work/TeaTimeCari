@@ -175,6 +175,7 @@ function App() {
                           {currentStep === 1 && (
                             <RegisterStep1 
                               onNext={handleStep1Complete}
+                              onBack={() => setCurrentPage('user-type-selection')}
                               initialData={registrationData.step1}
                             />
                           )}

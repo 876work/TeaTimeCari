@@ -27,10 +27,11 @@ export interface RegisterStep1Data {
 
 interface RegisterStep1Props {
   onNext: (data: RegisterStep1Data) => void;
+  onBack?: () => void;
   initialData?: RegisterStep1Data;
 }
 
-export function RegisterStep1({ onNext, initialData }: RegisterStep1Props) {
+export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Props) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
@@ -768,10 +769,19 @@ export function RegisterStep1({ onNext, initialData }: RegisterStep1Props) {
 
           {/* Submit Button */}
           <div className="flex space-x-4">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Back
+              </button>
+            )}
             <button
               type="submit"
               disabled={!isFormValid()}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 isFormValid()
                   ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -779,7 +789,6 @@ export function RegisterStep1({ onNext, initialData }: RegisterStep1Props) {
             >
               Next Step
             </button>
-          </div>
         </form>
       </div>
     </div>
