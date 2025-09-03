@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
-import { FileText } from 'lucide-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { HomePage } from './components/HomePage';
@@ -10,7 +9,6 @@ import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
 import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
 import PendingApproval from './components/Register/PendingApproval';
-import { VerifySmsCode } from './components/Auth/VerifySmsCode';
 import { GenderFeed } from './components/Feed/GenderFeed';
 import { UploadPost } from './components/Posts/UploadPost';
 import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
@@ -18,12 +16,7 @@ import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
-import { LoginComponent } from './components/Auth/LoginComponent';
-import { ResetPasswordComponent } from './components/Auth/ResetPasswordComponent';
 import RegistrationsPage from './features/admin/registrations/RegistrationsPage';
-import KycVerification from './pages/KycVerification';
-import SetPassword from './pages/SetPassword';
-import KycSummary from './pages/KycSummary';
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import { UserTypeSelection } from './components/UserTypeSelection';
@@ -32,7 +25,7 @@ import { supabase } from './lib/supabase';
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
-  const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'login' | 'reset-password' | 'verify-code' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
+  const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
@@ -42,25 +35,7 @@ function App() {
     step3?: RegisterStep3Data;
   }>({});
 
-
-  const handleGoToLogin = () => {
-    setCurrentPage('login');
-  };
-
-  const handleBackToRegister = () => {
-    setCurrentPage('user-type-selection');
-  };
-
-  const handleLoginSuccess = () => {
-    console.log('Login successful');
-    // Redirect to Discourse SSO for seamless login experience
-    window.location.href = '/sso';
-  };
-
-  const handleResetPasswordComplete = () => {
-    console.log('Password reset completed');
-    setCurrentPage('login'); // Redirect to login after password reset
-  };
+  const discourseBaseUrl = import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
 
   const handleStep1Complete = (data: RegisterStep1Data) => {
     console.log('Registration Step 1 completed:', data);
@@ -85,20 +60,11 @@ function App() {
     setCurrentPage('user-type-selection');
   };
 
-  const handleVerificationComplete = () => {
-    console.log('SMS verification completed');
-    setCurrentPage('feed'); // Redirect to feed after email verification
-  };
-
   const handleGoHome = () => {
     setCurrentPage('user-type-selection');
     setCurrentStep(1); // Reset to basic info step
     setShowWelcomePage(true); // Show welcome page again
     setRegistrationData({});
-  };
-
-  const handleGoToVerification = () => {
-    setCurrentPage('verify-code');
   };
 
   const handleGoToFeed = () => {
@@ -172,7 +138,8 @@ function App() {
   };
 
   const handleReturningUser = () => {
-    setCurrentPage('login');
+    // Redirect to Discourse login instead of in-app login
+    window.location.href = `${discourseBaseUrl}/login`;
   };
 
   return (
@@ -181,27 +148,12 @@ function App() {
         <NotificationProvider>
           <Router>
             <Routes>
-              {/* KYC Routes */}
-              <Route path="/kyc-verification" element={<KycVerification />} />
-              <Route path="/kyc-summary" element={<KycSummary />} />
-              <Route path="/set-password" element={<SetPassword />} />
               <Route path="/contact-us" element={<ContactUs />} />
               <Route path="/kyc-pending" element={<KycPending />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
               <Route path="/admin/registrations" element={<RegistrationsPage />} />
-              
-              {/* Password Reset Route */}
-              <Route 
-                path="/reset-password" 
-                element={
-                  <ResetPasswordComponent 
-                    onResetComplete={handleResetPasswordComplete}
-                    onBackToLogin={() => setCurrentPage('login')}
-                  />
-                } 
-              />
               
               {/* Main App Route */}
               <Route 
@@ -223,7 +175,6 @@ function App() {
                           {currentStep === 1 && (
                             <RegisterStep1 
                               onNext={handleStep1Complete}
-                              onGoToLogin={handleGoToLogin}
                               initialData={registrationData.step1}
                             />
                           )}
@@ -253,26 +204,6 @@ function App() {
                             />
                           )}
                         </>
-                      )}
-                      
-                      {currentPage === 'login' && (
-                        <LoginComponent 
-                          onLoginSuccess={handleLoginSuccess}
-                          onBackToRegister={handleBackToRegister}
-                        />
-                      )}
-                      
-                      {currentPage === 'reset-password' && (
-                        <ResetPasswordComponent 
-                          onResetComplete={handleResetPasswordComplete}
-                          onBackToLogin={() => setCurrentPage('login')}
-                        />
-                      )}
-                      
-                      {currentPage === 'verify-code' && (
-                        <VerifySmsCode 
-                          onVerificationComplete={handleVerificationComplete}
-                        />
                       )}
                       
                       {currentPage === 'feed' && (
@@ -320,28 +251,10 @@ function App() {
                             Register
                           </button>
                           <button
-                            onClick={handleGoToLogin}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'login' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
+                            onClick={() => window.location.href = `${discourseBaseUrl}/login`}
+                            className="px-3 py-1 text-xs rounded bg-gray-200 text-gray-700"
                           >
-                            Login
-                          </button>
-                          <button
-                            onClick={() => setCurrentPage('reset-password')}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'reset-password' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Reset Password
-                          </button>
-                          <button
-                            onClick={handleGoToVerification}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'verify-code' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Verify SMS
+                            Discourse Login
                           </button>
                           <button
                             onClick={handleGoToFeed}

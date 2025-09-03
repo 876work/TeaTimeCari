@@ -293,13 +293,13 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
             {alreadyExists ? 'Application Already Submitted!' : 'Application Submitted!'}
           </h1>
           <p className="text-sm text-gray-600 mb-4 font-medium">
-            {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with verification instructions."}
+            {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with instructions to access the community forum."}
           </p>
 
           <div className="text-sm text-gray-600 mb-6">
             {alreadyExists 
-              ? "Your application is already in our system. No need to resubmit - we'll contact you once reviewed."
-              : "You can close this page. We'll notify you via email when it's your turn."
+              ? "Your application is already in our system. No need to resubmit - we'll email you with forum access instructions once reviewed."
+              : "You can close this page. We'll email you with forum access instructions once your application is approved."
             }
           </div>
 

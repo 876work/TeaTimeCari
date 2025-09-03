@@ -8,6 +8,13 @@ interface UserTypeSelectionProps {
 }
 
 export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelectionProps) {
+  const discourseBaseUrl = import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
+
+  const handleReturningUserClick = () => {
+    // Redirect to Discourse login
+    window.location.href = `${discourseBaseUrl}/login`;
+  };
+
   return (
     <AuthLayout>
       <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -45,7 +52,7 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
 
           {/* Returning User Option */}
           <button
-            onClick={onReturningUser}
+            onClick={handleReturningUserClick}
             className="w-full group p-6 border-2 border-gray-300 rounded-xl hover:border-[#E0A3A3] hover:bg-red-50 transition-all duration-200 text-left"
           >
             <div className="flex items-center justify-between">
@@ -56,7 +63,7 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">I'm a Returning User</h3>
                   <p className="text-sm text-gray-600">
-                    Sign in to your existing account
+                    Sign in to the community forum
                   </p>
                 </div>
               </div>
@@ -85,7 +92,7 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
               <div>
                 <p className="text-sm text-green-800 font-medium mb-1">Already have an account?</p>
                 <p className="text-sm text-green-700">
-                  Welcome back! Sign in with your email and password to access your account and continue connecting with the community.
+                  Welcome back! Click above to sign in to the community forum with your existing account.
                 </p>
               </div>
             </div>
