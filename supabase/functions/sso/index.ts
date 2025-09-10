@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     // Get environment variables
     const discourseSsoSecret = Deno.env.get("DISCOURSE_SSO_SECRET");
-    const siteBaseUrl = Deno.env.get("SITE_BASE_URL") || "http://localhost:5173";
+    const siteBaseUrl = Deno.env.get("SITE_BASE_URL") || "https://teatimecari.app";
     const discourseBaseUrl = Deno.env.get("DISCOURSE_BASE_URL") || "https://community.teatimecari.app";
 
     if (!discourseSsoSecret) {

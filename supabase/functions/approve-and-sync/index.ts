@@ -37,6 +37,7 @@ const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const SEND_ACTIVATION = (Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "false").toLowerCase() === "true";
+const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || "https://teatimecari.app";
 const XACCESS_GROUP = (Deno.env.get("XACCESS_GROUP") || "").trim();
 
 /* ---------------- SendGrid config ---------------- */
@@ -136,7 +137,7 @@ Next up: a Welcome email from the Tea Time Cari Community should land in your in
 
 function tplWelcome(username: string, baseUrl: string) {
   const subject = "Welcome to Tea Time Cari Community";
-  const loginUrl = `${baseUrl}/login`;
+  const loginUrl = `${APP_BASE_URL}/community`;
   const html = `
     <p>Hi <strong>${username}</strong>,</p>
     <p>Your Tea Time Cari Community account is ready.</p>
@@ -265,7 +266,7 @@ Deno.serve(async (req) => {
 
     // 3) Send emails (non-fatal if they fail)
     const approvedTpl = tplApproved(username, userCode);
-    const welcomeTpl  = tplWelcome(username, DISCOURSE_BASE);
+    const welcomeTpl  = tplWelcome(username, APP_BASE_URL);
 
     const emailApproved = await sendWithSendgrid(email, approvedTpl.subject, approvedTpl.html, approvedTpl.text)
       .catch(err => ({ sent: false, error: String(err) }));
