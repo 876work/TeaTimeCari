@@ -22,6 +22,8 @@ import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
 import Login from './pages/Login';
 import Community from './pages/Community';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
@@ -156,6 +158,8 @@ function App() {
               <Route path="/sso" element={<Sso />} />
               <Route path="/login" element={<Login />} />
               <Route path="/community" element={<Community />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
