@@ -24,6 +24,7 @@ import Login from './pages/Login';
 import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Logout from './pages/Logout';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
@@ -160,6 +161,7 @@ function App() {
               <Route path="/community" element={<Community />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/logout" element={<Logout />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
