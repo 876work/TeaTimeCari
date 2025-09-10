@@ -20,6 +20,7 @@ import RegistrationsPage from './features/admin/registrations/RegistrationsPage'
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
+import Login from './pages/Login';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
@@ -152,6 +153,7 @@ function App() {
               <Route path="/contact-us" element={<ContactUs />} />
               <Route path="/kyc-pending" element={<KycPending />} />
               <Route path="/sso" element={<Sso />} />
+              <Route path="/login" element={<Login />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
