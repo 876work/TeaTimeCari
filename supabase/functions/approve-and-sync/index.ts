@@ -161,7 +161,6 @@ You may also contact us at hello@teatimecari.app. Remember to include your user 
 
 /* ---------------- Discourse (SSO sync) ---------------- */
 async function discourseSyncSSO(payload: Record<string, string>) {
-  // Build sso string
   const qs = new URLSearchParams(payload).toString();
   const b64 = btoa(qs);
   const sig = await hmacHex(b64, DISCOURSE_SSO_SECRET);
@@ -200,11 +199,19 @@ Deno.serve(async (req) => {
     const registrationId: string | undefined = body.registration_id ?? body.user_id;
     if (!registrationId) return jerr(headers, 400, "registration_id (or user_id) is required");
 
-    // Optionally allow front-end to pass gender/xaccess; if not, read from DB
+    // *** IMPORTANT CHANGE: use Service-Role client ONLY (no caller Authorization header) ***
+    const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // TEMP: removed admin-only check for now while debugging "Registration not found"
+    // const { data: auth } = await supa.auth.getUser();
+    // if (!auth?.user) return jerr(headers, 401, "Unauthorized");
+    // const { data: me, error: meErr } = await supa
+    //   .from("profiles").select("id, is_admin").eq("id", auth.user.id).single();
+    // if (meErr || !me?.is_admin) return jerr(headers, 403, "Forbidden: admin only");
+
+    // Optionally allow gender/xaccess from body; otherwise read from DB
     const bodyGender = normalizeGender(String(body.gender ?? ""));
     const xaccessFlag = Boolean(body.xaccess ?? false);
-
-    const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // Load registration
     const { data: reg, error: regErr } = await supa
@@ -213,7 +220,10 @@ Deno.serve(async (req) => {
       .eq("id", registrationId)
       .single();
 
-    if (regErr || !reg) return jerr(headers, 404, "Registration not found");
+    if (regErr || !reg) {
+      console.error("registrations lookup failed", { registrationId, regErr });
+      return jerr(headers, 404, "Registration not found");
+    }
 
     const username = String(reg.username || "").trim();
     const email    = String(reg.email || "").trim();
