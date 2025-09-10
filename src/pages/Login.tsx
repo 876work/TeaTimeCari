@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
+import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { AuthLayout } from '../components/AuthLayout';
 import { supabase } from "../lib/supabase";
 
 function useQuery() {
@@ -14,6 +16,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // If already logged in, honor next redirect immediately
   useEffect(() => {
@@ -57,37 +60,140 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: 380, margin: "56px auto", padding: 24 }}>
-      <h1>Sign in</h1>
-      <form onSubmit={onSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
+    <AuthLayout>
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+            <LogIn className="w-8 h-8 text-[#A3C6E0]" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to your Tea Time Cari account</p>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              <span className="text-red-700 text-sm">{error}</span>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="space-y-6">
+          {/* Email */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#A3C6E0]"
+                placeholder="Enter your email address"
+                required
+                disabled={loading}
+                autoComplete="email"
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#A3C6E0]"
+                placeholder="Enter your password"
+                required
+                disabled={loading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading || !email || !password}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              !loading && email && password
+                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                Signing in...
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <LogIn className="w-5 h-5 mr-2" />
+                Sign In
+              </div>
+            )}
+          </button>
+        </form>
+
+        {/* Additional Links */}
+        <div className="mt-8 space-y-4">
+          <div className="text-center">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-[#A3C6E0] hover:text-[#8BB5D9] transition-colors font-medium"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+          
+          <div className="text-center">
+            <Link
+              to="/"
+              className="flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors text-sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Link>
+          </div>
         </div>
-        {error && <p style={{ color: "crimson" }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ padding: "8px 14px" }}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-      <p style={{ marginTop: 16 }}>
-        <Link to="/forgot">Forgot password?</Link>
-      </p>
-    </div>
+
+        {/* Help Section */}
+        <div className="mt-8">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800 text-center">
+              <strong>New to Tea Time Cari?</strong> You'll need an invitation to join our community.
+            </p>
+          </div>
+        </div>
+      </div>
+    </AuthLayout>
   );
 }
