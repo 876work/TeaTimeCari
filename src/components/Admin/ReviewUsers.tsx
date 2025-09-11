@@ -210,6 +210,13 @@ export function AdminUserReview() {
   const handleApprove = async (user: UserRow) => {
     if (!confirm(`Are you sure you want to approve ${user.username ?? safeDisplayName(user)}?`)) return;
 
+    // Check if user is logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setError('You must be logged in to perform this action.');
+      return;
+    }
+
 
     setProcessingUserId(user.id);
     setError(null);
@@ -226,15 +233,23 @@ export function AdminUserReview() {
         throw new Error(updateError.message);
       }
 
-      // Call the approve function (your current stub responds 200)
+      // Call the approve function with proper authorization
       const { data, error: fnError } = await supabase.functions.invoke('approve-and-sync', {
-        body: {
-          registration_id: user.id,
-        },
+        body: { registration_id: user.id },
+        headers: { Authorization: `Bearer ${session.access_token}` }
       });
+
+      // Log response for debugging
+      console.log('approve-and-sync response:', { data, error: fnError });
 
       if (fnError) {
         console.error('approve-and-sync function error:', fnError);
+        
+        // Handle specific error cases
+        if (fnError.message?.includes('403') || fnError.message?.includes('Forbidden')) {
+          throw new Error('Not authorized: You must be an admin to approve users');
+        }
+        
         throw new Error(fnError.message || 'Failed to call approve-and-sync function');
       }
 
@@ -249,6 +264,7 @@ export function AdminUserReview() {
       const firstName = safeFirstName(user);
       const { data: emailData, error: emailErr } = await supabase.functions.invoke('send-approval-email', {
         body: { email: user.email, firstName },
+        headers: { Authorization: `Bearer ${session.access_token}` }
       });
 
       if (emailErr || !emailData?.success) {
@@ -266,7 +282,16 @@ export function AdminUserReview() {
       alert(message);
     } catch (err: any) {
       console.error('Error approving user:', err);
-      setError(`Failed to approve ${user.username ?? safeDisplayName(user)}: ${err.message || 'Unknown error'}`);
+      
+      // Format error messages for UI
+      let errorMessage = err.message || 'Unknown error';
+      if (errorMessage.includes('You must be logged in')) {
+        errorMessage = 'Not logged in: Please refresh the page and try again';
+      } else if (errorMessage.includes('Not authorized') || errorMessage.includes('admin')) {
+        errorMessage = 'Not an admin: You do not have permission to approve users';
+      }
+      
+      setError(`Failed to approve ${user.username ?? safeDisplayName(user)}: ${errorMessage}`);
     } finally {
       setProcessingUserId(null);
     }
