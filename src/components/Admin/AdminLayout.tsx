@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Users, Flag, Key, BarChart3, FileText, Home, UserPlus } from 'lucide-react';
+import { Shield, Users, Flag, Key, BarChart3, FileText, Home } from 'lucide-react';
 import { LogoutButton } from '../Auth/LogoutButton';
 
 interface AdminLayoutProps {
@@ -46,12 +46,6 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
       label: 'Function Ping (Dev)',
       icon: <Shield className="w-5 h-5" />,
       description: 'Test Edge Function connectivity'
-    },
-    {
-      id: 'admin-register',
-      label: 'Create Admin User',
-      icon: <UserPlus className="w-5 h-5" />,
-      description: 'Create a new administrator account'
     }
   ];
 
