@@ -16,6 +16,7 @@ import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { AdminRegister } from './components/Admin/AdminRegister';
 import RegistrationsPage from './features/admin/registrations/RegistrationsPage';
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
@@ -166,6 +167,7 @@ function App() {
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
               <Route path="/admin/registrations" element={<RegistrationsPage />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
               
               {/* Main App Route */}
               <Route 
