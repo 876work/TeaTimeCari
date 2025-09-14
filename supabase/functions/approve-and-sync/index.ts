@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
     // Load registration
     const { data: reg, error: regErr } = await supa
       .from("registrations")
-      .select("id, email, username, firstName, lastName, full_name, gender, status, email_code, email_code_expiry")
+      .select("id, email, username, firstName, lastName, full_name, gender, status, email_code, email_code_expiry, role") // Added 'role'
       .eq("id", registrationId)
       .single();
 
@@ -257,6 +257,11 @@ Deno.serve(async (req) => {
       username,
       name: displayName,
       add_groups: groups,
+    };
+
+    // If the user's role is 'admin', set the admin flag for Discourse SSO
+    if (reg.role === 'admin') {
+      ssoPayload.admin = "true";
     });
 
     // 2) Update our registration record as approved
