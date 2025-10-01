@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
 import { supabase } from '@/lib/supabaseClient';
-import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
+import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
 
 function useQuery() {
   const { search } = useLocation();
@@ -41,30 +41,23 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
 
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError(error.message || "Login failed");
+      setError(error.message);
+      setLoading(false);
       return;
     }
 
-    // If we arrived here from Discourse SSO, finish the handshake
+    // If we came from Discourse SSO, finish it first and stop.
     if (hasPendingSso()) {
       const { data: { session } } = await supabase.auth.getSession();
-      await finishDiscourseSso(session?.access_token ?? "");
-      return; // finishDiscourseSso will redirect if successful
+      await finishDiscourseSso(session?.access_token ?? '');
+      return; // important: finisher will redirect
     }
 
-    const next = q.get("next");
-    if (next === "/sso") {
-      const sso = q.get("sso") || "";
-      const sig = q.get("sig") || "";
-      const qs = new URLSearchParams({ sso, sig }).toString();
-      navigate(`/sso?${qs}`, { replace: true });
-    } else {
-      navigate("/", { replace: true });
-    }
+    // No SSO pending → normal navigation
+    window.location.href = '/';
   };
 
   return (
