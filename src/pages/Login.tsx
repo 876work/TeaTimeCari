@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
-import { supabase } from "../lib/supabaseClient";
-import { hasPendingSso, finishDiscourseSso } from "../lib/discourseSso";
+import { supabase } from "@/lib/supabaseClient";
+import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 
 function useQuery() {
   const { search } = useLocation();

@@ -2,13 +2,11 @@
 const N_KEY = "disc_nonce";
 const R_KEY = "disc_return";
 
-// Supabase Edge Function endpoint that builds the Discourse redirect
-const COMPLETE_URL =
-  "https://nxzfrnpsiqpxibhggoct.functions.supabase.co/sso-complete";
+// Supabase Edge Function that returns the Discourse redirect URL
+const COMPLETE_URL = "https://nxzfrnpsiqpxibhggoct.functions.supabase.co/sso-complete";
 
-// Safety default if "r" is missing
-const RETURN_FALLBACK =
-  "https://community.teatimecari.app/session/sso_login";
+// Fallback return path for Discourse if "r" is missing
+const RETURN_FALLBACK = "https://community.teatimecari.app/session/sso_login";
 
 /** Save sso_nonce & r from the current URL into sessionStorage (idempotent). */
 export function stashFromUrlOnce() {
@@ -21,7 +19,7 @@ export function stashFromUrlOnce() {
   } catch {}
 }
 
-/** True if there is a pending SSO handshake (in storage or URL). */
+/** True if there is a pending SSO handshake (in storage OR URL). */
 export function hasPendingSso(): boolean {
   if (sessionStorage.getItem(N_KEY)) return true;
   try {
@@ -35,16 +33,13 @@ export function hasPendingSso(): boolean {
 /**
  * Finish the Discourse SSO handshake:
  * - reads nonce/return from storage OR current URL (fallback)
- * - calls the sso-complete function with the Supabase session token
+ * - calls sso-complete with the Supabase session token
  * - clears storage and redirects the browser
  */
 export async function finishDiscourseSso(sessionToken: string) {
-  // fall back to current URL if storage is empty
   const sp = new URLSearchParams(window.location.search);
-  const nonce =
-    sessionStorage.getItem(N_KEY) || sp.get("sso_nonce") || undefined;
-  const returnUrl =
-    sessionStorage.getItem(R_KEY) || sp.get("r") || RETURN_FALLBACK;
+  const nonce = sessionStorage.getItem(N_KEY) || sp.get("sso_nonce") || undefined;
+  const returnUrl = sessionStorage.getItem(R_KEY) || sp.get("r") || RETURN_FALLBACK;
 
   if (!nonce) return false;
 
@@ -57,12 +52,9 @@ export async function finishDiscourseSso(sessionToken: string) {
     body: JSON.stringify({ nonce, returnUrl }),
   });
 
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json?.error || "sso-complete failed");
-  }
+  const json = await res.json().catch(() => ({} as any));
+  if (!res.ok) throw new Error(json?.error || "sso-complete failed");
 
-  // Clean up and bounce back to Discourse
   try {
     sessionStorage.removeItem(N_KEY);
     sessionStorage.removeItem(R_KEY);
@@ -73,11 +65,10 @@ export async function finishDiscourseSso(sessionToken: string) {
     return true;
   }
 
-  // last-resort safety
+  // Last-resort safety
   window.location.replace(
-    `${RETURN_FALLBACK}?sso=${encodeURIComponent(
-      json?.b64 || ""
-    )}&sig=${json?.sig || ""}`
+    `${RETURN_FALLBACK}?sso=${encodeURIComponent(json?.b64 || "")}&sig=${json?.sig || ""}`
   );
   return true;
 }
+

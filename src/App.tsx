@@ -29,7 +29,7 @@ import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
-import { supabase } from './lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);

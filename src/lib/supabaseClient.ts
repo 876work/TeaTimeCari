@@ -1,3 +1,4 @@
+// src/lib/supabaseClient.ts
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 declare global {
@@ -7,6 +8,10 @@ declare global {
 
 export const supabase =
   globalThis.__supabase_singleton__ ??
-  createClient(import.meta.env.VITE_SUPABASE_URL!, import.meta.env.VITE_SUPABASE_ANON_KEY!);
+  createClient(
+    import.meta.env.VITE_SUPABASE_URL!,
+    import.meta.env.VITE_SUPABASE_ANON_KEY!
+  );
 
 globalThis.__supabase_singleton__ = supabase;
+
