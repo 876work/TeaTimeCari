@@ -63,9 +63,9 @@ export default function Login() {
       const sso = q.get("sso") || "";
       const sig = q.get("sig") || "";
       const qs = new URLSearchParams({ sso, sig }).toString();
-      window.location.replace(`/sso?${qs}`);
+      navigate(`/sso?${qs}`, { replace: true });
     } else {
-      window.location.replace("/");
+      navigate("/", { replace: true });
     }
   };
 
