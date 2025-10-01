@@ -1,7 +1,7 @@
 // src/features/admin/registrations/RegistrationsPage.tsx
 import { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, X } from 'lucide-react';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { approveRegistration } from './api/approveRegistration';
 
 type Row = {

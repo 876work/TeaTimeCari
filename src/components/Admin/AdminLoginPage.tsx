@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { 
-  Shield, 
-  AlertTriangle, 
+import { useSession } from '@supabase/auth-helpers-react';
+import {
+  Shield,
+  AlertTriangle,
   Eye, 
   Lock, 
   Skull, 
@@ -12,9 +12,10 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
 
 export function AdminLoginPage() {
-  const supabase = useSupabaseClient();
   const session = useSession();
   
   const [email, setEmail] = useState('');
@@ -26,8 +27,16 @@ export function AdminLoginPage() {
   // Check if user is already logged in as admin
   useEffect(() => {
     if (session?.user?.email?.includes('admin')) {
-      // Redirect to admin dashboard
-      window.location.href = '/';
+      (async () => {
+        if (hasPendingSso()) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          await finishDiscourseSso(currentSession?.access_token ?? '');
+          return;
+        }
+
+        // Redirect to admin dashboard
+        window.location.href = '/';
+      })();
     }
   }, [session]);
 
@@ -47,6 +56,12 @@ export function AdminLoginPage() {
       }
 
       if (data.user && data.user.email?.includes('admin')) {
+        if (hasPendingSso()) {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          await finishDiscourseSso(currentSession?.access_token ?? '');
+          return;
+        }
+
         // Successful admin login
         window.location.href = '/admin/dashboard';
       } else {
