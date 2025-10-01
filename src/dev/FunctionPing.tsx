@@ -1,15 +1,11 @@
 import React, { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
 const url = import.meta.env.VITE_SUPABASE_URL as string;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-const computedFnUrl = url ? `${url.replace(/\/+$/, '')}/functions/v1` : "(missing URL)";
-
 const supabase = createClient(url, anon);
 
-export default function FunctionPing() {
-  const [approvalResp, setApprovalResp] = useState<any>(null);
   const [rejectionResp, setRejectionResp] = useState<any>(null);
   const [errA, setErrA] = useState<any>(null);
   const [errR, setErrR] = useState<any>(null);
