@@ -18,8 +18,10 @@ export function hasPendingSso() {
 }
 
 export async function finishDiscourseSso(sessionToken: string) {
-  const nonce = sessionStorage.getItem(N_KEY);
-  const ret = sessionStorage.getItem(R_KEY) || RETURN_FALLBACK;
+  const sp = new URLSearchParams(window.location.search);
+  const nonce = sessionStorage.getItem(N_KEY) || sp.get("sso_nonce");
+  const ret = sessionStorage.getItem(R_KEY) || sp.get("r") || RETURN_FALLBACK;
+  
   if (!nonce || !sessionToken) return false;
 
   const res = await fetch(SSO_COMPLETE_URL, {
@@ -37,7 +39,7 @@ export async function finishDiscourseSso(sessionToken: string) {
   }
   const { redirectUrl } = await res.json();
   if (redirectUrl) {
-    // clear so we don't loop on refresh
+    // Clear so we don't loop on refresh
     sessionStorage.removeItem(N_KEY);
     sessionStorage.removeItem(R_KEY);
     window.location.href = redirectUrl;
