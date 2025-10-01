@@ -26,6 +26,7 @@ import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
+import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
@@ -164,7 +165,7 @@ function App() {
               <Route path="/kyc-pending" element={<KycPending />} />
               <Route path="/sso" element={<Sso />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/community" element={<Community />} />
+              <Route path="/community" element={<CommunityRedirect />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/logout" element={<Logout />} />
