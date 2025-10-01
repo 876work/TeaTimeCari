@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
+import { stashFromUrlOnce } from './lib/discourseSso';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { HomePage } from './components/HomePage';
@@ -29,6 +30,11 @@ import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
 function App() {
+  // Stash SSO parameters from URL on mount
+  React.useEffect(() => {
+    stashFromUrlOnce();
+  }, []);
+
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
