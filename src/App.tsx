@@ -28,6 +28,7 @@ import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
+import SsoAutoFinisher from './components/SsoAutoFinisher';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
@@ -160,6 +161,7 @@ function App() {
     <SessionContextProvider supabaseClient={supabase}>
       <StripeProvider>
         <NotificationProvider>
+          <SsoAutoFinisher />
           <Router>
             <Routes>
               <Route path="/contact-us" element={<ContactUs />} />
