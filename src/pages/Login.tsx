@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
 import { supabase } from "../lib/supabase";
+import { finishDiscourseSso, hasPendingSso } from "../lib/discourseSso";
 
 function useQuery() {
   const { search } = useLocation();
@@ -46,6 +47,15 @@ export default function Login() {
     if (error) {
       setError(error.message || "Login failed");
       return;
+    }
+
+    // If we arrived here from Discourse SSO, finish the handshake
+    if (hasPendingSso()) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        await finishDiscourseSso(session.access_token);
+        return; // finishDiscourseSso will redirect if successful
+      }
     }
 
     const next = q.get("next");
