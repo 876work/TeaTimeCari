@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
+import { useSession } from '@supabase/auth-helpers-react';
+import { supabase } from '@/lib/supabaseClient';
 import { Check, X, AlertCircle, Loader2, User, LogIn, Eye, EyeOff, Lock } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
-import {
-  validateUsername,
-  generateUsernameSuggestions,
-  validatePhoneNumber,
-  validateEmail,
-  UsernameValidationResult
-} from '../utils/usernameValidation';
+import { validatePhoneNumber } from '../utils/usernameValidation';
+
+// Updated interface to match Edge Function response
+interface UsernameValidationResult {
+  isValid: boolean;
+  isAvailable: boolean | null;
+  error: string | null;
+  suggestions: string[];
+  isForbidden?: boolean;
+}
 
 interface EmailValidationResult {
   isValid: boolean;
@@ -32,7 +36,6 @@ interface RegisterStep1Props {
 }
 
 export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Props) {
-  const supabase = useSupabaseClient();
   const session = useSession();
   
   // Form state
@@ -156,30 +159,45 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   
   // Check username availability
   const checkUsernameAvailability = async (username: string) => {
-    if (!username || !validateUsername(username).isValid) {
+    if (!username || username.length < 3) {
       return false;
     }
     
     setIsCheckingUsername(true);
     
     try {
-      const { data, error } = await supabase
-        .from('registrations')
-        .select('username')
-        .eq('username', username.toLowerCase())
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('check-availability', {
+        body: { username }
+      });
       
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
+        console.error('Error checking username availability:', error);
+        setGlobalError('Failed to check username availability. Please try again.');
+        setUsernameStatus(prev => ({ ...prev, isAvailable: false }));
+        return false;
+      }
+      
+      if (!data.success) {
+        console.error('Username availability check failed:', data.error);
+        setGlobalError('Failed to check username availability. Please try again.');
+        setUsernameStatus(prev => ({ ...prev, isAvailable: false }));
+        return false;
+      }
+      
+      const usernameResult = data.username;
+      if (!usernameResult) {
         throw error;
       }
       
-      const isAvailable = !data;
-      const suggestions = isAvailable ? [] : generateUsernameSuggestions(username);
+      const isAvailable = usernameResult.isAvailable;
+      const suggestions = usernameResult.suggestions || [];
       
       setUsernameStatus(prev => ({
         ...prev,
         isAvailable,
-        suggestions
+        suggestions,
+        isForbidden: usernameResult.isForbidden,
+        error: usernameResult.error || null
       }));
       
       return isAvailable;
@@ -199,78 +217,53 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   
   // Check email availability
   const checkEmailAvailability = async (email: string) => {
-    if (!email || !validateEmail(email).isValid) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return false;
     }
     
     setIsCheckingEmail(true);
     
     try {
-      // Normalize email for consistency
-      const normalizedEmail = email.trim().toLowerCase();
+      const { data, error } = await supabase.functions.invoke('check-availability', {
+        body: { email }
+      });
       
-      // Check both registrations and profiles tables for existing email
-      const [registrationsResult, profilesResult] = await Promise.all([
-        supabase
-          .from('registrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('email', normalizedEmail),
-        supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('email', normalizedEmail)
-      ]);
-      
-      // Check for errors in either query
-      if (registrationsResult.error && registrationsResult.error.code !== '42P01') {
-        throw registrationsResult.error;
+      if (error) {
+        console.error('Error checking email availability:', error);
+        setGlobalError('Failed to check email availability. Please try again.');
+        setEmailStatus(prev => ({ ...prev, isAvailable: false }));
+        return false;
       }
       
-      if (profilesResult.error && profilesResult.error.code !== '42P01') {
-        throw profilesResult.error;
+      if (!data.success) {
+        console.error('Email availability check failed:', data.error);
+        setGlobalError('Failed to check email availability. Please try again.');
+        setEmailStatus(prev => ({ ...prev, isAvailable: false }));
+        return false;
       }
       
-      // Calculate total count from both tables
-      const registrationsCount = registrationsResult.count || 0;
-      const profilesCount = profilesResult.count || 0;
-      const totalCount = registrationsCount + profilesCount;
+      const emailResult = data.email;
+      if (!emailResult) {
+        throw new Error('No email result in response');
+      }
       
-      const isAvailable = totalCount === 0;
+      const isAvailable = emailResult.isAvailable;
       
-      // Debug logging
       console.log('Email availability check:', { 
-        email: normalizedEmail, 
-        registrationsCount, 
-        profilesCount, 
-        totalCount, 
-        isAvailable 
+        email, 
+        isAvailable,
+        error: emailResult.error
       });
       
       setEmailStatus(prev => ({
         ...prev,
         isAvailable,
-        error: isAvailable ? null : "You're unable to register with this email address. Please use another and try again."
+        error: emailResult.error || null
       }));
-      
-      // Log for debugging
-      if (!isAvailable) {
-        console.log('Email availability check: Email already exists in database:', normalizedEmail, 'Total count:', totalCount);
-      }
       
       return isAvailable;
       
     } catch (error) {
-      // Handle table not found errors gracefully for demo purposes
-      if (error.code === '42P01') {
-        console.warn('Table not found, assuming email is available for demo');
-        setEmailStatus(prev => ({
-          ...prev,
-          isAvailable: true,
-          error: null
-        }));
-        return true;
-      }
-      
       console.error('Error checking email availability:', error);
       setGlobalError('Failed to check email availability. Please try again.');
       setEmailStatus(prev => ({
@@ -285,24 +278,32 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   
   // Effect for username availability checking
   useEffect(() => {
-    const usernameValidation = validateUsername(debouncedUsername);
+    // Basic client-side validation
+    let isValid = true;
+    let error: string | null = null;
+    
+    if (!debouncedUsername) {
+      isValid = false;
+      error = 'Username is required';
+    } else if (debouncedUsername.length < 3) {
+      isValid = false;
+      error = 'Username must be at least 3 characters';
+    } else if (debouncedUsername.length > 20) {
+      isValid = false;
+      error = 'Username must be 20 characters or less';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(debouncedUsername)) {
+      isValid = false;
+      error = 'Username can only contain letters, numbers, and underscores';
+    }
     
     setUsernameStatus(prev => ({
       ...prev,
-      isValid: usernameValidation.isValid,
-      error: usernameValidation.error
+      isValid,
+      error
     }));
     
-    // Check if username is forbidden first
-    if (usernameValidation.isForbidden) {
-      setUsernameStatus(prev => ({
-        ...prev,
-        isValid: true,
-        isAvailable: false,
-        error: null,
-        suggestions: generateUsernameSuggestions(debouncedUsername)
-      }));
-    } else if (usernameValidation.isValid && debouncedUsername) {
+    // Only check availability if basic validation passes
+    if (isValid && debouncedUsername) {
       checkUsernameAvailability(debouncedUsername);
     } else {
       setUsernameStatus(prev => ({
@@ -315,15 +316,26 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   
   // Effect for email availability checking
   useEffect(() => {
-    const emailValidation = validateEmail(debouncedEmail);
+    // Basic client-side email validation
+    let isValid = true;
+    let error: string | null = null;
+    
+    if (!debouncedEmail) {
+      isValid = false;
+      error = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(debouncedEmail)) {
+      isValid = false;
+      error = 'Please enter a valid email address';
+    }
     
     setEmailStatus(prev => ({
       ...prev,
-      isValid: emailValidation.isValid,
-      error: emailValidation.error
+      isValid,
+      error
     }));
     
-    if (emailValidation.isValid && debouncedEmail) {
+    // Only check availability if basic validation passes
+    if (isValid && debouncedEmail) {
       checkEmailAvailability(debouncedEmail);
     } else {
       setEmailStatus(prev => ({
@@ -387,8 +399,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     try {
       // Check email availability and wait for result
       if (formData.email) {
-        const emailValidation = validateEmail(formData.email);
-        if (emailValidation.isValid) {
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
           emailAvailable = await checkEmailAvailability(formData.email);
         } else {
           setGlobalError('Please enter a valid email address.');
@@ -398,8 +409,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       
       // Check username availability and wait for result
       if (formData.username) {
-        const usernameValidation = validateUsername(formData.username);
-        if (usernameValidation.isValid) {
+        if (formData.username.length >= 3 && formData.username.length <= 20 && /^[a-zA-Z0-9_]+$/.test(formData.username)) {
           usernameAvailable = await checkUsernameAvailability(formData.username);
         } else {
           setGlobalError('Please enter a valid username.');
@@ -646,7 +656,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               Password
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              🔒 Create a secure password - minimum 6 characters for account protection
+              🔒 Create a secure password - minimum 10 characters for account protection
             </p>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -739,6 +749,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               </p>
             )}
             {touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 6 && (
+            {touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 && (
               <p className="mt-2 text-sm text-green-600" role="status">
                 ✅ Passwords match
               </p>
@@ -756,8 +767,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 <span className="mr-2">{formData.password.length >= 10 ? '✅' : '•'}</span>
                 At least 10 characters long
               </li>
-              <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword ? '✅' : '•'}</span>
+              <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? '✅' : '•'}</span>
                 Passwords must match
               </li>
               <li className="flex items-center text-blue-600">
