@@ -1,5 +1,3 @@
-```tsx
-// src/components/SsoAutoFinisher.tsx
 import { useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { stashFromUrlOnce, hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
@@ -28,4 +26,3 @@ export default function SsoAutoFinisher() {
 
   return null;
 }
-```
