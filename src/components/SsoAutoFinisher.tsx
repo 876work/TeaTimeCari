@@ -4,19 +4,23 @@ import { stashFromUrlOnce, hasPendingSso, finishDiscourseSso } from "@/lib/disco
 
 export default function SsoAutoFinisher() {
   useEffect(() => {
-    // Capture sso_nonce & r on app load (idempotent)
-    stashFromUrlOnce();
+    (async () => {
+      stashFromUrlOnce();
 
-    // When any sign-in completes, finish SSO if a nonce is pending
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && hasPendingSso() && session?.access_token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (hasPendingSso() && session?.access_token) {
         await finishDiscourseSso(session.access_token);
+        return;
       }
-    });
 
-    return () => {
-      sub.subscription?.unsubscribe?.();
-    };
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event, sess) => {
+        if (event === "SIGNED_IN" && hasPendingSso() && sess?.access_token) {
+          await finishDiscourseSso(sess.access_token);
+        }
+      });
+
+      return () => sub.subscription?.unsubscribe?.();
+    })();
   }, []);
 
   return null;
