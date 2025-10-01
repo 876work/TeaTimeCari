@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
-import { stashFromUrlOnce } from './lib/discourseSso';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { StripeProvider } from './components/Payment/StripeProvider';
+import SsoAutoFinisher from './components/SsoAutoFinisher';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
@@ -28,16 +28,10 @@ import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
-import SsoAutoFinisher from './components/SsoAutoFinisher';
 import { UserTypeSelection } from './components/UserTypeSelection';
 import { supabase } from './lib/supabase';
 
 function App() {
-  // Stash SSO parameters from URL on mount
-  React.useEffect(() => {
-    stashFromUrlOnce();
-  }, []);
-
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');

@@ -9,10 +9,10 @@ const supabase = createClient(
 
 export default function SsoAutoFinisher() {
   useEffect(() => {
-    // capture nonce/return on first render
+    // Capture sso_nonce & r on app load (idempotent)
     stashFromUrlOnce();
 
-    // finish SSO whenever a sign-in completes
+    // When any sign-in completes, finish SSO if a nonce is pending
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && hasPendingSso() && session?.access_token) {
         await finishDiscourseSso(session.access_token);
