@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tea Time Cari | Community Platform</title>
+    <script>
+    (function () {
+      try {
+        var sp = new URLSearchParams(window.location.search);
+        var n = sp.get("sso_nonce");
+        var r = sp.get("r");
+        if (n) sessionStorage.setItem("disc_nonce", n);
+        if (r) sessionStorage.setItem("disc_return", r);
+      } catch (_) {}
+    })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
