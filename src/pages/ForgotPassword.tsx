@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Loader2, AlertCircle, ArrowLeft, Send, Info } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabaseClient";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

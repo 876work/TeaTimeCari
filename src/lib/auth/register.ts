@@ -1,11 +1,6 @@
 // src/lib/auth/register.ts
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
 
 // Change this to env if you prefer:
 const REGISTER_FN = "https://nxzfrnpsiqpxibhggoct.functions.supabase.co/register-user";
