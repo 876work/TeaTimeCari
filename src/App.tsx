@@ -4,7 +4,7 @@ import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { supabase } from '@/lib/supabaseClient';
-import SsoAutoFinisher from './components/SsoAutoFinisher';
+import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
@@ -152,11 +152,12 @@ function App() {
   };
 
   return (
-    <SessionContextProvider supabaseClient={supabase}>
-      <StripeProvider>
-        <NotificationProvider>
-          <SsoAutoFinisher />
-          <Router>
+    <>
+      <SsoAutoFinisher />
+      <SessionContextProvider supabaseClient={supabase}>
+        <StripeProvider>
+          <NotificationProvider>
+            <Router>
             <Routes>
               <Route path="/contact-us" element={<ContactUs />} />
               <Route path="/kyc-pending" element={<KycPending />} />
