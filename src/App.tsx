@@ -357,10 +357,11 @@ function App() {
                 } 
               />
             </Routes>
-          </Router>
-        </NotificationProvider>
-      </StripeProvider>
-    </SessionContextProvider>
+            </Router>
+          </NotificationProvider>
+        </StripeProvider>
+      </SessionContextProvider>
+    </>
   );
 }
 
