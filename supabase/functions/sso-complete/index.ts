@@ -7,32 +7,48 @@ const SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const DISCOURSE_BASE_URL =
   Deno.env.get("DISCOURSE_BASE_URL") || "https://community.teatimecari.app";
 
+const baseHeaders = { ...corsHeaders, "Content-Type": "application/json", "Vary": "Origin" };
+
 function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(JSON.stringify(body), { status, headers: baseHeaders });
+}
+
+function safeReturnUrl(input?: string | null) {
+  const fallback = `${DISCOURSE_BASE_URL.replace(/\/+$/, "")}/session/sso_login`;
+  if (!input) return fallback;
+  try {
+    const want = new URL(input);
+    const base = new URL(DISCOURSE_BASE_URL);
+    if (want.origin !== base.origin) return fallback;
+    if (!want.pathname.startsWith("/session/sso_login")) return fallback;
+    return `${base.origin}${want.pathname}${want.search}`;
+  } catch {
+    return fallback;
+  }
+}
+
+function sanitizeUsername(u: string) {
+  return (u || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-_]/g, "_")
+    .slice(0, 25) || "user";
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: baseHeaders });
   try {
     let nonce: string | null = null;
-    let returnUrl: string | null = null;
+    let returnUrlRaw: string | null = null;
 
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       nonce = body?.nonce ?? body?.sso_nonce ?? null;
-      returnUrl =
-        body?.returnUrl ??
-        body?.r ??
-        `${DISCOURSE_BASE_URL.replace(/\/+$/, "")}/session/sso_login`;
+      returnUrlRaw = body?.returnUrl ?? body?.r ?? null;
     } else if (req.method === "GET") {
       const u = new URL(req.url);
       nonce = u.searchParams.get("sso_nonce");
-      returnUrl =
-        u.searchParams.get("r") ??
-        `${DISCOURSE_BASE_URL.replace(/\/+$/, "")}/session/sso_login`;
+      returnUrlRaw = u.searchParams.get("r");
     } else {
       return json(405, { error: "Method not allowed" });
     }
@@ -57,25 +73,33 @@ Deno.serve(async (req: Request) => {
       return json(200, { redirectUrl: "https://teatimecari.app/kyc-pending" });
     }
 
-    const gender = (profile.gender || "").toString().toLowerCase() === "male" ? "men" : "women";
+    const genderVal = (profile.gender || "").toString().toLowerCase();
+    const gender = genderVal === "male" ? "men" : "women";
     const addGroups = buildDiscourseGroups(gender, /* xaccess */ false);
+
+    const derivedUsername =
+      profile.username ||
+      sanitizeUsername((user.email ?? "").split("@")[0] || "");
+
+    const name =
+      profile.fullName ||
+      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
+      derivedUsername;
 
     const payload = {
       nonce,
       external_id: profile.id,
       email: profile.email,
-      username: profile.username || (user.email ?? "").split("@")[0] || "user",
-      name:
-        profile.fullName ||
-        [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-        profile.username ||
-        "",
+      username: derivedUsername,
+      name,
       add_groups: addGroups,
       require_activation: false,
     };
 
     const { b64, sig } = await signSsoPayload(payload, SECRET);
+    const returnUrl = safeReturnUrl(returnUrlRaw);
     const redirectUrl = `${returnUrl}?sso=${encodeURIComponent(b64)}&sig=${sig}`;
+
     return json(200, { redirectUrl });
   } catch (e) {
     console.error("[sso-complete] error:", e);
