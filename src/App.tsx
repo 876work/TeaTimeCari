@@ -24,6 +24,7 @@ import Sso from './pages/Sso';
 import Login from './pages/Login';
 import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
+import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
@@ -168,6 +169,7 @@ function App() {
               <Route path="/community" element={<CommunityRedirect />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/logout" element={<Logout />} />
               
               {/* Admin Routes */}
