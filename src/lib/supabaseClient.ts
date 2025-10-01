@@ -13,3 +13,10 @@ export const supabase = (() => {
   }
   return createClient(url, anon);
 })();
+
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.__SB_INSTANTIATIONS = (window.__SB_INSTANTIATIONS || 0) + 1;
+  // @ts-ignore
+  console.log('[supabase] instances:', window.__SB_INSTANTIATIONS);
+}
