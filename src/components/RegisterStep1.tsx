@@ -748,7 +748,6 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 {errors.confirmPassword}
               </p>
             )}
-            {touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 6 && (
             {touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 && (
               <p className="mt-2 text-sm text-green-600" role="status">
                 ✅ Passwords match
