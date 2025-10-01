@@ -1,17 +1,15 @@
 // src/lib/supabaseClient.ts
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __supabase_singleton__: SupabaseClient | undefined;
-}
-
-export const supabase =
-  globalThis.__supabase_singleton__ ??
-  createClient(
-    import.meta.env.VITE_SUPABASE_URL!,
-    import.meta.env.VITE_SUPABASE_ANON_KEY!
-  );
-
-globalThis.__supabase_singleton__ = supabase;
-
+export const supabase = (() => {
+  const url  = import.meta.env.VITE_SUPABASE_URL!;
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+  // Singleton across reloads/HMR
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    if (!window.__sb) window.__sb = createClient(url, anon);
+    // @ts-ignore
+    return window.__sb;
+  }
+  return createClient(url, anon);
+})();

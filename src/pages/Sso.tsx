@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient"; // your existing client
+import { supabase } from '@/lib/supabaseClient';
 
 function useQuery() {
   const { search } = useLocation();

@@ -1,5 +1,5 @@
 // src/lib/auth/register.ts
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '@/lib/supabaseClient';
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 
 // Change this to env if you prefer:

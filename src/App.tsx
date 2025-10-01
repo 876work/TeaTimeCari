@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { StripeProvider } from './components/Payment/StripeProvider';
+import { supabase } from '@/lib/supabaseClient';
 import SsoAutoFinisher from './components/SsoAutoFinisher';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
@@ -29,7 +30,6 @@ import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
-import { supabase } from '@/lib/supabaseClient';
 
 function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);

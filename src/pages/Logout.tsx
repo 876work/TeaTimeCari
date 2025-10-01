@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '@/lib/supabaseClient';
 
 const DISCOURSE_BASE =
   import.meta.env.VITE_DISCOURSE_BASE_URL || "https://community.teatimecari.app";

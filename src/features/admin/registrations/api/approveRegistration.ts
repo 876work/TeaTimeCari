@@ -1,5 +1,5 @@
 // src/features/admin/registrations/api/approveRegistration.ts
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from '@/lib/supabaseClient';
 
 export async function approveRegistration(registrationId: string) {
   const { data: { session } } = await supabase.auth.getSession();
