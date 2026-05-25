@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coffee, Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
+import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
 
 interface HomePageProps {
   onGetStarted: () => void;
@@ -17,10 +17,14 @@ export function HomePage({ onGetStarted }: HomePageProps) {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto text-center">
-        {/* Main Logo/Icon */}
+        {/* Main Logo */}
         <div className="mb-8">
-          <div className="mx-auto w-24 h-24 bg-white bg-opacity-20 backdrop-blur-sm rounded-full flex items-center justify-center mb-6 shadow-2xl">
-            <Coffee className="w-12 h-12 text-white" />
+          <div className="mx-auto w-32 h-32 mb-6 drop-shadow-2xl">
+            <img
+              src="/teaLogo.png"
+              alt="Tea Time Cari"
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
 
