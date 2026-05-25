@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserPlus, LogIn, Users, ArrowRight, Coffee } from 'lucide-react';
+import { UserPlus, LogIn, Users, ArrowRight } from 'lucide-react';
 import { AuthLayout } from './AuthLayout';
 
 interface UserTypeSelectionProps {
@@ -19,8 +19,8 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
     <AuthLayout>
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] rounded-full flex items-center justify-center mb-4 shadow-lg">
-            <Coffee className="w-8 h-8 text-white" />
+          <div className="mx-auto w-16 h-16 mb-4">
+            <img src="/teaLogo.png" alt="Tea Time Cari" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Tea Time Cari</h1>
           <p className="text-gray-600">
