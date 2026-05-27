@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 const fnUrl = import.meta.env.VITE_SSO_COMPLETE_URL
-  ?? 'https://nxzfrnpsiqpxibhggoct.functions.supabase.co/sso-complete';
+  ?? 'https://vdfzpdjplyhaotzkbyja.functions.supabase.co/sso-complete';
 
 function getPending() {
   const n = sessionStorage.getItem('disc_nonce');
