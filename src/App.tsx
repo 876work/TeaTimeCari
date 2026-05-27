@@ -44,8 +44,6 @@ function App() {
     step3?: RegisterStep3Data;
   }>({});
 
-  const discourseBaseUrl = import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
-
   const handleStep1Complete = (data: RegisterStep1Data) => {
     console.log('Registration Step 1 completed:', data);
     setRegistrationData(prev => ({ ...prev, step1: data }));
@@ -147,8 +145,7 @@ function App() {
   };
 
   const handleReturningUser = () => {
-    // Redirect to Discourse login instead of in-app login
-    window.location.href = `${discourseBaseUrl}/login`;
+    window.location.href = '/login';
   };
 
   return (

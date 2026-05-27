@@ -19,20 +19,20 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // If already logged in, honor next redirect immediately
+  const getPostLoginDestination = () => {
+    const next = q.get("next");
+    const redirectTo = q.get("redirectTo");
+    const returnTo = q.get("returnTo");
+    return next || redirectTo || returnTo || "/community";
+  };
+
+  // If already logged in, honor redirect params immediately.
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        const next = q.get("next");
-        if (next === "/sso") {
-          const sso = q.get("sso") || "";
-          const sig = q.get("sig") || "";
-          const qs = new URLSearchParams({ sso, sig }).toString();
-          navigate(`/sso?${qs}`, { replace: true });
-        } else {
-          navigate("/", { replace: true });
-        }
+        const destination = getPostLoginDestination();
+        navigate(destination, { replace: true });
       }
     })();
   }, [navigate, q]);
@@ -57,7 +57,7 @@ export default function Login() {
     }
 
     // No SSO pending → normal navigation
-    window.location.href = '/';
+    window.location.href = getPostLoginDestination();
   };
 
   return (
