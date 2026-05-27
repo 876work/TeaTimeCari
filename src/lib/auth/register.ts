@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 
 // Change this to env if you prefer:
-const REGISTER_FN = "https://nxzfrnpsiqpxibhggoct.functions.supabase.co/register-user";
+const REGISTER_FN = "https://vdfzpdjplyhaotzkbyja.functions.supabase.co/register-user";
 
 export type SignupForm = {
   email: string;
