@@ -1,7 +1,7 @@
 // supabase/functions/sso-complete/index.ts
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
-import { signSsoPayload, buildDiscourseGroups } from "../_shared/sso.ts";
+import { signSsoPayload, buildDiscourseGroups, parseAndVerifyIncoming } from "../_shared/sso.ts";
 
 const SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const DISCOURSE_BASE_URL =
@@ -43,8 +43,20 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
-      nonce = body?.nonce ?? body?.sso_nonce ?? null;
-      returnUrlRaw = body?.returnUrl ?? body?.r ?? null;
+
+      const sso = body?.sso ?? null;
+      const sig = body?.sig ?? null;
+
+      if (sso && sig) {
+        if (!SECRET) return json(500, { error: "Server config missing SSO secret" });
+        const params = await parseAndVerifyIncoming(sso, sig, SECRET);
+        nonce = params.get("nonce");
+        returnUrlRaw = params.get("return_sso_url");
+      } else {
+        // Backwards compatibility with existing format.
+        nonce = body?.nonce ?? body?.sso_nonce ?? null;
+        returnUrlRaw = body?.returnUrl ?? body?.r ?? null;
+      }
     } else if (req.method === "GET") {
       const u = new URL(req.url);
       nonce = u.searchParams.get("sso_nonce");
