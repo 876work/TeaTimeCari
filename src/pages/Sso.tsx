@@ -49,8 +49,9 @@ export default function Sso() {
         return;
       }
 
-      if (data?.redirect) {
-        window.location.href = data.redirect as string;
+      const redirectUrl = (data?.redirectUrl || data?.redirect) as string | undefined;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
       } else {
         setMsg("Unexpected response from SSO.");
       }

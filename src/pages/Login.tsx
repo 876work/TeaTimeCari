@@ -23,6 +23,15 @@ export default function Login() {
     const next = q.get("next");
     const redirectTo = q.get("redirectTo");
     const returnTo = q.get("returnTo");
+
+    if (next === "/sso") {
+      const sso = q.get("sso");
+      const sig = q.get("sig");
+      if (sso && sig) {
+        return `/sso?sso=${encodeURIComponent(sso)}&sig=${encodeURIComponent(sig)}`;
+      }
+    }
+
     return next || redirectTo || returnTo || "/community";
   };
 
@@ -42,7 +51,7 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
       setLoading(false);
@@ -56,7 +65,7 @@ export default function Login() {
       return; // important: finisher will redirect
     }
 
-    // No SSO pending → normal navigation
+    // No sessionStorage SSO pending → normal navigation (including /sso handoff from query params)
     window.location.href = getPostLoginDestination();
   };
 
