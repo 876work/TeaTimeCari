@@ -1,6 +1,6 @@
 // src/lib/discourseSso.ts
 const fnUrl = import.meta.env.VITE_SSO_COMPLETE_URL
-  ?? 'https://nxzfrnpsiqpxibhggoct.functions.supabase.co/sso-complete';
+  ?? 'https://vdfzpdjplyhaotzkbyja.functions.supabase.co/sso-complete';
 
 export function hasPendingSso() {
   return !!sessionStorage.getItem('disc_nonce');
