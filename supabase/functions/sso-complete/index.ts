@@ -79,9 +79,12 @@ Deno.serve(async (req: Request) => {
       .from("registrations")
       .select("*")
       .eq("id", user.id)
-      .single();
-    if (pErr || !profile) return json(403, { error: "profile not found" });
-    if (profile.status !== "approved") {
+      .maybeSingle();
+
+    // Missing row or non-approved status should route to KYC pending.
+    // Only real database/permission failures should return an error.
+    if (pErr) return json(500, { error: "registration lookup failed" });
+    if (!profile || !profile.status || profile.status !== "approved") {
       return json(200, { redirectUrl: "https://teatimecari.app/kyc-pending" });
     }
 
