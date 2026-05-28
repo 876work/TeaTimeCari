@@ -32,6 +32,9 @@ import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
 
 function App() {
+  const discourseBaseUrl =
+    import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
+
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
@@ -150,8 +153,8 @@ function App() {
 
   return (
     <>
-      <SsoAutoFinisher />
       <SessionContextProvider supabaseClient={supabase}>
+        <SsoAutoFinisher />
         <StripeProvider>
           <NotificationProvider>
             <Router>
