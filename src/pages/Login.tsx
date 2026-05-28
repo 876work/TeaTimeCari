@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import React, { useMemo, useState } from "react";
+import { useLocation, Link } from "react-router-dom";
 import { LogIn, Mail, Lock, Loader2, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
 import { supabase } from '@/lib/supabaseClient';
@@ -12,7 +12,6 @@ function useQuery() {
 
 export default function Login() {
   const q = useQuery();
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,26 +34,29 @@ export default function Login() {
     return next || redirectTo || returnTo || "/community";
   };
 
-  // If already logged in, honor redirect params immediately.
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        const destination = getPostLoginDestination();
-        navigate(destination, { replace: true });
-      }
-    })();
-  }, [navigate, q]);
+  const getApprovalStatus = async (userId: string): Promise<'approved' | 'not_approved' | 'missing'> => {
+    const { data, error: statusError } = await supabase
+      .from('registrations')
+      .select('status')
+      .eq('id', userId)
+      .maybeSingle();
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    if (statusError) {
+      throw statusError;
+    }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+    if (!data?.status) {
+      return 'missing';
+    }
+
+    return data.status === 'approved' ? 'approved' : 'not_approved';
+  };
+
+  const redirectAfterApprovalCheck = async (userId: string) => {
+    const approvalStatus = await getApprovalStatus(userId);
+
+    if (approvalStatus !== 'approved') {
+      window.location.href = '/kyc-pending';
       return;
     }
 
@@ -67,6 +69,32 @@ export default function Login() {
 
     // No sessionStorage SSO pending → normal navigation (including /sso handoff from query params)
     window.location.href = getPostLoginDestination();
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userId = signInData.user?.id;
+      if (!userId) {
+        throw new Error('No authenticated user found after login.');
+      }
+
+      await redirectAfterApprovalCheck(userId);
+    } catch (err: any) {
+      setError(`Unable to verify approval status. Please try again. ${err?.message ? `(${err.message})` : ''}`.trim());
+      setLoading(false);
+      return;
+    }
   };
 
   return (
@@ -183,7 +211,7 @@ export default function Login() {
               Forgot your password?
             </Link>
           </div>
-          
+
           <div className="text-center">
             <Link
               to="/"
