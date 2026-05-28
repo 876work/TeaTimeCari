@@ -280,21 +280,36 @@ export function AdminUserReview() {
     }
   };
 
-  const handleReject = async (userId: string, userName: string | null | undefined) => {
+  const handleReject = async (user: UserRow) => {
+    const userName = user.username ?? safeDisplayName(user);
     const reason = prompt(`Please provide a reason for rejecting ${userName ?? 'this user'} (optional):`);
     if (reason === null) return;
 
-    setProcessingUserId(userId);
+    setProcessingUserId(user.id);
     setError(null);
     try {
-      const { error: updateError } = await supabase
-        .from('registrations')
-        .update({ status: 'rejected', rejection_reason: reason || 'No reason provided' })
-        .eq('id', userId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('You must be logged in to perform this action.');
+      }
 
-      if (updateError && updateError.code !== '42P01') throw updateError;
+      const { data, error: fnError } = await supabase.functions.invoke('send-rejection-email', {
+        body: {
+          registration_id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          fullName: user.fullName,
+          reason: reason || undefined,
+        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
-      setPendingUsers(prev => prev.filter(u => u.id !== userId));
+      if (fnError) throw fnError;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to reject user');
+      }
+
+      setPendingUsers(prev => prev.filter(u => u.id !== user.id));
       alert(`${userName ?? 'User'} has been rejected.`);
     } catch (err: any) {
       console.error('Error rejecting user:', err);
@@ -598,7 +613,7 @@ export function AdminUserReview() {
                                 Approve
                               </button>
                               <button
-                                onClick={() => handleReject(user.id, user.username ?? safeDisplayName(user))}
+                                onClick={() => handleReject(user)}
                                 disabled={processingUserId === user.id}
                                 className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
