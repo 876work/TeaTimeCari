@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 
 /* ---------------- CORS helpers ---------------- */
 function cors(req: Request) {
@@ -37,13 +38,7 @@ const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const SEND_ACTIVATION = (Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "false").toLowerCase() === "true";
-const APP_BASE_URL = Deno.env.get("APP_BASE_URL") || Deno.env.get("SITE_BASE_URL") || "https://teatimecari.app";
 const XACCESS_GROUP = (Deno.env.get("XACCESS_GROUP") || "").trim();
-
-/* ---------------- SendGrid config ---------------- */
-const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY") ?? "";
-const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? Deno.env.get("SENDGRID_FROM_EMAIL") ?? "";
-const FROM_NAME  = Deno.env.get("FROM_NAME")  ?? Deno.env.get("SENDGRID_FROM_NAME")  ?? "Tea Time Cari";
 
 /* ---------------- Utilities ---------------- */
 async function hmacHex(input: string, secret: string) {
@@ -74,91 +69,6 @@ function nameFrom(reg: any) {
   return (reg?.full_name ?? reg?.username ?? "").toString().trim();
 }
 
-function strongTempPassword(len = 14) {
-  const dict = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
-  let out = "";
-  crypto.getRandomValues(new Uint32Array(len)).forEach(n => out += dict[n % dict.length]);
-  if (!/[A-Z]/.test(out)) out = "A" + out.slice(1);
-  if (!/[a-z]/.test(out)) out = out.slice(0,1) + "a" + out.slice(2);
-  if (!/[0-9]/.test(out)) out = out.slice(0,2) + "7" + out.slice(3);
-  return out;
-}
-
-/* ---------------- SendGrid ---------------- */
-async function sendWithSendgrid(to: string, subject: string, html: string, text: string) {
-  if (!SENDGRID_API_KEY || !FROM_EMAIL) {
-    return { sent: false, skipped: true as const, reason: "missing_sendgrid_or_from" };
-  }
-  const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${SENDGRID_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: FROM_EMAIL, name: FROM_NAME },
-      subject,
-      content: [
-        { type: "text/plain", value: text },
-        { type: "text/html",  value: html },
-      ],
-    }),
-  });
-  const body = await res.text();
-  return { sent: res.status >= 200 && res.status < 300, status: res.status, body: safeJson(body) };
-}
-
-function tplApproved(username: string, userCode: string) {
-  const subject = "Your Account is Approved — Save Your User Code";
-  const html = `
-    <p>Hi <strong>${username}</strong>,</p>
-    <p><strong>Great News — Your Account is Approved!</strong></p>
-    <p><strong>User Code:</strong> ${userCode}</p>
-    <p>Keep this code safe. You’ll need it if you ever contact Tea Time Cari Support.
-    Our systems are highly encrypted; never share your account code with anyone except the Tea Time Cari support team.</p>
-    <p><em>Next up:</em> a Welcome email from the Tea Time Cari Community should land in your inbox shortly with the login link.</p>
-    <p>— Tea Time Cari Team</p>
-  `;
-  const text =
-`Hi ${username},
-
-Great News — Your Account is Approved!
-
-User Code: ${userCode}
-Keep this code safe. You’ll need it if you ever contact Tea Time Cari Support.
-Our systems are highly encrypted; never share your account code with anyone except the Tea Time Cari support team.
-
-Next up: a Welcome email from the Tea Time Cari Community should land in your inbox shortly with the login link.
-
-— Tea Time Cari Team`;
-  return { subject, html, text };
-}
-
-function tplWelcome(username: string, baseUrl: string) {
-  const subject = "Welcome to Tea Time Cari Community";
-  const loginUrl = `${baseUrl}/community`;
-  const html = `
-    <p>Hi <strong>${username}</strong>,</p>
-    <p>Your Tea Time Cari Community account is ready.</p>
-    <p><strong>Log in here:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
-    <p>If you have trouble signing in, click “Forgot password” on the login page.
-    You may also contact us at <a href="mailto:hello@teatimecari.app">hello@teatimecari.app</a>. Remember to include your user code when contacting support.</p>
-    <p>— Tea Time Cari Team</p>
-  `;
-  const text =
-`Hi ${username},
-
-Your Tea Time Cari Community account is ready.
-
-Log in here: ${loginUrl}
-
-If you have trouble signing in, click “Forgot password” on the login page.
-You may also contact us at hello@teatimecari.app. Remember to include your user code when contacting support.
-
-— Tea Time Cari Team`;
-  return { subject, html, text };
-}
 
 /* ---------------- Discourse (SSO sync) ---------------- */
 async function discourseSyncSSO(payload: Record<string, string>) {
@@ -236,19 +146,6 @@ Deno.serve(async (req) => {
     // Build SSO groups (e.g., "men" or "women", optionally plus XACCESS_GROUP)
     const groups = [genderNorm, xaccessFlag && XACCESS_GROUP].filter(Boolean).join(",");
 
-    // Ensure a user code exists to include in approval email
-    let userCode: string = String(reg.email_code || "").trim();
-    if (!userCode) {
-      userCode = `SLU${Math.floor(100000 + Math.random() * 900000)}`;
-      await supa
-        .from("registrations")
-        .update({
-          email_code: userCode,
-          email_code_expiry: reg.email_code_expiry ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        })
-        .eq("id", reg.id);
-    }
-
     // 1) Sync to Discourse via SSO
     const displayName = nameFrom(reg) || username;
     await discourseSyncSSO({
@@ -264,14 +161,9 @@ Deno.serve(async (req) => {
       .update({ status: "approved", updated_at: new Date().toISOString() })
       .eq("id", reg.id);
 
-    // 3) Send emails (non-fatal if they fail)
-    const approvedTpl = tplApproved(username, userCode);
-    const welcomeTpl  = tplWelcome(username, APP_BASE_URL);
-
-    const emailApproved = await sendWithSendgrid(email, approvedTpl.subject, approvedTpl.html, approvedTpl.text)
-      .catch(err => ({ sent: false, error: String(err) }));
-    const emailWelcome = await sendWithSendgrid(email, welcomeTpl.subject, welcomeTpl.html, welcomeTpl.text)
-      .catch(err => ({ sent: false, error: String(err) }));
+    // 3) Send one approval email via Resend (non-fatal if it fails)
+    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || username)
+      .catch((err) => ({ success: false, error: String(err) }));
 
     return ok(headers, {
       ok: true,
@@ -282,7 +174,6 @@ Deno.serve(async (req) => {
       },
       emails: {
         approved: emailApproved,
-        welcome:  emailWelcome,
       },
     });
 
