@@ -2,8 +2,16 @@
 import { createClient } from '@supabase/supabase-js';
 
 export const supabase = (() => {
-  const url  = import.meta.env.VITE_SUPABASE_URL!;
-  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY!;
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const hasMissingConfig = !url || !anon;
+
+  if (hasMissingConfig && typeof window !== 'undefined') {
+    console.error(
+      '[supabase] Missing required Vite environment variables: VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY. ' +
+      'Set these in your frontend environment (for Netlify, add them in Site settings → Environment variables).'
+    );
+  }
 
   const options = {
     auth: {
@@ -18,12 +26,22 @@ export const supabase = (() => {
   // Singleton across reloads/HMR
   if (typeof window !== 'undefined') {
     // @ts-ignore
-   if (!window.__sb) window.__sb = createClient(url, anon, options);
+   if (!window.__sb) {
+      window.__sb = createClient(
+        hasMissingConfig ? 'https://invalid.localhost' : url,
+        hasMissingConfig ? 'missing-anon-key' : anon,
+        options
+      );
+    }
     // @ts-ignore
     return window.__sb;
   }
   // SSR/build-time usage (doesn't run in the browser)
-  return createClient(url, anon, options);
+  return createClient(
+    hasMissingConfig ? 'https://invalid.localhost' : url,
+    hasMissingConfig ? 'missing-anon-key' : anon,
+    options
+  );
 })();
 if (typeof window !== 'undefined') {
   // @ts-ignore
