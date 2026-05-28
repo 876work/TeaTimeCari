@@ -4,8 +4,11 @@ import { sendRejectionEmail } from "../_shared/resendEmail.ts";
 
 interface EmailRequest {
   email: string;
-  firstName: string;
+  firstName?: string;
+  fullName?: string;
   reason?: string;
+  registration_id?: string;
+  user_id?: string;
   dryRun?: boolean;
 }
 
@@ -27,15 +30,24 @@ interface EmailResponse {
   };
 }
 
-async function updateUserStatus(email: string, reason: string): Promise<{ success: boolean; error?: string }> {
+async function updateUserStatus(request: EmailRequest, reason: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error: updateError } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('registrations')
       .update({ 
         status: 'rejected',
         rejection_reason: reason || 'No reason provided'
-      })
-      .eq('email', email);
+      });
+
+    if (request.registration_id) {
+      query = query.eq('id', request.registration_id);
+    } else if (request.user_id) {
+      query = query.eq('id', request.user_id);
+    } else {
+      query = query.eq('email', request.email);
+    }
+
+    const { error: updateError } = await query;
 
     if (updateError) {
       if (updateError.code === '42P01') {
@@ -160,7 +172,7 @@ The Tea Time Cari Team`;
     }
 
     // Update user status to rejected (do this before sending email)
-    const { success: statusUpdated, error: statusError } = await updateUserStatus(email, rejectionReason);
+    const { success: statusUpdated, error: statusError } = await updateUserStatus(requestData, rejectionReason);
 
     // Send rejection email
     try {
