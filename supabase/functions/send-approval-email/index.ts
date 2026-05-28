@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { generate6DigitCode, expiresAt, sha256Hex } from "../_shared/crypto.ts";
+import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 
 interface EmailRequest {
   email: string;
@@ -22,62 +23,6 @@ interface EmailResponse {
     sendgridResponse?: string;
     configurationIssues?: string[];
   };
-}
-
-async function sendEmail({ to, subject, text }: { to: string; subject: string; text: string }) {
-  const apiKey = Deno.env.get("SENDGRID_API_KEY");
-  const fromEmail = Deno.env.get("SENDGRID_FROM_EMAIL");
-  
-  const configIssues: string[] = [];
-  if (!apiKey) configIssues.push("SENDGRID_API_KEY environment variable not set");
-  if (!fromEmail) configIssues.push("SENDGRID_FROM_EMAIL environment variable not set");
-  
-  if (configIssues.length > 0) {
-    throw new Error(`SendGrid configuration error: ${configIssues.join(', ')}`);
-  }
-
-  const payload = {
-    personalizations: [{ to: [{ email: to }] }],
-    from: { email: fromEmail },
-    subject,
-    content: [{ type: "text/plain", value: text }],
-  };
-
-  let response: Response;
-  try {
-    response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (fetchError) {
-    throw new Error(`Network error connecting to SendGrid: ${fetchError.message || fetchError}`);
-  }
-
-  if (!response.ok) {
-    let errorBody = '';
-    try {
-      errorBody = await response.text();
-    } catch (bodyError) {
-      errorBody = 'Unable to read error response';
-    }
-    
-    // Parse SendGrid error for better reporting
-    let parsedError = errorBody;
-    try {
-      const errorJson = JSON.parse(errorBody);
-      if (errorJson.errors && Array.isArray(errorJson.errors)) {
-        parsedError = errorJson.errors.map((err: any) => err.message || err).join(', ');
-      }
-    } catch (parseError) {
-      // Keep original error body if parsing fails
-    }
-    
-    throw new Error(`SendGrid API error (${response.status}): ${parsedError}`);
-  }
 }
 
 async function generateAndStoreEmailCode(userId: string): Promise<{ code: string; error?: string }> {
@@ -249,7 +194,10 @@ The Tea Time Cari Team`;
 
     // Send actual email
     try {
-      await sendEmail({ to: email, subject, text });
+      const emailResult = await sendApprovalEmail(email, actualFirstName);
+      if (!emailResult.success) {
+        throw new Error(emailResult.error || "Failed to send approval email");
+      }
       
       return new Response(
         JSON.stringify({ 
