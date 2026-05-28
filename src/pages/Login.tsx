@@ -35,26 +35,29 @@ export default function Login() {
     return next || redirectTo || returnTo || "/community";
   };
 
-  // If already logged in, honor redirect params immediately.
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        const destination = getPostLoginDestination();
-        navigate(destination, { replace: true });
-      }
-    })();
-  }, [navigate, q]);
+  const getApprovalStatus = async (userId: string): Promise<'approved' | 'not_approved' | 'missing'> => {
+    const { data, error: statusError } = await supabase
+      .from('registrations')
+      .select('status')
+      .eq('id', userId)
+      .maybeSingle();
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    if (statusError) {
+      throw statusError;
+    }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+    if (!data?.status) {
+      return 'missing';
+    }
+
+    return data.status === 'approved' ? 'approved' : 'not_approved';
+  };
+
+  const redirectAfterApprovalCheck = async (userId: string) => {
+    const approvalStatus = await getApprovalStatus(userId);
+
+    if (approvalStatus !== 'approved') {
+      window.location.href = '/kyc-pending';
       return;
     }
 
@@ -67,6 +70,54 @@ export default function Login() {
 
     // No sessionStorage SSO pending → normal navigation (including /sso handoff from query params)
     window.location.href = getPostLoginDestination();
+  };
+
+  // If already logged in, honor redirect params after approval gate.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      if (!userId) return;
+
+      try {
+        const approvalStatus = await getApprovalStatus(userId);
+        if (approvalStatus === 'approved') {
+          const destination = getPostLoginDestination();
+          navigate(destination, { replace: true });
+          return;
+        }
+
+        navigate('/kyc-pending', { replace: true });
+      } catch (err: any) {
+        setError(`Unable to verify approval status. Please try again. ${err?.message ? `(${err.message})` : ''}`.trim());
+      }
+    })();
+  }, [navigate, q]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userId = signInData.user?.id;
+      if (!userId) {
+        throw new Error('No authenticated user found after login.');
+      }
+
+      await redirectAfterApprovalCheck(userId);
+    } catch (err: any) {
+      setError(`Unable to verify approval status. Please try again. ${err?.message ? `(${err.message})` : ''}`.trim());
+      setLoading(false);
+      return;
+    }
   };
 
   return (
@@ -183,7 +234,7 @@ export default function Login() {
               Forgot your password?
             </Link>
           </div>
-          
+
           <div className="text-center">
             <Link
               to="/"
