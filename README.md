@@ -126,6 +126,19 @@ MEN_GROUP=men
 WOMEN_GROUP=women
 XACCESS_GROUP=xaccess
 SEND_DISCOURSE_ACTIVATION=true
+```
+
+For deployed Supabase Edge Functions, set the server-side values above as Supabase secrets, not only as frontend hosting variables. `DISCOURSE_SSO_SECRET` is required for Discourse SSO login. `DISCOURSE_ADMIN_API_KEY` is only required for the optional approval-time pre-sync that makes approved users appear in Discourse immediately.
+
+```bash
+supabase secrets set \
+  DISCOURSE_BASE_URL=https://community.teatimecari.app \
+  DISCOURSE_SSO_SECRET=your-shared-sso-secret \
+  DISCOURSE_ADMIN_API_KEY=your-discourse-admin-api-key \
+  DISCOURSE_ADMIN_API_USERNAME=system
+```
+
+```env
 
 # Stripe Configuration (Optional)
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-stripe-key

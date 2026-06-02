@@ -51,7 +51,6 @@ export function AdminUserReview() {
 
   const getErrorMessage = (err: unknown) => err instanceof Error ? err.message : String(err);
 
-
   // Get Discourse base URL (optional)
   useEffect(() => {
     setDiscourseBaseUrl(import.meta.env.VITE_DISCOURSE_BASE_URL || '');
@@ -72,6 +71,7 @@ export function AdminUserReview() {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
+
     try {
       let query = supabase
         .from('registrations')
@@ -89,6 +89,7 @@ export function AdminUserReview() {
           setMockData();
           return;
         }
+
         throw fetchError;
       }
 
@@ -97,7 +98,7 @@ export function AdminUserReview() {
         (data ?? []).map(async (user: UserRow) => {
           // Create fullName from firstName and lastName
           const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || null;
-          
+
           try {
             const { data: lastCodeSend } = await supabase
               .from('code_sends')
@@ -200,7 +201,11 @@ export function AdminUserReview() {
     ];
 
     let filteredMockData = mockUsers;
-    if (filterStatus !== 'all') filteredMockData = mockUsers.filter(u => u.status === filterStatus);
+
+    if (filterStatus !== 'all') {
+      filteredMockData = mockUsers.filter(u => u.status === filterStatus);
+    }
+
     setPendingUsers(filteredMockData);
     setLoading(false);
   };
@@ -222,28 +227,32 @@ export function AdminUserReview() {
 
       if (status === 'approved_with_sync_error') {
         setError(`User approved but Discourse sync failed: ${data?.discourse?.error || 'Unknown sync error'}`);
+      } else if (data?.discourse?.skipped) {
+        console.warn('Discourse pre-sync skipped:', data.discourse);
       }
-
 
       // Remove from list and notify
       setPendingUsers(prev => prev.filter(u => u.id !== user.id));
+
       const name = user.username ?? safeDisplayName(user);
       const message =
         status === 'approved_with_sync_error'
           ? `⚠️ ${name} approved; Discourse sync failed.`
           : `✅ ${name} approved successfully.`;
+
       alert(message);
     } catch (err: unknown) {
       console.error('Error approving user:', err);
-      
+
       // Format error messages for UI
       let errorMessage = getErrorMessage(err) || 'Unknown error';
+
       if (errorMessage.includes('You must be logged in')) {
         errorMessage = 'Not logged in: Please refresh the page and try again';
       } else if (errorMessage.includes('Not authorized') || errorMessage.includes('admin')) {
         errorMessage = 'Not an admin: You do not have permission to approve users';
       }
-      
+
       setError(`Failed to approve ${user.username ?? safeDisplayName(user)}: ${errorMessage}`);
     } finally {
       setProcessingUserId(null);
@@ -253,12 +262,15 @@ export function AdminUserReview() {
   const handleReject = async (user: UserRow) => {
     const userName = user.username ?? safeDisplayName(user);
     const reason = prompt(`Please provide a reason for rejecting ${userName ?? 'this user'} (optional):`);
+
     if (reason === null) return;
 
     setProcessingUserId(user.id);
     setError(null);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
       if (!session) {
         throw new Error('You must be logged in to perform this action.');
       }
@@ -275,6 +287,7 @@ export function AdminUserReview() {
       });
 
       if (fnError) throw fnError;
+
       if (!data?.success) {
         throw new Error(data?.error || 'Failed to reject user');
       }
@@ -347,11 +360,11 @@ export function AdminUserReview() {
       u.email,
       u.username,
       u.phone,
-    ]
-      .map(v => (v ?? '').toLowerCase());
+    ].map(v => (v ?? '').toLowerCase());
 
     const matchesSearch = !needle || hay.some(h => h.includes(needle));
     const matchesGender = filterGender === 'all' || u.gender === filterGender;
+
     return matchesSearch && matchesGender;
   });
 
@@ -359,6 +372,7 @@ export function AdminUserReview() {
     setSelectedImage(imageUrl);
     setIsImageModalOpen(true);
   };
+
   const closeImageModal = () => {
     setSelectedImage(null);
     setIsImageModalOpen(false);
@@ -374,6 +388,8 @@ export function AdminUserReview() {
         return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Banned</span>;
       case 'rejected':
         return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Rejected</span>;
+      case 'approved':
+        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Approved</span>;
       default:
         return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{status}</span>;
     }
@@ -416,7 +432,9 @@ export function AdminUserReview() {
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="flex-1">
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">Search Users</label>
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
+                Search Users
+              </label>
               <input
                 id="search"
                 value={searchTerm}
@@ -425,8 +443,11 @@ export function AdminUserReview() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+
             <div>
-              <label htmlFor="gender-filter" className="block text-sm font-medium text-gray-700 mb-2">Filter by Gender</label>
+              <label htmlFor="gender-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Gender
+              </label>
               <select
                 id="gender-filter"
                 value={filterGender}
@@ -438,8 +459,11 @@ export function AdminUserReview() {
                 <option value="Female">Female</option>
               </select>
             </div>
+
             <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Filter by Status
+              </label>
               <select
                 id="status-filter"
                 value={filterStatus}
@@ -489,15 +513,30 @@ export function AdminUserReview() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Details
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Photo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Submitted
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
@@ -516,6 +555,7 @@ export function AdminUserReview() {
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-900 mb-1">
                           <Mail className="w-4 h-4 text-gray-400 mr-2" />
@@ -526,12 +566,14 @@ export function AdminUserReview() {
                           {user.phone ?? ''}
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">Gender: {user.gender ?? ''}</div>
                         <div className="text-sm text-gray-500">
                           Photo: {user.captureType === 'selfie' ? 'Selfie' : user.captureType === 'id' ? 'ID Document' : '—'}
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         {user.imageData ? (
                           <div className="relative">
@@ -552,12 +594,16 @@ export function AdminUserReview() {
                           </div>
                         )}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
                         {user.status === 'rejected' && user.rejection_reason && (
-                          <div className="text-xs text-gray-500 mt-1">Reason: {user.rejection_reason}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Reason: {user.rejection_reason}
+                          </div>
                         )}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-500">
                           <Calendar className="w-4 h-4 text-gray-400 mr-2" />
@@ -567,6 +613,7 @@ export function AdminUserReview() {
                           {user.created_at ? new Date(user.created_at).toLocaleTimeString() : ''}
                         </div>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           {user.status === 'pending' && (
@@ -583,6 +630,7 @@ export function AdminUserReview() {
                                 )}
                                 Approve
                               </button>
+
                               <button
                                 onClick={() => handleReject(user)}
                                 disabled={processingUserId === user.id}
@@ -675,7 +723,9 @@ export function AdminUserReview() {
           >
             Open Community Forum
           </button>
-          <div className="text-xs text-gray-500 mt-1 text-center">View approved users in Discourse</div>
+          <div className="text-xs text-gray-500 mt-1 text-center">
+            View approved users in Discourse
+          </div>
         </div>
       )}
     </AdminLayout>
