@@ -1,62 +1,191 @@
 // supabase/functions/register-user/index.ts
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { sendUnderReviewEmail } from "../_shared/resendEmail.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(url, key);
 
+type RegistrationRequest = {
+  email?: string;
+  password?: string;
+  password_temp?: string;
+  username?: string;
+  fullName?: string;
+  full_name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  gender?: "Male" | "Female";
+  captureType?: "selfie" | "id";
+  imageData?: string;
+};
+
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
+function splitName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+function usernameFromEmail(email: string) {
+  const base = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "_") || "user";
+  return base.slice(0, 20) || "user";
+}
+
+function normalizeRequest(body: RegistrationRequest) {
+  const email = body.email?.trim().toLowerCase() || "";
+  const password = body.password || body.password_temp || "";
+  const username = body.username?.trim().toLowerCase() || usernameFromEmail(email);
+  const fullName = (body.fullName || body.full_name || "").trim();
+  const nameParts = splitName(fullName);
+  const firstName = body.firstName?.trim() || nameParts.firstName;
+  const lastName = body.lastName?.trim() || nameParts.lastName;
+
+  return {
+    email,
+    password,
+    username,
+    fullName: fullName || [firstName, lastName].filter(Boolean).join(" "),
+    firstName,
+    lastName,
+    phone: body.phone?.trim() || null,
+    gender: body.gender,
+    captureType: body.captureType,
+    imageData: body.imageData,
+  };
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok");
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
-    const { email, password, username, full_name, firstName, lastName, gender } =
-      await req.json();
+    const normalized = normalizeRequest(await req.json());
 
-    if (!email || !password) return json(400, { error: "email/password required" });
-
-    // 1) Find or create Auth user (confirmed so they can sign in immediately)
-    const { data: existing } = await admin.auth.admin.getUserByEmail(email);
-    let userId = existing?.user?.id;
-
-    if (!userId) {
-      const { data: created, error: cErr } = await admin.auth.admin.createUser({
-        email,
-        password,              // never log this
-        email_confirm: true,   // allows immediate sign-in
-        user_metadata: { username, full_name, firstName, lastName, gender },
-      });
-      if (cErr) return json(400, { error: cErr.message });
-      userId = created.user.id;
+    if (!normalized.email || !normalized.password) {
+      return json(400, { error: "email/password required" });
     }
 
-    // 2) Upsert business record as pending
-    const { error: uErr } = await admin
+    if (normalized.username.length < 3 || normalized.username.length > 20 || !/^[a-z0-9_]+$/.test(normalized.username)) {
+      return json(400, { error: "username must be 3-20 letters, numbers, or underscores" });
+    }
+
+    // If this email already has a business registration, keep the flow idempotent
+    // without changing the user's existing password.
+    const { data: existingRegistration, error: registrationLookupError } = await admin
+      .from("registrations")
+      .select("id, status")
+      .eq("email", normalized.email)
+      .maybeSingle();
+
+    if (registrationLookupError) {
+      return json(500, {
+        error: "registration lookup failed",
+        detail: registrationLookupError.message,
+      });
+    }
+
+    if (existingRegistration?.id) {
+      return json(200, {
+        ok: true,
+        userId: existingRegistration.id,
+        alreadyExists: true,
+        status: existingRegistration.status,
+      });
+    }
+
+    const { data: existingUsername, error: usernameLookupError } = await admin
+      .from("registrations")
+      .select("id")
+      .eq("username", normalized.username)
+      .maybeSingle();
+
+    if (usernameLookupError) {
+      return json(500, {
+        error: "username lookup failed",
+        detail: usernameLookupError.message,
+      });
+    }
+
+    if (existingUsername?.id) {
+      return json(409, { error: "username is already taken" });
+    }
+
+    // Create the Auth user first. Approval still happens through the registrations
+    // table; email_confirm lets the applicant sign in and see /kyc-pending while
+    // they wait for review.
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email: normalized.email,
+      password: normalized.password,
+      email_confirm: true,
+      user_metadata: {
+        username: normalized.username,
+        fullName: normalized.fullName,
+        firstName: normalized.firstName,
+        lastName: normalized.lastName,
+        gender: normalized.gender,
+      },
+    });
+
+    if (createError || !created.user?.id) {
+      return json(400, { error: createError?.message || "Unable to create auth user" });
+    }
+
+    const userId = created.user.id;
+
+    // Create the business/KYC registration. Do not persist the plaintext password.
+    const { error: upsertError } = await admin
       .from("registrations")
       .upsert(
         {
           id: userId,
-          email,
-          username,
-          fullName: full_name,
-          firstName,
-          lastName,
-          gender,
+          email: normalized.email,
+          username: normalized.username,
+          fullName: normalized.fullName,
+          firstName: normalized.firstName,
+          lastName: normalized.lastName,
+          phone: normalized.phone,
+          gender: normalized.gender,
+          captureType: normalized.captureType,
+          imageData: normalized.imageData,
           status: "pending",
         },
         { onConflict: "id" },
       );
-    if (uErr) return json(500, { error: "upsert failed", detail: uErr.message });
 
-    return json(200, { ok: true, userId });
+    if (upsertError) {
+      await admin.auth.admin.deleteUser(userId).catch((deleteError) => {
+        console.error("Failed to roll back auth user after registration upsert error", deleteError);
+      });
+
+      return json(500, { error: "upsert failed", detail: upsertError.message });
+    }
+
+    const underReviewEmail = await sendUnderReviewEmail(
+      normalized.email,
+      normalized.firstName || normalized.username,
+    ).catch((emailError) => ({ success: false, error: String(emailError) }));
+
+    return json(200, {
+      ok: true,
+      userId,
+      alreadyExists: false,
+      status: "pending",
+      emails: {
+        underReview: underReviewEmail,
+      },
+    });
   } catch (e) {
     return json(500, { error: "internal", detail: String(e) });
   }
