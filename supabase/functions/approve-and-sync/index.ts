@@ -7,7 +7,10 @@ import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 function cors(req: Request) {
   const origin = req.headers.get("origin") ?? "";
   const allowed = (Deno.env.get("ALLOWED_ORIGINS") || "*")
-    .split(",").map(s => s.trim()).filter(Boolean);
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+
   const allowAny = allowed.includes("*");
   const allowOrigin = allowAny ? (origin || "*") : (allowed.includes(origin) ? origin : "");
   const reqHeaders = req.headers.get("access-control-request-headers")
@@ -22,13 +25,22 @@ function cors(req: Request) {
     "Content-Type": "application/json",
   } as Record<string, string>;
 }
+
 function jerr(headers: HeadersInit, status: number, msg: string) {
   return new Response(JSON.stringify({ ok: false, error: msg }), { status, headers });
 }
+
 function ok(headers: HeadersInit, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status: 200, headers });
 }
-function safeJson(s: string) { try { return JSON.parse(s); } catch { return { raw: s }; } }
+
+function safeJson(s: string) {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return { raw: s };
+  }
+}
 
 /* ---------------- Env ---------------- */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -36,7 +48,7 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const DEFAULT_DISCOURSE_BASE_URL = "https://community.teatimecari.app";
 const DISCOURSE_BASE = (Deno.env.get("DISCOURSE_BASE_URL") || DEFAULT_DISCOURSE_BASE_URL).replace(/\/+$/, "");
-const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
+const DISCOURSE_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET") || "";
 const SEND_ACTIVATION = (Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "false").toLowerCase() === "true";
@@ -51,14 +63,20 @@ async function hmacHex(input: string, secret: string) {
     false,
     ["sign"],
   );
+
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(input));
-  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function normalizeGender(g: string): "men" | "women" | "" {
   const v = (g || "").toLowerCase().trim();
+
   if (["men", "male", "m"].includes(v)) return "men";
   if (["women", "woman", "female", "f"].includes(v)) return "women";
+
   return "";
 }
 
@@ -67,23 +85,27 @@ function nameFrom(reg: any) {
     (reg?.firstName ?? "").toString().trim(),
     (reg?.lastName ?? "").toString().trim(),
   ].filter(Boolean);
+
   if (parts.length) return parts.join(" ");
+
   return (reg?.username ?? "").toString().trim();
 }
 
-
-/* ---------------- Discourse (SSO sync) ---------------- */
+/* ---------------- Discourse SSO sync ---------------- */
 function missingDiscourseAdminSyncConfig() {
   const missing: string[] = [];
+
   if (!DISCOURSE_BASE) missing.push("DISCOURSE_BASE_URL");
   if (!DISCOURSE_KEY) missing.push("DISCOURSE_ADMIN_API_KEY");
   if (!DISCOURSE_USER) missing.push("DISCOURSE_ADMIN_API_USERNAME");
   if (!DISCOURSE_SSO_SECRET) missing.push("DISCOURSE_SSO_SECRET");
+
   return missing;
 }
 
 async function discourseSyncSSO(payload: Record<string, string>) {
   const missingConfig = missingDiscourseAdminSyncConfig();
+
   if (missingConfig.length > 0) {
     return {
       success: false,
@@ -101,7 +123,10 @@ async function discourseSyncSSO(payload: Record<string, string>) {
   const form = new URLSearchParams();
   form.set("sso", b64);
   form.set("sig", sig);
-  if (SEND_ACTIVATION) form.set("require_activation", "true");
+
+  if (SEND_ACTIVATION) {
+    form.set("require_activation", "true");
+  }
 
   const res = await fetch(`${DISCOURSE_BASE}/admin/users/sync_sso`, {
     method: "POST",
@@ -115,14 +140,21 @@ async function discourseSyncSSO(payload: Record<string, string>) {
   });
 
   const text = await res.text();
+
   if (!res.ok) {
     throw new Error(`Discourse sync_sso failed: ${res.status} ${text}`);
   }
-  return { success: true, result: safeJson(text) };
+
+  return {
+    success: true,
+    skipped: false,
+    result: safeJson(text),
+  };
 }
 
 async function approveRegistrationRecord(supa: any, reg: any, genderNorm: "men" | "women") {
   const approvedAt = new Date().toISOString();
+
   const { error: regUpdateErr } = await supa
     .from("registrations")
     .update({ status: "approved" })
@@ -156,14 +188,23 @@ async function approveRegistrationRecord(supa: any, reg: any, genderNorm: "men" 
 
 /* ---------------- Handler ---------------- */
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors(req) });
+  }
+
   const headers = cors(req);
-  if (req.method !== "POST") return jerr(headers, 405, "Method not allowed");
+
+  if (req.method !== "POST") {
+    return jerr(headers, 405, "Method not allowed");
+  }
 
   try {
     const body = await req.json().catch(() => ({} as any));
     const registrationId: string | undefined = body.registration_id ?? body.user_id;
-    if (!registrationId) return jerr(headers, 400, "registration_id (or user_id) is required");
+
+    if (!registrationId) {
+      return jerr(headers, 400, "registration_id (or user_id) is required");
+    }
 
     if (!SUPABASE_URL || !SERVICE_ROLE) {
       return jerr(headers, 500, "Supabase service configuration is missing");
@@ -172,7 +213,10 @@ Deno.serve(async (req) => {
     // Use a service-role client without forwarding the caller Authorization header
     // so approval can bypass RLS while still being called from the admin UI.
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE, {
-      auth: { autoRefreshToken: false, persistSession: false },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     });
 
     // TEMP: removed admin-only check for now while debugging "Registration not found"
@@ -199,38 +243,49 @@ Deno.serve(async (req) => {
     }
 
     const username = String(reg.username || "").trim();
-    const email    = String(reg.email || "").trim();
-    if (!username || !email) return jerr(headers, 400, "username and email are required");
+    const email = String(reg.email || "").trim();
+
+    if (!username || !email) {
+      return jerr(headers, 400, "username and email are required");
+    }
 
     const genderNorm = bodyGender || normalizeGender(String(reg.gender || ""));
-    if (!genderNorm) return jerr(headers, 400, "gender must be 'men' or 'women'");
 
-    // Build SSO groups (e.g., "men" or "women", optionally plus XACCESS_GROUP)
-    const groups = [genderNorm, xaccessFlag && XACCESS_GROUP].filter(Boolean).join(",");
+    if (!genderNorm) {
+      return jerr(headers, 400, "gender must be 'men' or 'women'");
+    }
+
+    // Build SSO groups, for example "men" or "women", optionally plus XACCESS_GROUP
+    const groups = [genderNorm, xaccessFlag && XACCESS_GROUP]
+      .filter(Boolean)
+      .join(",");
 
     // 1) Approve in Supabase first. External integrations below are non-fatal so
     // a Discourse or email outage cannot leave an approved applicant pending.
     await approveRegistrationRecord(supa, reg, genderNorm);
 
-    // 2) Sync to Discourse via SSO (non-fatal)
+    // 2) Sync to Discourse via SSO. This is non-fatal.
     const displayName = nameFrom(reg) || username;
+
     const discourse = await discourseSyncSSO({
-        external_id: reg.id,
-        email,
-        username,
-        name: displayName,
-        add_groups: groups,
-      })
+      external_id: reg.id,
+      email,
+      username,
+      name: displayName,
+      add_groups: groups,
+    }).catch((err) => ({
+      success: false,
+      skipped: false,
+      reason: "sync_error",
+      error: String(err?.message ?? err),
+    }));
+
+    // 3) Send one approval email via Resend. This is non-fatal if it fails.
+    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || username)
       .catch((err) => ({
         success: false,
-        skipped: false,
-        reason: "sync_error",
-        error: String(err?.message ?? err),
+        error: String(err),
       }));
-
-    // 3) Send one approval email via Resend (non-fatal if it fails)
-    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || username)
-      .catch((err) => ({ success: false, error: String(err) }));
 
     return ok(headers, {
       ok: true,
@@ -245,10 +300,10 @@ Deno.serve(async (req) => {
         approved: emailApproved,
       },
     });
-
   } catch (e: unknown) {
     const err = e as { message?: string; stack?: string };
     console.error("approve-and-sync error:", err?.message, err?.stack);
+
     return jerr(headers, 500, err?.message ?? "Unknown error");
   }
 });
