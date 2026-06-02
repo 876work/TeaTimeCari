@@ -16,7 +16,6 @@ type Registration = {
   id: string;
   email: string;
   username?: string | null;
-  fullName?: string | null;
   firstName?: string | null;
   lastName?: string | null;
   gender?: string | null;
@@ -33,7 +32,8 @@ function json(status: number, body: unknown) {
 function metadataFromRegistration(registration: Registration) {
   return {
     username: registration.username ?? undefined,
-    fullName: registration.fullName ?? undefined,
+    fullName:
+      [registration.firstName, registration.lastName].filter(Boolean).join(" ") || undefined,
     firstName: registration.firstName ?? undefined,
     lastName: registration.lastName ?? undefined,
     gender: registration.gender ?? undefined,
@@ -55,7 +55,7 @@ serve(async (req) => {
 
     const { data: registrationRow, error: registrationError } = await admin
       .from("registrations")
-      .select("id, email, username, fullName, firstName, lastName, gender, password_temp")
+      .select("id, email, username, firstName, lastName, gender, password_temp")
       .eq("email", email)
       .maybeSingle();
     const registration = registrationRow as Registration | null;
