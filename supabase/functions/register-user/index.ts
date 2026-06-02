@@ -43,6 +43,26 @@ function usernameFromEmail(email: string) {
   return base.slice(0, 20) || "user";
 }
 
+function isAuthUserAlreadyRegisteredError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() || "";
+  return message.includes("already") || message.includes("registered") || message.includes("exists");
+}
+
+async function findAuthUserByEmail(email: string) {
+  const perPage = 1000;
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const user = data.users.find((candidate) => candidate.email?.toLowerCase() === email);
+    if (user) return user;
+
+    if (data.users.length < perPage) return null;
+  }
+
+  return null;
+}
+
 function normalizeRequest(body: RegistrationRequest) {
   const email = body.email?.trim().toLowerCase() || "";
   const password = body.password || body.password_temp || "";
@@ -124,7 +144,10 @@ serve(async (req) => {
 
     // Create the Auth user first. Approval still happens through the registrations
     // table; email_confirm lets the applicant sign in and see /kyc-pending while
-    // they wait for review.
+    // they wait for review. If a previous attempt already created the Auth user
+    // but did not finish the business registration, recover that user and update
+    // the password to the value the applicant just submitted.
+    let isRecoveredAuthUser = false;
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email: normalized.email,
       password: normalized.password,
@@ -138,11 +161,42 @@ serve(async (req) => {
       },
     });
 
-    if (createError || !created.user?.id) {
-      return json(400, { error: createError?.message || "Unable to create auth user" });
+    let userId = created.user?.id;
+
+    if (createError || !userId) {
+      if (!isAuthUserAlreadyRegisteredError(createError)) {
+        return json(400, { error: createError?.message || "Unable to create auth user" });
+      }
+
+      const existingAuthUser = await findAuthUserByEmail(normalized.email);
+      if (!existingAuthUser?.id) {
+        return json(400, { error: "This email is already registered. Please sign in or reset your password." });
+      }
+
+      const { error: updateError } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
+        password: normalized.password,
+        email_confirm: true,
+        user_metadata: {
+          ...(existingAuthUser.user_metadata || {}),
+          username: normalized.username,
+          fullName: normalized.fullName,
+          firstName: normalized.firstName,
+          lastName: normalized.lastName,
+          gender: normalized.gender,
+        },
+      });
+
+      if (updateError) {
+        return json(400, { error: updateError.message || "Unable to update existing auth user" });
+      }
+
+      userId = existingAuthUser.id;
+      isRecoveredAuthUser = true;
     }
 
-    const userId = created.user.id;
+    if (!userId) {
+      return json(400, { error: "Unable to determine auth user" });
+    }
 
     // Create the business/KYC registration. Do not persist the plaintext password.
     const { error: upsertError } = await admin
@@ -165,9 +219,11 @@ serve(async (req) => {
       );
 
     if (upsertError) {
-      await admin.auth.admin.deleteUser(userId).catch((deleteError) => {
-        console.error("Failed to roll back auth user after registration upsert error", deleteError);
-      });
+      if (!isRecoveredAuthUser) {
+        await admin.auth.admin.deleteUser(userId).catch((deleteError) => {
+          console.error("Failed to roll back auth user after registration upsert error", deleteError);
+        });
+      }
 
       return json(500, { error: "upsert failed", detail: upsertError.message });
     }
@@ -181,6 +237,7 @@ serve(async (req) => {
       ok: true,
       userId,
       alreadyExists: false,
+      recoveredAuthUser: isRecoveredAuthUser,
       status: "pending",
       emails: {
         underReview: underReviewEmail,

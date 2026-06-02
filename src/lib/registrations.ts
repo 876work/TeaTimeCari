@@ -12,10 +12,49 @@ export interface RegistrationPayload {
   password_temp?: string;
 }
 
+export interface RegistrationResponse {
+  ok?: boolean;
+  userId?: string;
+  alreadyExists?: boolean;
+  recoveredAuthUser?: boolean;
+  status?: 'pending' | 'approved' | 'rejected' | 'banned';
+  error?: string;
+  detail?: string;
+}
+
 export interface RegistrationResult {
-  data: any;
+  data: RegistrationResponse;
   alreadyExists: boolean;
   isNewSubmission: boolean;
+}
+
+type FunctionErrorWithContext = {
+  message?: string;
+  context?: {
+    json?: () => Promise<RegistrationResponse>;
+  };
+};
+
+function isFunctionErrorWithContext(error: unknown): error is FunctionErrorWithContext {
+  return typeof error === 'object' && error !== null;
+}
+
+async function getFunctionErrorMessage(error: unknown) {
+  const fallback = isFunctionErrorWithContext(error) && error.message
+    ? error.message
+    : 'Registration failed. Please try again.';
+  const response = isFunctionErrorWithContext(error) ? error.context : undefined;
+
+  if (response && typeof response.json === 'function') {
+    try {
+      const body = await response.json();
+      return body?.detail ? `${body.error || fallback}: ${body.detail}` : body?.error || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
 }
 
 export async function submitRegistration(payload: RegistrationPayload): Promise<RegistrationResult> {
@@ -52,7 +91,7 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
 
   if (error) {
     console.error('Registration function error:', error);
-    throw error;
+    throw new Error(await getFunctionErrorMessage(error));
   }
 
   if (!data?.ok) {

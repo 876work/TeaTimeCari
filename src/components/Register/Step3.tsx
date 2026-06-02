@@ -151,14 +151,17 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
     
     if (!context) return;
 
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Keep submissions small enough for the Edge Function payload limit while
+    // preserving enough detail for manual identity review.
+    const maxDimension = 960;
+    const scale = Math.min(1, maxDimension / Math.max(video.videoWidth, video.videoHeight));
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
     
-    // Draw video frame to canvas
+    // Draw the resized video frame to canvas.
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Convert to blob and base64
+    // Convert to blob and base64.
     canvas.toBlob((blob) => {
       if (blob) {
         setImageBlob(blob);
@@ -171,7 +174,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
         };
         reader.readAsDataURL(blob);
       }
-    }, 'image/jpeg', 0.8);
+    }, 'image/jpeg', 0.72);
   }, [cameraState, stopCamera]);
 
   // Retake photo
