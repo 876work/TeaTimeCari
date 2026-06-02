@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 
@@ -30,13 +31,14 @@ function ok(headers: HeadersInit, body: Record<string, unknown>) {
 function safeJson(s: string) { try { return JSON.parse(s); } catch { return { raw: s }; } }
 
 /* ---------------- Env ---------------- */
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-const DISCOURSE_BASE = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(/\/+$/, "");
-const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY")!;
+const DEFAULT_DISCOURSE_BASE_URL = "https://community.teatimecari.app";
+const DISCOURSE_BASE = (Deno.env.get("DISCOURSE_BASE_URL") || DEFAULT_DISCOURSE_BASE_URL).replace(/\/+$/, "");
+const DISCOURSE_KEY  = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
-const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
+const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET") || "";
 const SEND_ACTIVATION = (Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "false").toLowerCase() === "true";
 const XACCESS_GROUP = (Deno.env.get("XACCESS_GROUP") || "").trim();
 
@@ -71,7 +73,27 @@ function nameFrom(reg: any) {
 
 
 /* ---------------- Discourse (SSO sync) ---------------- */
+function missingDiscourseAdminSyncConfig() {
+  const missing: string[] = [];
+  if (!DISCOURSE_BASE) missing.push("DISCOURSE_BASE_URL");
+  if (!DISCOURSE_KEY) missing.push("DISCOURSE_ADMIN_API_KEY");
+  if (!DISCOURSE_USER) missing.push("DISCOURSE_ADMIN_API_USERNAME");
+  if (!DISCOURSE_SSO_SECRET) missing.push("DISCOURSE_SSO_SECRET");
+  return missing;
+}
+
 async function discourseSyncSSO(payload: Record<string, string>) {
+  const missingConfig = missingDiscourseAdminSyncConfig();
+  if (missingConfig.length > 0) {
+    return {
+      success: false,
+      skipped: true,
+      reason: "missing_config",
+      missing_config: missingConfig,
+      message: `Discourse pre-sync skipped; missing ${missingConfig.join(", ")}.`,
+    };
+  }
+
   const qs = new URLSearchParams(payload).toString();
   const b64 = btoa(qs);
   const sig = await hmacHex(b64, DISCOURSE_SSO_SECRET);
@@ -96,7 +118,40 @@ async function discourseSyncSSO(payload: Record<string, string>) {
   if (!res.ok) {
     throw new Error(`Discourse sync_sso failed: ${res.status} ${text}`);
   }
-  return safeJson(text);
+  return { success: true, result: safeJson(text) };
+}
+
+async function approveRegistrationRecord(supa: any, reg: any, genderNorm: "men" | "women") {
+  const approvedAt = new Date().toISOString();
+  const { error: regUpdateErr } = await supa
+    .from("registrations")
+    .update({ status: "approved" })
+    .eq("id", reg.id);
+
+  if (regUpdateErr) {
+    throw new Error(`Failed to approve registration: ${regUpdateErr.message}`);
+  }
+
+  // Keep the newer profiles table in sync when it exists. Some deployments only
+  // use registrations for KYC gating, so profile sync is intentionally best-effort.
+  const { error: profileErr } = await supa
+    .from("profiles")
+    .upsert(
+      {
+        id: reg.id,
+        email: reg.email,
+        username: reg.username,
+        full_name: nameFrom(reg) || reg.username,
+        gender: genderNorm,
+        kyc_status: "approved",
+        approved_at: approvedAt,
+      },
+      { onConflict: "id" },
+    );
+
+  if (profileErr && profileErr.code !== "42P01") {
+    console.warn("profiles sync failed after registration approval", profileErr);
+  }
 }
 
 /* ---------------- Handler ---------------- */
@@ -110,8 +165,15 @@ Deno.serve(async (req) => {
     const registrationId: string | undefined = body.registration_id ?? body.user_id;
     if (!registrationId) return jerr(headers, 400, "registration_id (or user_id) is required");
 
-    // *** IMPORTANT CHANGE: use Service-Role client ONLY (no caller Authorization header) ***
-    const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
+    if (!SUPABASE_URL || !SERVICE_ROLE) {
+      return jerr(headers, 500, "Supabase service configuration is missing");
+    }
+
+    // Use a service-role client without forwarding the caller Authorization header
+    // so approval can bypass RLS while still being called from the admin UI.
+    const supa = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // TEMP: removed admin-only check for now while debugging "Registration not found"
     // const { data: auth } = await supa.auth.getUser();
@@ -146,20 +208,25 @@ Deno.serve(async (req) => {
     // Build SSO groups (e.g., "men" or "women", optionally plus XACCESS_GROUP)
     const groups = [genderNorm, xaccessFlag && XACCESS_GROUP].filter(Boolean).join(",");
 
-    // 1) Sync to Discourse via SSO
-    const displayName = nameFrom(reg) || username;
-    await discourseSyncSSO({
-      external_id: reg.id,
-      email,
-      username,
-      name: displayName,
-      add_groups: groups,
-    });
+    // 1) Approve in Supabase first. External integrations below are non-fatal so
+    // a Discourse or email outage cannot leave an approved applicant pending.
+    await approveRegistrationRecord(supa, reg, genderNorm);
 
-    // 2) Update our registration record as approved
-    await supa.from("registrations")
-      .update({ status: "approved", updated_at: new Date().toISOString() })
-      .eq("id", reg.id);
+    // 2) Sync to Discourse via SSO (non-fatal)
+    const displayName = nameFrom(reg) || username;
+    const discourse = await discourseSyncSSO({
+        external_id: reg.id,
+        email,
+        username,
+        name: displayName,
+        add_groups: groups,
+      })
+      .catch((err) => ({
+        success: false,
+        skipped: false,
+        reason: "sync_error",
+        error: String(err?.message ?? err),
+      }));
 
     // 3) Send one approval email via Resend (non-fatal if it fails)
     const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || username)
@@ -167,10 +234,12 @@ Deno.serve(async (req) => {
 
     return ok(headers, {
       ok: true,
+      status: discourse.success || discourse.skipped ? "approved" : "approved_with_sync_error",
       registration_id: reg.id,
       discourse: {
-        synced_via_sso: true,
+        synced_via_sso: discourse.success,
         add_groups: groups,
+        ...discourse,
       },
       emails: {
         approved: emailApproved,
