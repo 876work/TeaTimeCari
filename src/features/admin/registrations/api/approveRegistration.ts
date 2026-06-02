@@ -1,6 +1,31 @@
 // src/features/admin/registrations/api/approveRegistration.ts
 import { supabase } from '@/lib/supabaseClient';
 
+async function getFunctionErrorMessage(error: unknown) {
+  const fallback = error instanceof Error ? error.message : 'Approval failed.';
+  const maybeContext = (error as { context?: unknown })?.context;
+  const response = maybeContext instanceof Response
+    ? maybeContext
+    : (maybeContext as { response?: Response } | undefined)?.response;
+
+  if (response) {
+    try {
+      const body = await response.clone().json();
+      if (body?.error) return body.error as string;
+      if (body?.message) return body.message as string;
+    } catch {
+      try {
+        const text = await response.clone().text();
+        if (text) return text;
+      } catch {
+        // Fall through to the Supabase client error message.
+      }
+    }
+  }
+
+  return fallback;
+}
+
 export async function approveRegistration(registrationId: string) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not logged in");
@@ -11,21 +36,8 @@ export async function approveRegistration(registrationId: string) {
   });
 
   if (error) {
-    const ctx: any = (error as any).context;
-    const res = ctx?.response ?? {};
-    // Try every known place Supabase puts the error text
-    const b = res.body ?? res.data ?? res.error ?? res._data;
-    const h = res.headers ?? {};
-    const headerMsg = h["x-error-message"] || h["X-Error-Message"];
-    const status = res.status;
-    const reason =
-      (typeof b === "string" && b) ||
-      (b?.error) ||
-      headerMsg ||
-      error.message;
-
-    console.error("Edge function error:", { status, body: b, headers: h });
-    throw new Error(reason || `Edge Function failed (status ${status ?? "?"})`);
+    console.error("approve-and-sync function error:", error);
+    throw new Error(await getFunctionErrorMessage(error));
   }
 
   return data;
