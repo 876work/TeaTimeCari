@@ -66,7 +66,7 @@ function nameFrom(reg: any) {
     (reg?.lastName ?? "").toString().trim(),
   ].filter(Boolean);
   if (parts.length) return parts.join(" ");
-  return (reg?.full_name ?? reg?.username ?? "").toString().trim();
+  return (reg?.fullName ?? reg?.username ?? "").toString().trim();
 }
 
 
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Load registration
     const { data: reg, error: regErr } = await supa
       .from("registrations")
-      .select("id, email, username, firstName, lastName, full_name, gender, status, email_code, email_code_expiry")
+      .select("id, email, username, firstName, lastName, fullName, gender, status, email_code, email_code_expiry")
       .eq("id", registrationId)
       .single();
 

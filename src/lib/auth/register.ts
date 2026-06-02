@@ -2,9 +2,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 
-// Change this to env if you prefer:
-const REGISTER_FN = "https://vdfzpdjplyhaotzkbyja.functions.supabase.co/register-user";
-
 export type SignupForm = {
   email: string;
   password: string;
@@ -15,46 +12,68 @@ export type SignupForm = {
   gender?: "Male" | "Female";
 };
 
+function buildFullName(form: SignupForm) {
+  return (
+    form.full_name?.trim() ||
+    [form.firstName?.trim(), form.lastName?.trim()].filter(Boolean).join(" ")
+  );
+}
+
 export async function registerAndSignIn(form: SignupForm) {
-  // 1) Create/confirm Auth user on the server and upsert registrations(pending)
-  const res = await fetch(REGISTER_FN, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(form),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Register failed: ${t}`);
+  const normalizedForm = {
+    ...form,
+    email: form.email.trim().toLowerCase(),
+    username: form.username?.trim().toLowerCase(),
+    fullName: buildFullName(form),
+  };
+
+  // 1) Create/confirm Auth user on the server and upsert registrations(pending).
+  const { data: registration, error: registrationError } = await supabase.functions.invoke(
+    "register-user",
+    { body: normalizedForm },
+  );
+
+  if (registrationError) {
+    throw registrationError;
   }
 
-  // 2) Immediately sign in with the same credentials
+  if (!registration?.ok) {
+    throw new Error(registration?.error || "Register failed");
+  }
+
+  // 2) Immediately sign in with the same credentials so pending users can see
+  // the review-status screen and approved users can continue to the community.
   const { error: signInErr } = await supabase.auth.signInWithPassword({
-    email: form.email,
+    email: normalizedForm.email,
     password: form.password,
   });
   if (signInErr) throw signInErr;
 
-  // 3) Gate pending users (Option A)
+  // 3) Gate pending users.
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No user after sign-in");
 
-  const { data: reg } = await supabase
+  const { data: reg, error: regError } = await supabase
     .from("registrations")
     .select("status")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  if (regError) {
+    throw regError;
+  }
 
   if (!reg || reg.status !== "approved") {
     return { next: "/kyc-pending" as const };
   }
 
-  // 4) Finish Discourse SSO if this journey started from Discourse
+  // 4) Finish Discourse SSO if this journey started from Discourse.
   if (hasPendingSso()) {
     const { data: { session } } = await supabase.auth.getSession();
     await finishDiscourseSso(session?.access_token ?? "");
     return { next: null as const };
   }
 
-  // 5) Normal navigation
-  return { next: "/dashboard" as const };
+  // 5) Normal navigation.
+  return { next: "/community" as const };
 }
