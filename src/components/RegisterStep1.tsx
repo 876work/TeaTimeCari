@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useSession } from '@supabase/auth-helpers-react';
 import { supabase } from '@/lib/supabaseClient';
-import { Check, X, AlertCircle, Loader2, User, LogIn, Eye, EyeOff, Lock } from 'lucide-react';
+import { Check, X, AlertCircle, Loader2, User, Eye, EyeOff, Lock } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
-import { validatePhoneNumber } from '../utils/usernameValidation';
+import { validateEmail, validatePhoneNumber, validateUsername } from '../utils/usernameValidation';
 
 // Updated interface to match Edge Function response
 interface UsernameValidationResult {
@@ -36,8 +35,6 @@ interface RegisterStep1Props {
 }
 
 export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Props) {
-  const session = useSession();
-  
   // Form state
   const [formData, setFormData] = useState<RegisterStep1Data>({
     fullName: initialData?.fullName || '',
@@ -49,7 +46,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   });
   
   // Validation state
-  const [errors, setErrors] = useState<Partial<Record<keyof RegisterStep1Data, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof RegisterStep1Data, string | null>>>({});
   const [touched, setTouched] = useState<Partial<Record<keyof RegisterStep1Data, boolean>>>({});
   
   // Username validation state
@@ -112,48 +109,47 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   };
   
   // Validate individual fields
-  const validateField = (field: keyof RegisterStep1Data, value: string) => {
-    let error: string | null = null;
-    
+  const getFieldError = (field: keyof RegisterStep1Data, value: string) => {
     switch (field) {
       case 'fullName':
         if (!value.trim()) {
-          error = 'Full name is required';
-        } else if (value.trim().split(' ').length < 2) {
-          error = 'Please enter your full name (first and last name)';
+          return 'Full name is required';
         }
-        break;
+        if (value.trim().split(/\s+/).length < 2) {
+          return 'Please enter your full name (first and last name)';
+        }
+        return null;
       case 'email':
-        const emailValidation = validateEmail(value);
-        error = emailValidation.error;
-        break;
+        return validateEmail(value).error;
       case 'phone':
-        const phoneValidation = validatePhoneNumber(value);
-        error = phoneValidation.error;
-        break;
+        return validatePhoneNumber(value).error;
       case 'username':
-        const usernameValidation = validateUsername(value);
-        error = usernameValidation.error;
-        break;
+        return validateUsername(value).error;
       case 'password':
         if (!value) {
-          error = 'Password is required';
-        } else if (value.length < 10) {
-          error = 'Password must be at least 10 characters';
+          return 'Password is required';
         }
-        break;
+        if (value.length < 10) {
+          return 'Password must be at least 10 characters';
+        }
+        return null;
       case 'confirmPassword':
         if (!value) {
-          error = 'Please confirm your password';
-        } else if (value !== formData.password) {
-          error = 'Passwords do not match';
+          return 'Please confirm your password';
         }
-        break;
+        if (value !== formData.password) {
+          return 'Passwords do not match';
+        }
+        return null;
+      default:
+        return null;
     }
-    
+  };
+
+  const validateField = (field: keyof RegisterStep1Data, value: string) => {
     setErrors(prev => ({
       ...prev,
-      [field]: error
+      [field]: getFieldError(field, value)
     }));
   };
   
@@ -350,15 +346,24 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     setFormData(prev => ({ ...prev, username: suggestion }));
   };
   
+  const requiredFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
+
+  const getFormErrors = () => {
+    return requiredFields.reduce<Partial<Record<keyof RegisterStep1Data, string | null>>>((acc, field) => {
+      acc[field] = getFieldError(field, formData[field]);
+      return acc;
+    }, {});
+  };
+
   // Validate entire form
   const isFormValid = () => {
-    const requiredFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
+    const formErrors = getFormErrors();
     
     // Check if all fields have values
     const hasAllValues = requiredFields.every(field => formData[field].trim());
     
-    // Check if no errors exist
-    const hasNoErrors = Object.values(errors).every(error => !error);
+    // Check if no errors exist, including errors from the latest field values
+    const hasNoErrors = Object.values({ ...errors, ...formErrors }).every(error => !error);
     
     // Check username availability (must not be checking and must be available)
     const isUsernameAvailable = usernameStatus.isValid && usernameStatus.isAvailable === true && !isCheckingUsername;
@@ -378,15 +383,16 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     setGlobalError(null);
     
     // Mark all fields as touched
-    const allFields: (keyof RegisterStep1Data)[] = ['fullName', 'email', 'phone', 'username', 'password', 'confirmPassword'];
-    const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
+    const newTouched = requiredFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
     setTouched(newTouched);
     
-    // Validate all fields
-    allFields.forEach(field => validateField(field, formData[field]));
+    // Validate all fields against the current values synchronously so the first
+    // click shows any errors immediately instead of reading stale React state.
+    const latestErrors = getFormErrors();
+    setErrors(latestErrors);
     
     // Check for basic validation errors first
-    const hasBasicErrors = Object.values(errors).some(error => error);
+    const hasBasicErrors = Object.values(latestErrors).some(error => error);
     if (hasBasicErrors) {
       setGlobalError('Please fix the errors above before continuing.');
       return;
@@ -431,7 +437,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       // All validations passed, proceed to next step
       onNext(formData);
       
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error during availability check:', err);
       setGlobalError('Failed to verify email and username availability. Please try again.');
       return;
