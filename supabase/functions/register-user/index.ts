@@ -206,7 +206,6 @@ serve(async (req) => {
           id: userId,
           email: normalized.email,
           username: normalized.username,
-          fullName: normalized.fullName,
           firstName: normalized.firstName,
           lastName: normalized.lastName,
           phone: normalized.phone,

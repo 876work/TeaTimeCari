@@ -25,6 +25,8 @@ import { isValidUUID } from '../../utils/validationUtils';
 interface UserProfileData {
   id: string;
   fullName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   username: string;
   gender: 'Male' | 'Female';
   status: string;
@@ -160,7 +162,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Fetch profile user data
         const { data: profileData, error: profileError } = await supabase
           .from('registrations')
-          .select('id, fullName, username, gender, status, created_at')
+          .select('id, firstName, lastName, username, gender, status, created_at')
           .eq('id', userId)
           .maybeSingle();
 
@@ -174,7 +176,12 @@ export function UserProfile({ userId }: UserProfileProps) {
           return;
         }
 
-        setProfileUser(profileData);
+        const fullName = [profileData?.firstName, profileData?.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || profileData?.username || 'User';
+
+        setProfileUser(profileData ? { ...profileData, fullName } : null);
         
         // Fetch user posts, comments, and calculate stats
         const { data: postsData, error: postsError } = await supabase
