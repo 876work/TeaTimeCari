@@ -1,56 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { 
-  Users, 
-  Flag, 
-  AlertTriangle, 
-  UserX, 
-  TrendingUp, 
-  Calendar, 
-  Activity, 
-  BarChart3,
+import {
+  Users,
+  UserCheck,
+  UserX,
+  UserMinus,
+  Clock,
   RefreshCw,
   Loader2,
   AlertCircle,
   CheckCircle,
-  XCircle,
-  Eye,
-  UserCheck,
-  Key,
-  ArrowRight
+  Wifi,
+  WifiOff,
+  TrendingUp,
+  CalendarDays,
+  ArrowRight,
+  Flag,
+  Database,
+  Shield,
+  HardDrive,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
 import FunctionPing from '../../dev/FunctionPing';
 
-// Type definitions
-interface DashboardStats {
-  pendingVerifications: number;
-  flaggedPosts: number;
-  highRiskPosts: number;
-  bannedUsers: number;
-  totalUsers: number;
-  totalPosts: number;
-  todayPosts: number;
-  todayFlags: number;
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
+interface UserStat {
+  status: string;
+  last_seen_at: string | null;
+  created_at: string | null;
 }
 
-interface DailyActivity {
+interface DailyRegistration {
   date: string;
-  posts: number;
-  greenFlags: number;
-  redFlags: number;
+  count: number;
 }
 
-interface QuickAction {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-  count?: number;
-  action: () => void;
+interface DashboardStats {
+  total: number;
+  online: number;
+  offline: number;
+  registeredToday: number;
+  pending: number;
+  banned: number;
+  approved: number;
+  verified: number;
 }
 
 interface AdminDashboardProps {
@@ -58,584 +54,423 @@ interface AdminDashboardProps {
   onNavigate?: (page: string) => void;
 }
 
+function StatCard({
+  label,
+  value,
+  icon,
+  iconBg,
+  iconColor,
+  sub,
+  loading,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  sub?: string;
+  loading: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <span className={iconColor}>{icon}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+        <p className="text-2xl font-bold text-slate-900 mt-0.5">
+          {loading ? <Loader2 className="w-5 h-5 animate-spin text-slate-400 inline" /> : value.toLocaleString()}
+        </p>
+        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function RegistrationChart({
+  data,
+  loading,
+}: {
+  data: DailyRegistration[];
+  loading: boolean;
+}) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">New Registrations</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Last 7 days</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+          <span className="text-xs text-slate-500">Registrations</span>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+        </div>
+      ) : (
+        <>
+          <div className="flex items-end gap-2 h-32">
+            {data.map((day) => {
+              const heightPct = max > 0 ? (day.count / max) * 100 : 0;
+              const dayLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
+                weekday: 'short',
+              });
+              return (
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5 group">
+                  <div className="w-full flex flex-col justify-end" style={{ height: '112px' }}>
+                    <div
+                      title={`${day.count} registrations`}
+                      className="w-full bg-blue-100 group-hover:bg-blue-200 rounded-t transition-colors relative"
+                      style={{
+                        height: `${Math.max(heightPct, day.count > 0 ? 6 : 0)}%`,
+                        minHeight: day.count > 0 ? '6px' : '2px',
+                      }}
+                    >
+                      {day.count > 0 && (
+                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-medium text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {day.count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-400">{dayLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>{data.reduce((s, d) => s + d.count, 0)} total this week</span>
+            <span>Peak: {max} in a day</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDashboardProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
-  
-  // State management
+
   const [stats, setStats] = useState<DashboardStats>({
-    pendingVerifications: 0,
-    flaggedPosts: 0,
-    highRiskPosts: 0,
-    bannedUsers: 0,
-    totalUsers: 0,
-    totalPosts: 0,
-    todayPosts: 0,
-    todayFlags: 0
+    total: 0,
+    online: 0,
+    offline: 0,
+    registeredToday: 0,
+    pending: 0,
+    banned: 0,
+    approved: 0,
+    verified: 0,
   });
-  
-  const [dailyActivity, setDailyActivity] = useState<DailyActivity[]>([]);
+  const [dailyRegs, setDailyRegs] = useState<DailyRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Simple admin check
-  const isAdmin = session?.user?.email?.includes('admin') || true; // TODO: Implement proper admin role check
+  const isAdmin = !!session?.user?.id;
 
-  // Fetch dashboard data
-  const fetchDashboardData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Fetch user statistics
-      const { data: usersData, error: usersError } = await supabase
+      const { data, error: dbError } = await supabase
         .from('registrations')
-        .select('status');
+        .select('status, last_seen_at, created_at');
 
-      // Fetch post statistics
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('red_flag_count, green_flag_count, created_at');
+      if (dbError) throw dbError;
 
-      // Handle table not found errors by using mock data
-      if ((usersError && usersError.code === '42P01') || (postsError && postsError.code === '42P01')) {
-        console.warn('Database tables not found, using mock data');
-        setMockData();
-        return;
-      }
+      const users: UserStat[] = data || [];
+      const now = Date.now();
 
-      if (usersError) throw usersError;
-      if (postsError) throw postsError;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
 
-      // Calculate user stats
-      const users = usersData || [];
-      const pendingVerifications = users.filter(u => u.status === 'pending').length;
-      const bannedUsers = users.filter(u => u.status === 'banned').length;
-      const totalUsers = users.length;
+      const isOnline = (u: UserStat) => {
+        if (!u.last_seen_at) return false;
+        const t = new Date(u.last_seen_at).getTime();
+        return Number.isFinite(t) && now - t <= ONLINE_THRESHOLD_MS;
+      };
 
-      // Calculate post stats
-      const posts = postsData || [];
-      const flaggedPosts = posts.filter(p => p.red_flag_count > 0).length;
-      const highRiskPosts = posts.filter(p => p.red_flag_count > 10).length;
-      const totalPosts = posts.length;
+      const online = users.filter(isOnline).length;
 
-      // Calculate today's stats
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayPosts = posts.filter(p => new Date(p.created_at) >= today).length;
-      const todayFlags = posts
-        .filter(p => new Date(p.created_at) >= today)
-        .reduce((sum, p) => sum + p.red_flag_count + p.green_flag_count, 0);
+      setStats({
+        total: users.length,
+        online,
+        offline: users.length - online,
+        registeredToday: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
+        pending: users.filter((u) => u.status === 'pending').length,
+        banned: users.filter((u) => u.status === 'banned').length,
+        approved: users.filter((u) => u.status === 'approved').length,
+        verified: users.filter((u) => u.status === 'verified').length,
+      });
 
-      // Calculate daily activity for last 7 days
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        return date;
-      }).reverse();
-
-      const dailyStats = last7Days.map(date => {
-        const nextDay = new Date(date);
-        nextDay.setDate(nextDay.getDate() + 1);
-        
-        const dayPosts = posts.filter(p => {
-          const postDate = new Date(p.created_at);
-          return postDate >= date && postDate < nextDay;
-        });
-
+      // Build 7-day registration trend
+      const days: DailyRegistration[] = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        d.setHours(0, 0, 0, 0);
+        const next = new Date(d);
+        next.setDate(d.getDate() + 1);
         return {
-          date: date.toISOString().split('T')[0],
-          posts: dayPosts.length,
-          greenFlags: dayPosts.reduce((sum, p) => sum + p.green_flag_count, 0),
-          redFlags: dayPosts.reduce((sum, p) => sum + p.red_flag_count, 0)
+          date: d.toISOString().split('T')[0],
+          count: users.filter((u) => {
+            if (!u.created_at) return false;
+            const t = new Date(u.created_at);
+            return t >= d && t < next;
+          }).length,
         };
       });
 
-      setStats({
-        pendingVerifications,
-        flaggedPosts,
-        highRiskPosts,
-        bannedUsers,
-        totalUsers,
-        totalPosts,
-        todayPosts,
-        todayFlags
-      });
-
-      setDailyActivity(dailyStats);
+      setDailyRegs(days);
       setLastUpdated(new Date());
-
-    } catch (err: any) {
-      console.error('Error fetching dashboard data:', err);
-      setError(`Failed to load dashboard data: ${err.message}`);
-      // Fallback to mock data
-      setMockData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Failed to load dashboard data: ${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock data for demonstration
-  const setMockData = () => {
-    const mockStats: DashboardStats = {
-      pendingVerifications: 3,
-      flaggedPosts: 12,
-      highRiskPosts: 2,
-      bannedUsers: 1,
-      totalUsers: 47,
-      totalPosts: 156,
-      todayPosts: 8,
-      todayFlags: 23
-    };
-
-    const mockDailyActivity: DailyActivity[] = [
-      { date: '2024-01-26', posts: 12, greenFlags: 45, redFlags: 8 },
-      { date: '2024-01-27', posts: 15, greenFlags: 52, redFlags: 12 },
-      { date: '2024-01-28', posts: 8, greenFlags: 28, redFlags: 5 },
-      { date: '2024-01-29', posts: 18, greenFlags: 67, redFlags: 15 },
-      { date: '2024-01-30', posts: 22, greenFlags: 78, redFlags: 18 },
-      { date: '2024-01-31', posts: 14, greenFlags: 41, redFlags: 9 },
-      { date: '2024-02-01', posts: 8, greenFlags: 23, redFlags: 6 }
-    ];
-
-    setStats(mockStats);
-    setDailyActivity(mockDailyActivity);
-    setLastUpdated(new Date());
-    setLoading(false);
-  };
-
-  // Initial data fetch
   useEffect(() => {
     if (!isAdmin) {
-      setError('Access Denied: You must be an administrator to view this page.');
+      setError('Access denied.');
       setLoading(false);
       return;
     }
-
-    fetchDashboardData();
+    fetchData();
   }, [isAdmin]);
 
-  // Auto-refresh every 30 seconds
   useEffect(() => {
     if (!isAdmin) return;
-
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 30000);
-
-    return () => clearInterval(interval);
+    const id = setInterval(fetchData, 30000);
+    return () => clearInterval(id);
   }, [isAdmin]);
 
-  // Quick action handlers
-  const handleGoToUserReviews = () => {
-    if (onNavigate) {
-      onNavigate('user-reviews');
-    }
-  };
-
-  const handleGoToFlaggedPosts = () => {
-    if (onNavigate) {
-      onNavigate('flagged-posts');
-    }
-  };
-
-
-  // Quick actions configuration
-  const quickActions: QuickAction[] = [
-    {
-      title: 'Review New Users',
-      description: 'Approve or reject pending registrations',
-      icon: <UserCheck className="w-6 h-6" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 hover:bg-blue-100',
-      count: stats.pendingVerifications,
-      action: handleGoToUserReviews
-    },
-    {
-      title: 'Review Flagged Posts',
-      description: 'Moderate posts with high flag counts',
-      icon: <Flag className="w-6 h-6" />,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50 hover:bg-red-100',
-      count: stats.flaggedPosts,
-      action: handleGoToFlaggedPosts
-    },
-  ];
-
-  if (!isAdmin) {
-    return (
-      <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
-          <p className="text-gray-700">You do not have administrative privileges to view this page.</p>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  // Render specific admin page content
-  if (activePage === 'user-reviews') {
-    return <AdminUserReview />;
-  }
-
-  if (activePage === 'flagged-posts') {
-    return <ReviewFlaggedPosts />;
-  }
-
+  // Delegate to sub-pages
+  if (activePage === 'user-reviews') return <AdminUserReview />;
+  if (activePage === 'flagged-posts') return <ReviewFlaggedPosts />;
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
           <FunctionPing />
         </div>
       </AdminLayout>
     );
   }
 
-  // Default dashboard content
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1">Overview of platform activity and moderation status</p>
-            </div>
-            <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </div>
-              <button
-                onClick={fetchDashboardData}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            </div>
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Overview</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Last refreshed {lastUpdated.toLocaleTimeString()}
+            </p>
           </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
-        {/* Error Message */}
+        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4" role="alert">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
-            </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Pending Verifications */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-amber-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Verifications</p>
-                <p className="text-3xl font-bold text-amber-600">
-                  {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : stats.pendingVerifications}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                <Users className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <Calendar className="w-4 h-4 mr-1" />
-              <span>Awaiting admin review</span>
-            </div>
-          </div>
-
-          {/* Flagged Posts */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Flagged Posts</p>
-                <p className="text-3xl font-bold text-orange-600">
-                  {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : stats.flaggedPosts}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <Flag className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <XCircle className="w-4 h-4 mr-1" />
-              <span>Posts with red flags</span>
-            </div>
-          </div>
-
-          {/* High-Risk Posts */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-red-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">High-Risk Posts</p>
-                <p className="text-3xl font-bold text-red-600">
-                  {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : stats.highRiskPosts}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <AlertTriangle className="w-4 h-4 mr-1" />
-              <span>10+ red flags</span>
-            </div>
-          </div>
-
-          {/* Banned Users */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-l-gray-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Banned Users</p>
-                <p className="text-3xl font-bold text-gray-600">
-                  {loading ? <Loader2 className="w-8 h-8 animate-spin" /> : stats.bannedUsers}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <UserX className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <UserX className="w-4 h-4 mr-1" />
-              <span>Restricted accounts</span>
-            </div>
-          </div>
+        {/* Primary stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Users"
+            value={stats.total}
+            icon={<Users className="w-5 h-5" />}
+            iconBg="bg-blue-50"
+            iconColor="text-blue-600"
+            sub="All registrations"
+            loading={loading}
+          />
+          <StatCard
+            label="Online Now"
+            value={stats.online}
+            icon={<Wifi className="w-5 h-5" />}
+            iconBg="bg-green-50"
+            iconColor="text-green-600"
+            sub="Active within 15 min"
+            loading={loading}
+          />
+          <StatCard
+            label="Offline"
+            value={stats.offline}
+            icon={<WifiOff className="w-5 h-5" />}
+            iconBg="bg-slate-100"
+            iconColor="text-slate-500"
+            sub="Inactive users"
+            loading={loading}
+          />
+          <StatCard
+            label="Registered Today"
+            value={stats.registeredToday}
+            icon={<CalendarDays className="w-5 h-5" />}
+            iconBg="bg-sky-50"
+            iconColor="text-sky-600"
+            sub="Since midnight"
+            loading={loading}
+          />
         </div>
 
-        {/* Activity Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Today's Activity */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Activity className="w-5 h-5 mr-2" />
-              Today's Activity
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.todayPosts}</div>
-                <div className="text-sm text-gray-600">New Posts</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{stats.todayFlags}</div>
-                <div className="text-sm text-gray-600">Total Flags</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Platform Overview */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2" />
-              Platform Overview
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.totalUsers}</div>
-                <div className="text-sm text-gray-600">Total Users</div>
-              </div>
-              <div className="text-center p-4 bg-indigo-50 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-600">{stats.totalPosts}</div>
-                <div className="text-sm text-gray-600">Total Posts</div>
-              </div>
-            </div>
-          </div>
+        {/* Secondary stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Pending Approval"
+            value={stats.pending}
+            icon={<Clock className="w-5 h-5" />}
+            iconBg="bg-amber-50"
+            iconColor="text-amber-600"
+            sub="Awaiting review"
+            loading={loading}
+          />
+          <StatCard
+            label="Verified"
+            value={stats.verified}
+            icon={<UserCheck className="w-5 h-5" />}
+            iconBg="bg-emerald-50"
+            iconColor="text-emerald-600"
+            sub="KYC complete"
+            loading={loading}
+          />
+          <StatCard
+            label="Approved"
+            value={stats.approved}
+            icon={<TrendingUp className="w-5 h-5" />}
+            iconBg="bg-blue-50"
+            iconColor="text-blue-500"
+            sub="Access granted"
+            loading={loading}
+          />
+          <StatCard
+            label="Banned"
+            value={stats.banned}
+            icon={<UserX className="w-5 h-5" />}
+            iconBg="bg-red-50"
+            iconColor="text-red-500"
+            sub="Restricted accounts"
+            loading={loading}
+          />
         </div>
 
-        {/* 7-Day Activity Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2" />
-            7-Day Activity Overview
-          </h3>
-          
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <span className="text-gray-600">Loading activity data...</span>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Chart Legend */}
-              <div className="flex items-center justify-center space-x-6 text-sm">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                  <span className="text-gray-600">Posts</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-gray-600">Green Flags</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                  <span className="text-gray-600">Red Flags</span>
-                </div>
-              </div>
+        {/* Chart + Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RegistrationChart data={dailyRegs} loading={loading} />
+          </div>
 
-              {/* Simple Bar Chart */}
-              <div className="grid grid-cols-7 gap-2 h-40">
-                {dailyActivity.map((day, index) => {
-                  const maxValue = Math.max(
-                    ...dailyActivity.map(d => Math.max(d.posts, d.greenFlags, d.redFlags))
-                  );
-                  
-                  return (
-                    <div key={day.date} className="flex flex-col items-center space-y-1">
-                      <div className="flex-1 flex flex-col justify-end space-y-1 w-full">
-                        {/* Posts bar */}
-                        <div 
-                          className="bg-blue-500 rounded-t"
-                          style={{ height: `${(day.posts / maxValue) * 100}%`, minHeight: day.posts > 0 ? '4px' : '0' }}
-                          title={`${day.posts} posts`}
-                        ></div>
-                        {/* Green flags bar */}
-                        <div 
-                          className="bg-green-500"
-                          style={{ height: `${(day.greenFlags / maxValue) * 100}%`, minHeight: day.greenFlags > 0 ? '4px' : '0' }}
-                          title={`${day.greenFlags} green flags`}
-                        ></div>
-                        {/* Red flags bar */}
-                        <div 
-                          className="bg-red-500 rounded-b"
-                          style={{ height: `${(day.redFlags / maxValue) * 100}%`, minHeight: day.redFlags > 0 ? '4px' : '0' }}
-                          title={`${day.redFlags} red flags`}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500 text-center">
-                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Activity Summary */}
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-600">
-                    {dailyActivity.reduce((sum, day) => sum + day.posts, 0)}
-                  </div>
-                  <div className="text-xs text-gray-600">Posts (7 days)</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">
-                    {dailyActivity.reduce((sum, day) => sum + day.greenFlags, 0)}
-                  </div>
-                  <div className="text-xs text-gray-600">Green Flags (7 days)</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-red-600">
-                    {dailyActivity.reduce((sum, day) => sum + day.redFlags, 0)}
-                  </div>
-                  <div className="text-xs text-gray-600">Red Flags (7 days)</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {quickActions.map((action, index) => (
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 className="text-sm font-semibold text-slate-900 mb-4">Quick Actions</h3>
+            <div className="space-y-3">
               <button
-                key={index}
-                onClick={action.action}
-                className={`${action.bgColor} border border-gray-200 rounded-xl p-6 text-left transition-all duration-200 hover:shadow-md transform hover:scale-[1.02] group`}
+                onClick={() => onNavigate?.('user-reviews')}
+                className="w-full flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${action.bgColor.replace('hover:', '').replace('bg-', 'bg-').replace('-50', '-100')}`}>
-                    <div className={action.color}>
-                      {action.icon}
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4 text-blue-600" />
                   </div>
-                  {action.count !== undefined && (
-                    <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      action.count > 0 
-                        ? `${action.color.replace('text-', 'text-')} ${action.bgColor.replace('hover:', '').replace('bg-', 'bg-').replace('-50', '-100')}`
-                        : 'text-gray-500 bg-gray-100'
-                    }`}>
-                      {action.count}
-                    </div>
-                  )}
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-slate-900">Review Users</p>
+                    {stats.pending > 0 && (
+                      <p className="text-xs text-amber-600 font-medium">{stats.pending} pending approval</p>
+                    )}
+                    {stats.pending === 0 && (
+                      <p className="text-xs text-slate-500">Manage registrations</p>
+                    )}
+                  </div>
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2 group-hover:text-gray-700">
-                  {action.title}
-                </h4>
-                <p className="text-sm text-gray-600 mb-3">
-                  {action.description}
-                </p>
-                <div className="flex items-center text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                  <span>Go to section</span>
-                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <ArrowRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
-            ))}
+
+              <button
+                onClick={() => onNavigate?.('flagged-posts')}
+                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Flag className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-slate-900">Flagged Posts</p>
+                    <p className="text-xs text-slate-500">Content moderation</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* System Health */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
-              <div>
-                <div className="font-medium text-green-900">Database</div>
-                <div className="text-sm text-green-700">Connected</div>
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">System Health</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: 'Database', sub: 'Connected', icon: <Database className="w-5 h-5" /> },
+              { label: 'Authentication', sub: 'Active', icon: <Shield className="w-5 h-5" /> },
+              { label: 'Storage', sub: 'Operational', icon: <HardDrive className="w-5 h-5" /> },
+            ].map(({ label, sub, icon }) => (
+              <div key={label} className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
+                <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-emerald-600">{icon}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{label}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <CheckCircle className="w-3 h-3 text-emerald-500" />
+                    <span className="text-xs text-emerald-700">{sub}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
-              <div>
-                <div className="font-medium text-green-900">Authentication</div>
-                <div className="text-sm text-green-700">Active</div>
-              </div>
-            </div>
-            <div className="flex items-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
-              <div>
-                <div className="font-medium text-green-900">Storage</div>
-                <div className="text-sm text-green-700">Operational</div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Recent Activity Summary */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity Summary</h3>
+        {/* Registration breakdown */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">User Status Breakdown</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                <span className="text-sm text-gray-700">New user registrations today</span>
+            {[
+              { label: 'Verified', count: stats.verified, color: 'bg-emerald-500', pct: stats.total > 0 ? (stats.verified / stats.total) * 100 : 0 },
+              { label: 'Approved', count: stats.approved, color: 'bg-blue-500', pct: stats.total > 0 ? (stats.approved / stats.total) * 100 : 0 },
+              { label: 'Pending', count: stats.pending, color: 'bg-amber-400', pct: stats.total > 0 ? (stats.pending / stats.total) * 100 : 0 },
+              { label: 'Banned', count: stats.banned, color: 'bg-red-400', pct: stats.total > 0 ? (stats.banned / stats.total) * 100 : 0 },
+            ].map(({ label, count, color, pct }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 w-16 text-right flex-shrink-0">{label}</span>
+                <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${color}`}
+                    style={{ width: `${Math.max(pct, count > 0 ? 2 : 0)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-slate-700 w-8 flex-shrink-0">{loading ? '—' : count}</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">{Math.floor(stats.todayPosts * 0.3)}</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                <span className="text-sm text-gray-700">Posts approved today</span>
-              </div>
-              <span className="text-sm font-medium text-gray-900">{stats.todayPosts}</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
-                <span className="text-sm text-gray-700">Posts flagged today</span>
-              </div>
-              <span className="text-sm font-medium text-gray-900">{Math.floor(stats.todayFlags * 0.2)}</span>
-            </div>
+            ))}
           </div>
         </div>
       </div>

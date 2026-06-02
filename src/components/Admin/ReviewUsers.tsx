@@ -1,12 +1,35 @@
-// src/features/admin/registrations/AdminUserReview.tsx
+// src/components/Admin/ReviewUsers.tsx
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
-import { X } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  AlertCircle,
+  User,
+  RefreshCw,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Camera,
+  Wifi,
+  WifiOff,
+  Users,
+  CalendarDays,
+  Globe,
+  Monitor,
+  Smartphone,
+  MapPin,
+  Clock,
+  Ban,
+  ExternalLink,
+  X,
+} from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration } from '@/features/admin/registrations/api/approveRegistration';
 
-// Normalize the shape so missing fields don't blow up the UI
+const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
 interface UserRow {
   id: string;
   fullName?: string | null;
@@ -45,148 +68,269 @@ interface UserRow {
 
 type PresenceFilter = 'all' | 'online' | 'offline';
 type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'last_login_asc';
+type StatusFilter = 'all' | UserRow['status'];
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const safeDisplayName = (u: UserRow) => {
+  const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(
+    (s) => (s ?? '').trim(),
+  );
+  return (full ?? '').trim() || u.username || u.email || 'Unknown user';
+};
+
+const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+const fmt = (value?: string | null) => {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const formatDateTime = (value?: string | null) => {
+  const d = fmt(value);
+  if (!d) return null;
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const na = (value?: string | null) => value?.trim() || null;
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">{label}</dt>
+      <dd className="text-sm text-slate-800 font-medium break-all">
+        {value?.trim() ? value.trim() : <span className="text-slate-400 font-normal">Not available</span>}
+      </dd>
+    </div>
+  );
+}
+
+// ─── Status badge ────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    approved: 'bg-blue-50 text-blue-700 border-blue-200',
+    rejected: 'bg-slate-100 text-slate-600 border-slate-200',
+    banned: 'bg-red-50 text-red-700 border-red-200',
+  };
+  const cls = map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+// ─── Presence badge ──────────────────────────────────────────────────────────
+
+function PresenceBadge({ online }: { online: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+        online ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'
+      }`}
+    >
+      {online ? (
+        <span className="relative flex w-2 h-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full w-2 h-2 bg-green-500"></span>
+        </span>
+      ) : (
+        <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+      )}
+      {online ? 'Online' : 'Offline'}
+    </span>
+  );
+}
+
+// ─── Summary card ────────────────────────────────────────────────────────────
+
+function SummaryCard({
+  label,
+  value,
+  icon,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <span className={iconColor}>{icon}</span>
+      </div>
+      <div>
+        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
+        <p className="text-xs text-slate-500">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Detail panel ────────────────────────────────────────────────────────────
+
+function DetailPanel({ user }: { user: UserRow }) {
+  return (
+    <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Registration Tracking */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Globe className="w-4 h-4 text-slate-400" />
+            <h4 className="text-sm font-semibold text-slate-900">Registration Tracking</h4>
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Timestamp" value={formatDateTime(user.created_at)} />
+            <Field label="IP Address" value={na(user.registration_ip_address)} />
+            <Field label="Location" value={na(user.registration_ip_location)} />
+            <Field label="Browser" value={na(user.registration_browser)} />
+            <Field label="Device" value={na(user.registration_device)} />
+            <Field label="Operating System" value={na(user.registration_operating_system)} />
+          </dl>
+        </div>
+
+        {/* Login & Activity Tracking */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-4 h-4 text-slate-400" />
+            <h4 className="text-sm font-semibold text-slate-900">Login & Activity</h4>
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Last Login" value={formatDateTime(user.last_login_at)} />
+            <Field label="Last Seen" value={formatDateTime(user.last_seen_at)} />
+            <Field label="Login IP" value={na(user.last_login_ip_address)} />
+            <Field label="Login Location" value={na(user.last_login_ip_location)} />
+            <Field label="Login Browser" value={na(user.last_login_browser)} />
+            <Field label="Login Device" value={na(user.last_login_device)} />
+            <Field label="Login OS" value={na(user.last_login_operating_system)} />
+            <Field
+              label="Photo Type"
+              value={
+                user.captureType === 'selfie'
+                  ? 'Selfie'
+                  : user.captureType === 'id'
+                  ? 'ID Document'
+                  : null
+              }
+            />
+          </dl>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export function AdminUserReview() {
   const supabase = useSupabaseClient();
   const session = useSession();
-  const [pendingUsers, setPendingUsers] = useState<UserRow[]>([]);
+
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterGender, setFilterGender] = useState<'all' | 'Male' | 'Female'>('all');
-  type StatusFilter = 'all' | UserRow['status'];
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [presenceFilter, setPresenceFilter] = useState<PresenceFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('registration_desc');
-  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [discourseBaseUrl, setDiscourseBaseUrl] = useState<string>('');
 
-  // ——— helpers (SAFE) ———
-  const safeDisplayName = (u: UserRow) => {
-    const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(s => (s ?? '').trim());
-    return (full ?? '').trim() || u.username || u.email || 'user';
-  };
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [imageModal, setImageModal] = useState<string | null>(null);
 
-  const getErrorMessage = (err: unknown) => err instanceof Error ? err.message : String(err);
-
-  // Get Discourse base URL (optional)
-  useEffect(() => {
-    setDiscourseBaseUrl(import.meta.env.VITE_DISCOURSE_BASE_URL || '');
-  }, []);
+  const [discourseBaseUrl] = useState(() => import.meta.env.VITE_DISCOURSE_BASE_URL || '');
 
   const isAdmin = !!session?.user?.id;
 
-  useEffect(() => {
-    if (!isAdmin) {
-      setError('Access Denied: You must be an administrator to view this page.');
-      setLoading(false);
-      return;
-    }
-    fetchUsers();
-  }, [isAdmin, supabase]);
+  const isOnline = (u: UserRow) => {
+    if (!u.last_seen_at) return false;
+    const t = new Date(u.last_seen_at).getTime();
+    return Number.isFinite(t) && Date.now() - t <= ONLINE_THRESHOLD_MS;
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+      if (!s?.access_token) throw new Error('You must be logged in as an admin.');
 
-      if (!currentSession?.access_token) {
-        throw new Error('You must be logged in as an admin to view users.');
-      }
-
-      const { data, error: fetchError } = await supabase.functions.invoke('get-admin-users', {
-        headers: { Authorization: `Bearer ${currentSession.access_token}` },
+      const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
+        headers: { Authorization: `Bearer ${s.access_token}` },
       });
-
-      if (fetchError) throw fetchError;
+      if (fnErr) throw fnErr;
       if (!data?.ok) throw new Error(data?.error || 'Unable to load users.');
 
-      const usersWithNames: UserRow[] = (data.users ?? []).map((user: UserRow) => ({
-        ...user,
-        fullName: [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || null,
+      const mapped: UserRow[] = (data.users ?? []).map((u: UserRow) => ({
+        ...u,
+        fullName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
       }));
-
-      setPendingUsers(usersWithNames);
-    } catch (err: unknown) {
-      console.error('Error fetching users:', err);
+      setUsers(mapped);
+    } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
-      setPendingUsers([]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!isAdmin) {
+      setError('Access denied.');
+      setLoading(false);
+      return;
+    }
+    fetchUsers();
+  }, [isAdmin]);
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+
   const handleApprove = async (user: UserRow) => {
-    if (!confirm(`Are you sure you want to approve ${user.username ?? safeDisplayName(user)}?`)) return;
-
-    setProcessingUserId(user.id);
+    if (!confirm(`Approve ${user.username ?? safeDisplayName(user)}?`)) return;
+    setProcessingId(user.id);
     setError(null);
-
     try {
-      // Let the Edge Function perform the database approval with the service role.
-      // The function approves Supabase first and treats Discourse/email failures as
-      // non-fatal, so external integration issues do not leave users pending.
       const data = await approveRegistration(user.id);
-
-      // Treat unknown status as success to avoid blocking you
       const status = data?.status ?? 'approved';
-
       if (status === 'approved_with_sync_error') {
-        setError(`User approved but Discourse sync failed: ${data?.discourse?.error || 'Unknown sync error'}`);
-      } else if (data?.discourse?.skipped) {
-        console.warn('Discourse pre-sync skipped:', data.discourse);
+        setError(`User approved but Discourse sync failed: ${data?.discourse?.error ?? 'Unknown error'}`);
       }
-
-      // Remove from list and notify
-      setPendingUsers(prev => prev.filter(u => u.id !== user.id));
-
-      const name = user.username ?? safeDisplayName(user);
-      const message =
-        status === 'approved_with_sync_error'
-          ? `⚠️ ${name} approved; Discourse sync failed.`
-          : `✅ ${name} approved successfully.`;
-
-      alert(message);
-    } catch (err: unknown) {
-      console.error('Error approving user:', err);
-
-      // Format error messages for UI
-      let errorMessage = getErrorMessage(err) || 'Unknown error';
-
-      if (errorMessage.includes('You must be logged in')) {
-        errorMessage = 'Not logged in: Please refresh the page and try again';
-      } else if (errorMessage.includes('Not authorized') || errorMessage.includes('admin')) {
-        errorMessage = 'Not an admin: You do not have permission to approve users';
-      }
-
-      setError(`Failed to approve ${user.username ?? safeDisplayName(user)}: ${errorMessage}`);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } catch (err) {
+      setError(`Failed to approve: ${getErrorMessage(err)}`);
     } finally {
-      setProcessingUserId(null);
+      setProcessingId(null);
     }
   };
 
   const handleReject = async (user: UserRow) => {
-    const userName = user.username ?? safeDisplayName(user);
-    const reason = prompt(`Please provide a reason for rejecting ${userName ?? 'this user'} (optional):`);
-
+    const name = user.username ?? safeDisplayName(user);
+    const reason = prompt(`Rejection reason for ${name} (optional):`);
     if (reason === null) return;
-
-    setProcessingUserId(user.id);
+    setProcessingId(user.id);
     setError(null);
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('You must be logged in to perform this action.');
-      }
-
-      const { data, error: fnError } = await supabase.functions.invoke('send-rejection-email', {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+      if (!s) throw new Error('Not authenticated.');
+      const { data, error: fnErr } = await supabase.functions.invoke('send-rejection-email', {
         body: {
           registration_id: user.id,
           email: user.email,
@@ -194,235 +338,159 @@ export function AdminUserReview() {
           fullName: user.fullName,
           reason: reason || undefined,
         },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${s.access_token}` },
       });
-
-      if (fnError) throw fnError;
-
-      if (!data?.success) {
-        throw new Error(data?.error || 'Failed to reject user');
-      }
-
-      setPendingUsers(prev => prev.filter(u => u.id !== user.id));
-      alert(`${userName ?? 'User'} has been rejected.`);
-    } catch (err: unknown) {
-      console.error('Error rejecting user:', err);
-      setError(`Failed to reject user: ${getErrorMessage(err)}`);
+      if (fnErr) throw fnErr;
+      if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } catch (err) {
+      setError(`Failed to reject: ${getErrorMessage(err)}`);
     } finally {
-      setProcessingUserId(null);
+      setProcessingId(null);
     }
   };
 
-  const handleBan = async (userId: string, userName?: string | null) => {
-    if (!confirm(`Are you sure you want to ban ${userName ?? 'this user'}?`)) return;
-
-    setProcessingUserId(userId);
+  const handleBan = async (user: UserRow) => {
+    if (!confirm(`Ban ${user.username ?? safeDisplayName(user)}?`)) return;
+    setProcessingId(user.id);
     setError(null);
-
     try {
-      const { error: updateError } = await supabase
+      const { error: e } = await supabase
         .from('registrations')
         .update({ status: 'banned' })
-        .eq('id', userId);
-
-      if (updateError && updateError.code !== '42P01') throw updateError;
-
-      setPendingUsers(prev => prev.map(u => (u.id === userId ? { ...u, status: 'banned' } : u)));
-      alert(`${userName ?? 'User'} has been banned successfully.`);
-    } catch (err: unknown) {
-      console.error('Error banning user:', err);
-      setError(`Failed to ban user: ${getErrorMessage(err)}`);
+        .eq('id', user.id);
+      if (e && e.code !== '42P01') throw e;
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'banned' } : u)));
+    } catch (err) {
+      setError(`Failed to ban: ${getErrorMessage(err)}`);
     } finally {
-      setProcessingUserId(null);
+      setProcessingId(null);
     }
   };
 
-  const handleUnban = async (userId: string, userName?: string | null) => {
-    if (!confirm(`Are you sure you want to unban ${userName ?? 'this user'}?`)) return;
-
-    setProcessingUserId(userId);
+  const handleUnban = async (user: UserRow) => {
+    if (!confirm(`Unban ${user.username ?? safeDisplayName(user)}?`)) return;
+    setProcessingId(user.id);
     setError(null);
-
     try {
-      const { error: updateError } = await supabase
+      const { error: e } = await supabase
         .from('registrations')
         .update({ status: 'verified' })
-        .eq('id', userId);
-
-      if (updateError && updateError.code !== '42P01') throw updateError;
-
-      setPendingUsers(prev => prev.map(u => (u.id === userId ? { ...u, status: 'verified' } : u)));
-      alert(`${userName ?? 'User'} has been unbanned successfully.`);
-    } catch (err: unknown) {
-      console.error('Error unbanning user:', err);
-      setError(`Failed to unban user: ${getErrorMessage(err)}`);
+        .eq('id', user.id);
+      if (e && e.code !== '42P01') throw e;
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'verified' } : u)));
+    } catch (err) {
+      setError(`Failed to unban: ${getErrorMessage(err)}`);
     } finally {
-      setProcessingUserId(null);
+      setProcessingId(null);
     }
   };
 
-  const formatDateTime = (value?: string | null) => {
-    if (!value) return '—';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  // ── Derived data ───────────────────────────────────────────────────────────
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const summaryStats = {
+    total: users.length,
+    online: users.filter(isOnline).length,
+    offline: users.filter((u) => !isOnline(u)).length,
+    today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
   };
 
-  const isUserOnline = (user: UserRow) => {
-    if (!user.last_seen_at) return false;
-    const seenAt = new Date(user.last_seen_at).getTime();
-    return Number.isFinite(seenAt) && Date.now() - seenAt <= 5 * 60 * 1000;
-  };
-
-  const getPresenceBadge = (user: UserRow) => {
-    const online = isUserOnline(user);
-    return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${online ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-        <span className={`w-2 h-2 rounded-full mr-1.5 ${online ? 'bg-green-500' : 'bg-gray-400'}`} />
-        {online ? 'Online' : 'Offline'}
-      </span>
-    );
-  };
-
-  const trackingValue = (value?: string | null) => value?.trim() || '—';
-
-  // Filters (SAFE)
-  const filteredUsers = pendingUsers
-    .filter(u => {
-      const needle = searchTerm.trim().toLowerCase();
-      const hay = [
-        u.fullName,
-        u.firstName,
-        u.lastName,
-        u.email,
-        u.username,
-        u.phone,
-      ].map(v => (v ?? '').toLowerCase());
-
-      const matchesSearch = !needle || hay.some(h => h.includes(needle));
-      const matchesGender = filterGender === 'all' || u.gender === filterGender;
-      const matchesStatus = filterStatus === 'all' || u.status === filterStatus;
-      const matchesPresence = presenceFilter === 'all'
-        || (presenceFilter === 'online' && isUserOnline(u))
-        || (presenceFilter === 'offline' && !isUserOnline(u));
-
-      return matchesSearch && matchesGender && matchesStatus && matchesPresence;
+  const filtered = users
+    .filter((u) => {
+      const needle = search.trim().toLowerCase();
+      const hay = [u.fullName, u.firstName, u.lastName, u.email, u.username, u.phone].map(
+        (v) => (v ?? '').toLowerCase(),
+      );
+      return (
+        (!needle || hay.some((h) => h.includes(needle))) &&
+        (filterStatus === 'all' || u.status === filterStatus) &&
+        (presenceFilter === 'all' ||
+          (presenceFilter === 'online' && isOnline(u)) ||
+          (presenceFilter === 'offline' && !isOnline(u)))
+      );
     })
     .sort((a, b) => {
-      const dateValue = (value?: string | null) => value ? new Date(value).getTime() || 0 : 0;
+      const ts = (v?: string | null) => (v ? new Date(v).getTime() || 0 : 0);
       switch (sortBy) {
-        case 'registration_asc':
-          return dateValue(a.created_at) - dateValue(b.created_at);
-        case 'last_login_desc':
-          return dateValue(b.last_login_at) - dateValue(a.last_login_at);
-        case 'last_login_asc':
-          return dateValue(a.last_login_at) - dateValue(b.last_login_at);
-        case 'registration_desc':
-        default:
-          return dateValue(b.created_at) - dateValue(a.created_at);
+        case 'registration_asc': return ts(a.created_at) - ts(b.created_at);
+        case 'last_login_desc': return ts(b.last_login_at) - ts(a.last_login_at);
+        case 'last_login_asc': return ts(a.last_login_at) - ts(b.last_login_at);
+        default: return ts(b.created_at) - ts(a.created_at);
       }
     });
 
-  const openImageModal = (imageUrl: string) => {
-    setSelectedImage(imageUrl);
-    setIsImageModalOpen(true);
-  };
-
-  const closeImageModal = () => {
-    setSelectedImage(null);
-    setIsImageModalOpen(false);
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>;
-      case 'verified':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Verified</span>;
-      case 'banned':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Banned</span>;
-      case 'rejected':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Rejected</span>;
-      case 'approved':
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Approved</span>;
-      default:
-        return <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{status}</span>;
-    }
-  };
-
-  if (!isAdmin) {
-    return (
-      <AdminLayout>
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
-          <p className="text-gray-700">You do not have administrative privileges to view this page.</p>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-              <p className="text-gray-600 mt-1">View and manage all user registrations</p>
-            </div>
+
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">User Management</h2>
+            <p className="text-sm text-slate-500 mt-0.5">View and manage all user registrations</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {discourseBaseUrl && (
+              <button
+                onClick={() => window.open(discourseBaseUrl, '_blank')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span className="hidden sm:inline">Community Forum</span>
+              </button>
+            )}
             <button
               onClick={fetchUsers}
               disabled={loading}
-              className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
         </div>
 
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
+          <SummaryCard label="Online Now" value={summaryStats.online} icon={<Wifi className="w-4 h-4" />} iconBg="bg-green-50" iconColor="text-green-600" />
+          <SummaryCard label="Offline" value={summaryStats.offline} icon={<WifiOff className="w-4 h-4" />} iconBg="bg-slate-100" iconColor="text-slate-500" />
+          <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="flex-1">
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-                Search Users
-              </label>
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
-                id="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name, email, phone, or username..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
-            <div>
-              <label htmlFor="gender-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Gender
-              </label>
+            {/* Dropdowns */}
+            <div className="flex flex-wrap gap-2">
               <select
-                id="gender-filter"
-                value={filterGender}
-                onChange={(e) => setFilterGender(e.target.value as 'all' | 'Male' | 'Female')}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Genders</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Filter by Status
-              </label>
-              <select
-                id="status-filter"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
@@ -431,326 +499,269 @@ export function AdminUserReview() {
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
               </select>
-            </div>
 
-            <div>
-              <label htmlFor="presence-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Online Status
-              </label>
               <select
-                id="presence-filter"
                 value={presenceFilter}
                 onChange={(e) => setPresenceFilter(e.target.value as PresenceFilter)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="all">All Users</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
               </select>
-            </div>
 
-            <div>
-              <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
-              </label>
               <select
-                id="sort-by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option value="registration_desc">Registration newest</option>
-                <option value="registration_asc">Registration oldest</option>
-                <option value="last_login_desc">Last login newest</option>
-                <option value="last_login_asc">Last login oldest</option>
+                <option value="registration_desc">Newest registrations</option>
+                <option value="registration_asc">Oldest registrations</option>
+                <option value="last_login_desc">Recent login first</option>
+                <option value="last_login_asc">Oldest login first</option>
               </select>
             </div>
           </div>
+
+          {/* Result count */}
+          <p className="text-xs text-slate-400 mt-3">
+            Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{' '}
+            <span className="font-medium text-slate-600">{users.length}</span> users
+          </p>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4" role="alert">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Users */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        {/* Table */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mr-3" />
-              <p className="text-gray-600">Loading users...</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+              <p className="text-sm text-slate-500">Loading users...</p>
             </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12 text-gray-600">
-              <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
-              <p className="text-lg font-medium">
-                {pendingUsers.length === 0 ? 'No users found!' : 'No users match your search criteria.'}
-              </p>
-              {pendingUsers.length === 0 && (
-                <p className="text-sm text-gray-500 mt-2">No user registrations found.</p>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center">
+                <Users className="w-7 h-7 text-slate-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-slate-700">
+                  {users.length === 0 ? 'No users found' : 'No users match your filters'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {users.length === 0
+                    ? 'User registrations will appear here.'
+                    : 'Try adjusting your search or filter criteria.'}
+                </p>
+              </div>
+              {users.length === 0 && (
+                <button
+                  onClick={fetchUsers}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry
+                </button>
               )}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Registered
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Login
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Seen
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">Last Login</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">IP / Browser</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
 
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
-                    <React.Fragment key={user.id}>
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                <User className="w-5 h-5 text-blue-600" />
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((user) => {
+                    const online = isOnline(user);
+                    const isExpanded = expandedId === user.id;
+                    const isProcessing = processingId === user.id;
+
+                    return (
+                      <React.Fragment key={user.id}>
+                        <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
+                          {/* User */}
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                                <User className="w-4 h-4 text-blue-500" />
                               </div>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {safeDisplayName(user)}
-                              </div>
-                              <div className="text-sm text-gray-500">@{user.username ?? 'user'}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-900 mb-1">
-                            <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                            {trackingValue(user.email)}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                            {trackingValue(user.phone)}
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="space-y-1">
-                            {getStatusBadge(user.status)}
-                            {getPresenceBadge(user)}
-                          </div>
-                          {user.status === 'rejected' && user.rejection_reason && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Reason: {user.rejection_reason}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                            {formatDateTime(user.created_at)}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {trackingValue(user.registration_ip_location)}
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateTime(user.last_login_at)}
-                          <div className="text-xs text-gray-400 mt-1">
-                            {trackingValue(user.last_login_ip_location)}
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateTime(user.last_seen_at)}
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}
-                              className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              {expandedUserId === user.id ? 'Hide Details' : 'View Details'}
-                            </button>
-
-                            {user.imageData && (
-                              <button
-                                onClick={() => openImageModal(user.imageData!)}
-                                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                <Camera className="w-4 h-4 mr-1" />
-                                Photo
-                              </button>
-                            )}
-
-                            {user.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleApprove(user)}
-                                  disabled={processingUserId === user.id}
-                                  className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                  {processingUserId === user.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                                  ) : (
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                  )}
-                                  Approve
-                                </button>
-
-                                <button
-                                  onClick={() => handleReject(user)}
-                                  disabled={processingUserId === user.id}
-                                  className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                  {processingUserId === user.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                                  ) : (
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                  )}
-                                  Reject
-                                </button>
-                              </>
-                            )}
-
-                            {user.status === 'verified' && (
-                              <button
-                                onClick={() => handleBan(user.id, user.username)}
-                                disabled={processingUserId === user.id}
-                                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {processingUserId === user.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                )}
-                                Ban
-                              </button>
-                            )}
-
-                            {user.status === 'banned' && (
-                              <button
-                                onClick={() => handleUnban(user.id, user.username)}
-                                disabled={processingUserId === user.id}
-                                className={`inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${processingUserId === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {processingUserId === user.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                                ) : (
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                )}
-                                Unban
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {expandedUserId === user.id && (
-                        <tr className="bg-gray-50">
-                          <td colSpan={7} className="px-6 py-4">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
-                              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                                <h3 className="font-semibold text-gray-900 mb-3">Registration Tracking</h3>
-                                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div><dt className="text-gray-500">Timestamp</dt><dd>{formatDateTime(user.created_at)}</dd></div>
-                                  <div><dt className="text-gray-500">IP Address</dt><dd>{trackingValue(user.registration_ip_address)}</dd></div>
-                                  <div><dt className="text-gray-500">Location</dt><dd>{trackingValue(user.registration_ip_location)}</dd></div>
-                                  <div><dt className="text-gray-500">Browser</dt><dd>{trackingValue(user.registration_browser)}</dd></div>
-                                  <div><dt className="text-gray-500">Device</dt><dd>{trackingValue(user.registration_device)}</dd></div>
-                                  <div><dt className="text-gray-500">Operating System</dt><dd>{trackingValue(user.registration_operating_system)}</dd></div>
-                                </dl>
-                              </div>
-
-                              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                                <h3 className="font-semibold text-gray-900 mb-3">Login & Activity Tracking</h3>
-                                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div><dt className="text-gray-500">Last Login</dt><dd>{formatDateTime(user.last_login_at)}</dd></div>
-                                  <div><dt className="text-gray-500">Last Seen</dt><dd>{formatDateTime(user.last_seen_at)}</dd></div>
-                                  <div><dt className="text-gray-500">Login IP Address</dt><dd>{trackingValue(user.last_login_ip_address)}</dd></div>
-                                  <div><dt className="text-gray-500">Login Location</dt><dd>{trackingValue(user.last_login_ip_location)}</dd></div>
-                                  <div><dt className="text-gray-500">Login Browser</dt><dd>{trackingValue(user.last_login_browser)}</dd></div>
-                                  <div><dt className="text-gray-500">Login Device</dt><dd>{trackingValue(user.last_login_device)}</dd></div>
-                                  <div><dt className="text-gray-500">Login OS</dt><dd>{trackingValue(user.last_login_operating_system)}</dd></div>
-                                  <div><dt className="text-gray-500">Photo Type</dt><dd>{user.captureType === 'selfie' ? 'Selfie' : user.captureType === 'id' ? 'ID Document' : '—'}</dd></div>
-                                </dl>
+                              <div>
+                                <p className="text-sm font-medium text-slate-900">{safeDisplayName(user)}</p>
+                                <p className="text-xs text-slate-400">@{user.username ?? '—'}</p>
                               </div>
                             </div>
                           </td>
+
+                          {/* Contact */}
+                          <td className="px-5 py-4 hidden md:table-cell">
+                            <p className="text-sm text-slate-700">{user.email ?? <span className="text-slate-400">—</span>}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{user.phone ?? '—'}</p>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col gap-1.5">
+                              <StatusBadge status={user.status} />
+                              <PresenceBadge online={online} />
+                            </div>
+                          </td>
+
+                          {/* Registered */}
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
+                            {user.registration_ip_location && (
+                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {user.registration_ip_location}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Last Login */}
+                          <td className="px-5 py-4 hidden xl:table-cell">
+                            <p className="text-xs text-slate-700">{formatDateTime(user.last_login_at) ?? '—'}</p>
+                            {user.last_login_ip_location && (
+                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {user.last_login_ip_location}
+                              </p>
+                            )}
+                          </td>
+
+                          {/* IP / Browser */}
+                          <td className="px-5 py-4 hidden xl:table-cell">
+                            {user.registration_ip_address && (
+                              <p className="text-xs text-slate-600 font-mono">{user.registration_ip_address}</p>
+                            )}
+                            {(user.registration_browser || user.registration_operating_system) && (
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                {[user.registration_browser, user.registration_operating_system]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </p>
+                            )}
+                            {!user.registration_ip_address && !user.registration_browser && (
+                              <span className="text-xs text-slate-300">—</span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-5 py-4">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Expand toggle */}
+                              <button
+                                onClick={() => setExpandedId(isExpanded ? null : user.id)}
+                                title={isExpanded ? 'Hide details' : 'View details'}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+
+                              {/* Photo */}
+                              {user.imageData && (
+                                <button
+                                  onClick={() => setImageModal(user.imageData!)}
+                                  title="View photo"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                >
+                                  <Camera className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {/* Approve / Reject (pending) */}
+                              {user.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleApprove(user)}
+                                    disabled={isProcessing}
+                                    title="Approve"
+                                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                  >
+                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleReject(user)}
+                                    disabled={isProcessing}
+                                    title="Reject"
+                                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Ban (verified) */}
+                              {user.status === 'verified' && (
+                                <button
+                                  onClick={() => handleBan(user)}
+                                  disabled={isProcessing}
+                                  title="Ban user"
+                                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                                </button>
+                              )}
+
+                              {/* Unban (banned) */}
+                              {user.status === 'banned' && (
+                                <button
+                                  onClick={() => handleUnban(user)}
+                                  disabled={isProcessing}
+                                  title="Unban user"
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                </button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
+
+                        {/* Expanded detail panel */}
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="p-0">
+                              <div className="transition-all duration-200 animate-in slide-in-from-top-1">
+                                <DetailPanel user={user} />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </div>
-
-        {/* Image Modal */}
-        {isImageModalOpen && selectedImage && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="relative max-w-4xl max-h-full">
-              <button
-                onClick={closeImageModal}
-                className="absolute top-4 right-4 w-10 h-10 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-full flex items-center justify-center transition-colors z-10"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <img
-                src={selectedImage}
-                alt="Full size registration photo"
-                className="max-w-full max-h-full object-contain rounded-lg"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Stats */}
-        {filteredUsers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="text-center text-sm text-gray-600">
-              Showing {filteredUsers.length} of {pendingUsers.length} total users
-            </div>
-          </div>
-        )}
       </div>
 
-      {discourseBaseUrl && (
-        <div className="fixed bottom-4 right-4 bg-white border shadow p-4 rounded">
-          <div className="font-medium mb-2">User Management</div>
-          <button
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
-            onClick={() => window.open(discourseBaseUrl, '_blank')}
-          >
-            Open Community Forum
-          </button>
-          <div className="text-xs text-gray-500 mt-1 text-center">
-            View approved users in Discourse
+      {/* Image modal */}
+      {imageModal && (
+        <div
+          className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50"
+          onClick={() => setImageModal(null)}
+        >
+          <div className="relative max-w-2xl max-h-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setImageModal(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-slate-100 transition-colors z-10"
+            >
+              <X className="w-4 h-4 text-slate-700" />
+            </button>
+            <img
+              src={imageModal}
+              alt="Registration photo"
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+            />
           </div>
         </div>
       )}
