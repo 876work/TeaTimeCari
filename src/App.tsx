@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { supabase } from '@/lib/supabaseClient';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
@@ -32,6 +33,7 @@ import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
 
 function App() {
+  useAuthActivityTracking();
   const discourseBaseUrl =
     import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
 

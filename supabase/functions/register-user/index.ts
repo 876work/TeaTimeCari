@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sendUnderReviewEmail } from "../_shared/resendEmail.ts";
+import { collectTrackingMetadata } from "../_shared/tracking.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -92,6 +93,8 @@ serve(async (req) => {
 
   try {
     const normalized = normalizeRequest(await req.json());
+    const registrationTracking = await collectTrackingMetadata(req);
+    const registrationTrackedAt = new Date().toISOString();
 
     if (!normalized.email || !normalized.password) {
       return json(400, { error: "email/password required" });
@@ -213,6 +216,13 @@ serve(async (req) => {
           captureType: normalized.captureType,
           imageData: normalized.imageData,
           status: "pending",
+          registration_ip_address: registrationTracking.ip_address,
+          registration_ip_location: registrationTracking.ip_location,
+          registration_browser: registrationTracking.browser,
+          registration_device: registrationTracking.device,
+          registration_operating_system: registrationTracking.operating_system,
+          registration_user_agent: registrationTracking.user_agent,
+          registration_tracked_at: registrationTrackedAt,
         },
         { onConflict: "id" },
       );

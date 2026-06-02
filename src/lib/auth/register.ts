@@ -1,6 +1,7 @@
 // src/lib/auth/register.ts
 import { supabase } from '@/lib/supabaseClient';
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
+import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
 
 export type SignupForm = {
   email: string;
@@ -48,6 +49,8 @@ export async function registerAndSignIn(form: SignupForm) {
     password: form.password,
   });
   if (signInErr) throw signInErr;
+
+  await trackAuthLogin();
 
   // 3) Gate pending users.
   const { data: { user } } = await supabase.auth.getUser();

@@ -219,12 +219,19 @@ Deno.serve(async (req) => {
       },
     });
 
-    // TEMP: removed admin-only check for now while debugging "Registration not found"
-    // const { data: auth } = await supa.auth.getUser();
-    // if (!auth?.user) return jerr(headers, 401, "Unauthorized");
-    // const { data: me, error: meErr } = await supa
-    //   .from("profiles").select("id, is_admin").eq("id", auth.user.id).single();
-    // if (meErr || !me?.is_admin) return jerr(headers, 403, "Forbidden: admin only");
+    const token = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
+    if (!token) return jerr(headers, 401, "Unauthorized");
+
+    const { data: auth, error: authErr } = await supa.auth.getUser(token);
+    if (authErr || !auth?.user) return jerr(headers, 401, "Unauthorized");
+
+    const { data: me, error: meErr } = await supa
+      .from("profiles")
+      .select("id, is_admin")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+
+    if (meErr || !me?.is_admin) return jerr(headers, 403, "Forbidden: admin only");
 
     // Optionally allow gender/xaccess from body; otherwise read from DB
     const bodyGender = normalizeGender(String(body.gender ?? ""));
