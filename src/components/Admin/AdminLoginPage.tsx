@@ -178,93 +178,78 @@ export function AdminLoginPage() {
             </button>
           ) : (
             /* Admin Login Form */
-            <div className="bg-gray-900 border-2 border-gray-600 rounded-lg p-6">
-              <div className="text-center mb-4">
-                <Shield className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+            <div className="dark-form-box px-8 py-8">
+              <div className="text-center mb-6">
+                <Shield className="w-8 h-8 mx-auto mb-2" style={{ color: "#A3C6E0" }} />
                 <h3 className="text-lg font-bold text-white">Administrator Login</h3>
-                <p className="text-gray-400 text-sm">Enter your admin credentials</p>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Enter your admin credentials</p>
               </div>
 
               {error && (
-                <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded-lg" role="alert">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-4 h-4 text-red-400 mr-2" />
-                    <span className="text-red-200 text-sm">{error}</span>
-                  </div>
+                <div className="dark-alert-error" role="alert">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label htmlFor="admin-email" className="block text-sm font-medium text-gray-300 mb-2">
-                    Admin Email
-                  </label>
+              <form onSubmit={handleLogin}>
+                <div className={`form-field ${email ? "has-value" : ""}`}>
                   <input
                     type="email"
                     id="admin-email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="admin@example.com"
                     required
                     disabled={isLoading}
+                    autoComplete="email"
                   />
+                  <label htmlFor="admin-email">Admin Email</label>
                 </div>
 
-                <div>
-                  <label htmlFor="admin-password" className="block text-sm font-medium text-gray-300 mb-2">
-                    Password
-                  </label>
+                <div className={`form-field ${password ? "has-value" : ""}`}>
                   <input
                     type="password"
                     id="admin-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your password"
                     required
                     disabled={isLoading}
+                    autoComplete="current-password"
                   />
+                  <label htmlFor="admin-password">Password</label>
                 </div>
 
-                <div className="flex space-x-3">
+                <div className="flex gap-3 mt-4">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowLoginForm(false);
-                      setError(null);
-                      setEmail('');
-                      setPassword('');
-                    }}
-                    className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                    onClick={() => { setShowLoginForm(false); setError(null); setEmail(''); setPassword(''); }}
+                    className="flex-1 py-3 px-4 rounded text-sm font-medium transition-colors"
+                    style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.15)" }}
                     disabled={isLoading}
                   >
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading || !email || !password}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                      !isLoading && email && password
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Verifying...
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center">
-                        <LogIn className="w-4 h-4 mr-2" />
-                        Login
-                      </div>
-                    )}
-                  </button>
+                  <div className="flex-1 text-center">
+                    <button
+                      type="submit"
+                      disabled={isLoading || !email || !password}
+                      className="dark-btn"
+                      style={{ marginTop: 0, letterSpacing: "2px" }}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center justify-center gap-2 normal-case tracking-normal">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Verifying...
+                        </span>
+                      ) : (
+                        <>
+                          <LogIn className="inline w-4 h-4 mr-1" /> Login
+                          <span />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </form>
-
             </div>
           )}
         </div>

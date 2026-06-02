@@ -1,3 +1,205 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Dark animated form system ───────────────────────────────────────── */
+
+.dark-form-box {
+  background: rgba(24, 20, 20, 0.97);
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+}
+
+/* Floating label input row */
+.form-field {
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+  width: 100%;
+  padding: 10px 0;
+  font-size: 16px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.form-field textarea {
+  resize: none;
+  padding-top: 10px;
+}
+
+.form-field select option {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  border-bottom-color: #A3C6E0;
+}
+
+.form-field input.input-error,
+.form-field textarea.input-error,
+.form-field select.input-error {
+  border-bottom-color: #E0A3A3;
+}
+
+.form-field label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 10px 0;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  transition: 0.4s;
+}
+
+.form-field input:focus ~ label,
+.form-field input:valid ~ label,
+.form-field textarea:focus ~ label,
+.form-field textarea:valid ~ label,
+.form-field select:focus ~ label,
+.form-field select:valid ~ label,
+.form-field.has-value label {
+  top: -20px;
+  font-size: 12px;
+  color: #bdb8b8;
+}
+
+/* Password field with toggle button keeps label room */
+.form-field .input-with-toggle {
+  position: relative;
+}
+
+.form-field .input-with-toggle input {
+  padding-right: 2rem;
+}
+
+.form-field .toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: rgba(255,255,255,0.4);
+  transition: color 0.2s;
+}
+
+.form-field .toggle-btn:hover {
+  color: #fff;
+}
+
+/* Status icon (check/x/spinner) for availability fields */
+.form-field .status-icon {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  pointer-events: none;
+}
+
+/* Inline field error text */
+.field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #E0A3A3;
+}
+
+.field-success {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6ee7b7;
+}
+
+/* ── Animated submit button ───────────────────────────────────────────── */
+
+.dark-btn {
+  position: relative;
+  display: inline-block;
+  padding: 10px 20px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  text-decoration: none;
+  overflow: hidden;
+  transition: background 0.4s, box-shadow 0.4s, border-radius 0.4s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.dark-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, #A3C6E0, #E0A3A3);
+  border-radius: 5px;
+  box-shadow:
+    0 0 5px #A3C6E0,
+    0 0 25px #A3C6E0,
+    0 0 50px #E0A3A3,
+    0 0 100px #E0A3A3;
+}
+
+.dark-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dark-btn span {
+  position: absolute;
+  display: block;
+}
+
+@keyframes btn-anim1 {
+  0%   { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+
+.dark-btn span:nth-child(1) {
+  bottom: 2px;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #A3C6E0);
+  animation: btn-anim1 2s linear infinite;
+}
+
+/* ── Alert boxes ────────────────────────────────────────────────────── */
+
+.dark-alert-error {
+  padding: 12px 16px;
+  background: rgba(224, 163, 163, 0.12);
+  border: 1px solid rgba(224, 163, 163, 0.4);
+  border-radius: 6px;
+  color: #E0A3A3;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.dark-alert-info {
+  padding: 12px 16px;
+  background: rgba(163, 198, 224, 0.1);
+  border: 1px solid rgba(163, 198, 224, 0.3);
+  border-radius: 6px;
+  color: rgba(163, 198, 224, 0.9);
+  font-size: 13px;
+}
