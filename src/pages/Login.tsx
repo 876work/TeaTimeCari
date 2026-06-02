@@ -13,6 +13,7 @@ import {
 import { AuthLayout } from "../components/AuthLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
+import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
 
 function useQuery() {
   const { search } = useLocation();
@@ -178,6 +179,7 @@ export default function Login() {
         throw new Error("No authenticated user found after login.");
       }
 
+      await trackAuthLogin();
       await redirectAfterApprovalCheck(userId);
     } catch (err: any) {
       setError(
