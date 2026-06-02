@@ -4,6 +4,7 @@ import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { CheckCircle, XCircle, Loader2, AlertCircle, User, Mail, Phone, Camera, Calendar, RefreshCw } from 'lucide-react';
 import { X } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { approveRegistration } from '@/features/admin/registrations/api/approveRegistration';
 
 // Normalize the shape so missing fields don't blow up the UI
 interface UserRow {
@@ -36,7 +37,8 @@ export function AdminUserReview() {
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGender, setFilterGender] = useState<'all' | 'Male' | 'Female'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'banned'>('all');
+  type StatusFilter = 'all' | UserRow['status'];
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [discourseBaseUrl, setDiscourseBaseUrl] = useState<string>('');
@@ -46,6 +48,8 @@ export function AdminUserReview() {
     const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(s => (s ?? '').trim());
     return (full ?? '').trim() || u.username || u.email || 'user';
   };
+
+  const getErrorMessage = (err: unknown) => err instanceof Error ? err.message : String(err);
 
 
   // Get Discourse base URL (optional)
@@ -90,7 +94,7 @@ export function AdminUserReview() {
 
       // add last code info if table exists (best-effort)
       const usersWithCodeInfo: UserRow[] = await Promise.all(
-        (data ?? []).map(async (user: any) => {
+        (data ?? []).map(async (user: UserRow) => {
           // Create fullName from firstName and lastName
           const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || null;
           
@@ -116,9 +120,9 @@ export function AdminUserReview() {
       );
 
       setPendingUsers(usersWithCodeInfo);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching users:', err);
-      setError(`Failed to fetch users: ${err.message || String(err)}`);
+      setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setMockData();
     } finally {
       setLoading(false);
@@ -204,54 +208,20 @@ export function AdminUserReview() {
   const handleApprove = async (user: UserRow) => {
     if (!confirm(`Are you sure you want to approve ${user.username ?? safeDisplayName(user)}?`)) return;
 
-    // Check if user is logged in
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setError('You must be logged in to perform this action.');
-      return;
-    }
-
-
     setProcessingUserId(user.id);
     setError(null);
 
     try {
-      // Update local registration first (optional — your function also updates)
-      const { error: updateError } = await supabase
-        .from('registrations')
-        .update({ status: 'approved' })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Error updating registration status:', updateError);
-        throw new Error(updateError.message);
-      }
-
-      // Call the approve function with proper authorization
-      const { data, error: fnError } = await supabase.functions.invoke('approve-and-sync', {
-        body: { registration_id: user.id },
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-
-      // Log response for debugging
-      console.log('approve-and-sync response:', { data, error: fnError });
-
-      if (fnError) {
-        console.error('approve-and-sync function error:', fnError);
-        
-        // Handle specific error cases
-        if (fnError.message?.includes('403') || fnError.message?.includes('Forbidden')) {
-          throw new Error('Not authorized: You must be an admin to approve users');
-        }
-        
-        throw new Error(fnError.message || 'Failed to call approve-and-sync function');
-      }
+      // Let the Edge Function perform the database approval with the service role.
+      // The function approves Supabase first and treats Discourse/email failures as
+      // non-fatal, so external integration issues do not leave users pending.
+      const data = await approveRegistration(user.id);
 
       // Treat unknown status as success to avoid blocking you
-      const status = data?.status ?? 'synced';
+      const status = data?.status ?? 'approved';
 
       if (status === 'approved_with_sync_error') {
-        setError(`User approved but Discourse sync failed: ${data?.error || 'Unknown sync error'}`);
+        setError(`User approved but Discourse sync failed: ${data?.discourse?.error || 'Unknown sync error'}`);
       }
 
 
@@ -263,11 +233,11 @@ export function AdminUserReview() {
           ? `⚠️ ${name} approved; Discourse sync failed.`
           : `✅ ${name} approved successfully.`;
       alert(message);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error approving user:', err);
       
       // Format error messages for UI
-      let errorMessage = err.message || 'Unknown error';
+      let errorMessage = getErrorMessage(err) || 'Unknown error';
       if (errorMessage.includes('You must be logged in')) {
         errorMessage = 'Not logged in: Please refresh the page and try again';
       } else if (errorMessage.includes('Not authorized') || errorMessage.includes('admin')) {
@@ -311,9 +281,9 @@ export function AdminUserReview() {
 
       setPendingUsers(prev => prev.filter(u => u.id !== user.id));
       alert(`${userName ?? 'User'} has been rejected.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting user:', err);
-      setError(`Failed to reject user: ${err.message || String(err)}`);
+      setError(`Failed to reject user: ${getErrorMessage(err)}`);
     } finally {
       setProcessingUserId(null);
     }
@@ -335,9 +305,9 @@ export function AdminUserReview() {
 
       setPendingUsers(prev => prev.map(u => (u.id === userId ? { ...u, status: 'banned' } : u)));
       alert(`${userName ?? 'User'} has been banned successfully.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error banning user:', err);
-      setError(`Failed to ban user: ${err.message || String(err)}`);
+      setError(`Failed to ban user: ${getErrorMessage(err)}`);
     } finally {
       setProcessingUserId(null);
     }
@@ -359,9 +329,9 @@ export function AdminUserReview() {
 
       setPendingUsers(prev => prev.map(u => (u.id === userId ? { ...u, status: 'verified' } : u)));
       alert(`${userName ?? 'User'} has been unbanned successfully.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error unbanning user:', err);
-      setError(`Failed to unban user: ${err.message || String(err)}`);
+      setError(`Failed to unban user: ${getErrorMessage(err)}`);
     } finally {
       setProcessingUserId(null);
     }
@@ -473,11 +443,12 @@ export function AdminUserReview() {
               <select
                 id="status-filter"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'pending' | 'verified' | 'rejected' | 'banned')}
+                onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
                 <option value="verified">Verified</option>
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
