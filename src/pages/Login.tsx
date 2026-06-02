@@ -130,16 +130,40 @@ export default function Login() {
     };
   }, [navigate, q]);
 
+  const signInWithFallback = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const firstAttempt = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+
+    if (!firstAttempt.error) {
+      return firstAttempt;
+    }
+
+    const { data: bootstrapResult, error: bootstrapError } = await supabase.functions.invoke(
+      "bootstrap-login",
+      { body: { email: normalizedEmail, password } },
+    );
+
+    if (bootstrapError || !bootstrapResult?.ok) {
+      return firstAttempt;
+    }
+
+    return supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setLoading(true);
     setError(null);
 
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: signInData, error } = await signInWithFallback();
 
     if (error) {
       setError(error.message);
