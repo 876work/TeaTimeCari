@@ -1,7 +1,6 @@
+// src/pages/Signup.tsx
 import { useState } from "react";
-import { AuthLayout } from "../components/AuthLayout";
 import { registerAndSignIn, type SignupForm } from "@/lib/auth/register";
-import { AlertCircle, Loader2, UserPlus } from "lucide-react";
 
 export default function Signup() {
   const [form, setForm] = useState<SignupForm>({
@@ -23,6 +22,7 @@ export default function Signup() {
     try {
       const { next } = await registerAndSignIn(form);
       if (typeof next === "string") window.location.href = next;
+      // if next === null, finishDiscourseSso already redirected
     } catch (e: any) {
       setErr(e?.message || "Signup failed");
     } finally {
@@ -31,114 +31,82 @@ export default function Signup() {
   }
 
   return (
-    <AuthLayout>
-      <div className="dark-form-box w-full max-w-md mx-auto px-10 py-12">
-        <div className="text-center mb-10">
-          <div
-            className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4"
-            style={{ background: "linear-gradient(135deg, #A3C6E0, #E0A3A3)" }}
-          >
-            <UserPlus className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white mb-1">Create Account</h1>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>
-            Join the Tea Time Cari community
-          </p>
+    <div className="max-w-md mx-auto p-6">
+      <h1 className="text-xl font-semibold mb-4">Create your account</h1>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <div>
+          <label className="block text-sm mb-1">Email</label>
+          <input
+            required
+            type="email"
+            className="w-full border rounded p-2"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
         </div>
-
-        {err && (
-          <div className="dark-alert-error">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{err}</span>
-          </div>
-        )}
-
-        <form onSubmit={onSubmit}>
-          <div className={`form-field ${form.email ? "has-value" : ""}`}>
-            <input
-              required
-              type="email"
-              id="su-email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-            />
-            <label htmlFor="su-email">Email</label>
-          </div>
-
-          <div className={`form-field ${form.password ? "has-value" : ""}`}>
-            <input
-              required
-              type="password"
-              id="su-password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <label htmlFor="su-password">Password</label>
-          </div>
-
-          <div className={`form-field ${form.username ? "has-value" : ""}`}>
+        <div>
+          <label className="block text-sm mb-1">Password</label>
+          <input
+            required
+            type="password"
+            className="w-full border rounded p-2"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Username (optional)</label>
+          <input
+            type="text"
+            className="w-full border rounded p-2"
+            value={form.username || ""}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm mb-1">First name</label>
             <input
               type="text"
-              id="su-username"
-              value={form.username || ""}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              className="w-full border rounded p-2"
+              value={form.firstName || ""}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
-            <label htmlFor="su-username">Username (optional)</label>
           </div>
+          <div>
+            <label className="block text-sm mb-1">Last name</label>
+            <input
+              type="text"
+              className="w-full border rounded p-2"
+              value={form.lastName || ""}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Gender</label>
+          <select
+            className="w-full border rounded p-2"
+            value={form.gender || "Female"}
+            onChange={(e) =>
+              setForm({ ...form, gender: e.target.value as "Male" | "Female" })
+            }
+          >
+            <option>Female</option>
+            <option>Male</option>
+          </select>
+        </div>
 
-          <div className="flex gap-4">
-            <div className={`form-field flex-1 ${form.firstName ? "has-value" : ""}`}>
-              <input
-                type="text"
-                id="su-fname"
-                value={form.firstName || ""}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
-              <label htmlFor="su-fname">First Name</label>
-            </div>
-            <div className={`form-field flex-1 ${form.lastName ? "has-value" : ""}`}>
-              <input
-                type="text"
-                id="su-lname"
-                value={form.lastName || ""}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
-              <label htmlFor="su-lname">Last Name</label>
-            </div>
-          </div>
+        {err && <p className="text-red-600 text-sm">{err}</p>}
 
-          <div className={`form-field ${form.gender ? "has-value" : ""}`}>
-            <select
-              id="su-gender"
-              value={form.gender || "Female"}
-              onChange={(e) => setForm({ ...form, gender: e.target.value as "Male" | "Female" })}
-            >
-              <option value="Female">Female</option>
-              <option value="Male">Male</option>
-            </select>
-            <label htmlFor="su-gender">Gender</label>
-          </div>
-
-          <div className="text-center mt-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="dark-btn"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2 normal-case tracking-normal">
-                  <Loader2 className="animate-spin w-4 h-4" /> Creating account...
-                </span>
-              ) : (
-                <>
-                  Create Account
-                  <span />
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </AuthLayout>
+        <button
+          type="submit"
+          className="w-full rounded bg-black text-white p-2 disabled:opacity-50"
+          disabled={loading}
+        >
+          {loading ? "Creating…" : "Create account"}
+        </button>
+      </form>
+    </div>
   );
 }
