@@ -122,8 +122,8 @@ DISCOURSE_ADMIN_API_USERNAME=system
 DISCOURSE_SSO_SECRET=your-shared-sso-secret
 
 # Discourse Groups (Optional)
-MEN_GROUP=men
-WOMEN_GROUP=women
+MEN_GROUP=men-slu
+WOMEN_GROUP=women-slu
 XACCESS_GROUP=xaccess
 SEND_DISCOURSE_ACTIVATION=true
 ```

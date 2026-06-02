@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendApprovalEmail } from "../_shared/resendEmail.ts";
+import { buildDiscourseGroups } from "../_shared/sso.ts";
 
 /* ---------------- CORS helpers ---------------- */
 function cors(req: Request) {
@@ -52,7 +53,6 @@ const DISCOURSE_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET") || "";
 const SEND_ACTIVATION = (Deno.env.get("SEND_DISCOURSE_ACTIVATION") || "false").toLowerCase() === "true";
-const XACCESS_GROUP = (Deno.env.get("XACCESS_GROUP") || "").trim();
 
 /* ---------------- Utilities ---------------- */
 async function hmacHex(input: string, secret: string) {
@@ -262,10 +262,8 @@ Deno.serve(async (req) => {
       return jerr(headers, 400, "gender must be 'men' or 'women'");
     }
 
-    // Build SSO groups, for example "men" or "women", optionally plus XACCESS_GROUP
-    const groups = [genderNorm, xaccessFlag && XACCESS_GROUP]
-      .filter(Boolean)
-      .join(",");
+    // Build SSO groups through the shared helper so approval-time sync matches login-time SSO.
+    const groups = buildDiscourseGroups(genderNorm, xaccessFlag);
 
     // 1) Approve in Supabase first. External integrations below are non-fatal so
     // a Discourse or email outage cannot leave an approved applicant pending.
