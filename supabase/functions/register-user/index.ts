@@ -44,6 +44,44 @@ function usernameFromEmail(email: string) {
   return base.slice(0, 20) || "user";
 }
 
+function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || "";
+  return (
+    error?.code === "PGRST204" ||
+    (message.includes("schema cache") && message.includes("could not find"))
+  );
+}
+
+function registrationUpsertPayload(
+  userId: string,
+  normalized: ReturnType<typeof normalizeRequest>,
+  tracking?: { metadata: Awaited<ReturnType<typeof collectTrackingMetadata>>; trackedAt: string },
+) {
+  return {
+    id: userId,
+    email: normalized.email,
+    username: normalized.username,
+    firstName: normalized.firstName,
+    lastName: normalized.lastName,
+    phone: normalized.phone,
+    gender: normalized.gender,
+    captureType: normalized.captureType,
+    imageData: normalized.imageData,
+    status: "pending",
+    ...(tracking
+      ? {
+          registration_ip_address: tracking.metadata.ip_address,
+          registration_ip_location: tracking.metadata.ip_location,
+          registration_browser: tracking.metadata.browser,
+          registration_device: tracking.metadata.device,
+          registration_operating_system: tracking.metadata.operating_system,
+          registration_user_agent: tracking.metadata.user_agent,
+          registration_tracked_at: tracking.trackedAt,
+        }
+      : {}),
+  };
+}
+
 function isAuthUserAlreadyRegisteredError(error: { message?: string } | null) {
   const message = error?.message?.toLowerCase() || "";
   return message.includes("already") || message.includes("registered") || message.includes("exists");
@@ -202,30 +240,30 @@ serve(async (req) => {
     }
 
     // Create the business/KYC registration. Do not persist the plaintext password.
-    const { error: upsertError } = await admin
+    // Some production Supabase instances can briefly expose a stale PostgREST
+    // schema cache after a migration. If the newer admin-tracking columns are
+    // unavailable, keep registration working and persist the core application.
+    let trackingPersisted = true;
+    let { error: upsertError } = await admin
       .from("registrations")
       .upsert(
-        {
-          id: userId,
-          email: normalized.email,
-          username: normalized.username,
-          firstName: normalized.firstName,
-          lastName: normalized.lastName,
-          phone: normalized.phone,
-          gender: normalized.gender,
-          captureType: normalized.captureType,
-          imageData: normalized.imageData,
-          status: "pending",
-          registration_ip_address: registrationTracking.ip_address,
-          registration_ip_location: registrationTracking.ip_location,
-          registration_browser: registrationTracking.browser,
-          registration_device: registrationTracking.device,
-          registration_operating_system: registrationTracking.operating_system,
-          registration_user_agent: registrationTracking.user_agent,
-          registration_tracked_at: registrationTrackedAt,
-        },
+        registrationUpsertPayload(userId, normalized, {
+          metadata: registrationTracking,
+          trackedAt: registrationTrackedAt,
+        }),
         { onConflict: "id" },
       );
+
+    if (upsertError && isSchemaCacheColumnError(upsertError)) {
+      console.warn(
+        "registrations tracking columns are unavailable; retrying registration without tracking metadata",
+        upsertError,
+      );
+      trackingPersisted = false;
+      ({ error: upsertError } = await admin
+        .from("registrations")
+        .upsert(registrationUpsertPayload(userId, normalized), { onConflict: "id" }));
+    }
 
     if (upsertError) {
       if (!isRecoveredAuthUser) {
@@ -248,6 +286,7 @@ serve(async (req) => {
       alreadyExists: false,
       recoveredAuthUser: isRecoveredAuthUser,
       status: "pending",
+      trackingPersisted,
       emails: {
         underReview: underReviewEmail,
       },

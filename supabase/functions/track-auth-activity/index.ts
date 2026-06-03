@@ -16,6 +16,14 @@ function json(status: number, body: unknown) {
   });
 }
 
+function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || "";
+  return (
+    error?.code === "PGRST204" ||
+    (message.includes("schema cache") && message.includes("could not find"))
+  );
+}
+
 function getBearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -55,9 +63,19 @@ serve(async (req) => {
       .update(update)
       .eq("id", authData.user.id);
 
-    if (updateError) return json(500, { error: "tracking update failed", detail: updateError.message });
+    if (updateError) {
+      if (isSchemaCacheColumnError(updateError)) {
+        console.warn(
+          "registrations tracking columns are unavailable; skipping best-effort auth activity update",
+          updateError,
+        );
+        return json(200, { ok: true, event, last_seen_at: now, trackingPersisted: false });
+      }
 
-    return json(200, { ok: true, event, last_seen_at: now });
+      return json(500, { error: "tracking update failed", detail: updateError.message });
+    }
+
+    return json(200, { ok: true, event, last_seen_at: now, trackingPersisted: true });
   } catch (error) {
     return json(500, { error: "internal", detail: String(error) });
   }

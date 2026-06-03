@@ -4,7 +4,6 @@ import {
   Users,
   UserCheck,
   UserX,
-  UserMinus,
   Clock,
   RefreshCw,
   Loader2,
@@ -26,6 +25,14 @@ import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
 import FunctionPing from '../../dev/FunctionPing';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+
+function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || '';
+  return (
+    error?.code === 'PGRST204' ||
+    (message.includes('schema cache') && message.includes('could not find'))
+  );
+}
 
 interface UserStat {
   status: string;
@@ -180,13 +187,26 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     setError(null);
 
     try {
-      const { data, error: dbError } = await supabase
+      let { data, error: dbError } = await supabase
         .from('registrations')
         .select('status, last_seen_at, created_at');
 
+      if (dbError && isSchemaCacheColumnError(dbError)) {
+        console.warn(
+          'registrations.last_seen_at is unavailable; dashboard online counts will be unavailable',
+          dbError,
+        );
+        ({ data, error: dbError } = await supabase
+          .from('registrations')
+          .select('status, created_at'));
+      }
+
       if (dbError) throw dbError;
 
-      const users: UserStat[] = data || [];
+      const users: UserStat[] = (data || []).map((user) => ({
+        ...user,
+        last_seen_at: 'last_seen_at' in user ? user.last_seen_at : null,
+      }));
       const now = Date.now();
 
       const todayStart = new Date();
