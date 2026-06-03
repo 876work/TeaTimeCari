@@ -1,6 +1,7 @@
 import React from 'react';
 import { NotificationBell } from './Notifications/NotificationBell';
 import { LogoutButton } from './Auth/LogoutButton';
+import { HoverFooter } from './HoverFooter';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -8,7 +9,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
       {/* Header with Notifications */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
@@ -25,9 +26,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       </header>
       
-      <div className="container mx-auto px-4 py-8">
+      <main className="container mx-auto flex-1 px-4 py-8">
         {children}
-      </div>
+      </main>
+
+      <HoverFooter />
     </div>
   );
 }
