@@ -93,6 +93,7 @@ function sanitizeUser(user: DiscourseUser) {
 
 function matchesSearch(user: DiscourseUser, search: string) {
   if (!search) return true;
+
   return [user.username, user.name, user.email]
     .map((value) => (value || "").toLowerCase())
     .some((value) => value.includes(search));
@@ -100,10 +101,16 @@ function matchesSearch(user: DiscourseUser, search: string) {
 
 async function requireTeaTimeAdmin(req: Request) {
   const token = getBearerToken(req);
-  if (!token) return { error: json(401, { error: "Unauthorized" }) };
+
+  if (!token) {
+    return { error: json(401, { error: "Unauthorized" }) };
+  }
 
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData.user) return { error: json(401, { error: "Unauthorized" }) };
+
+  if (authError || !authData.user) {
+    return { error: json(401, { error: "Unauthorized" }) };
+  }
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
@@ -111,17 +118,24 @@ async function requireTeaTimeAdmin(req: Request) {
     .eq("id", authData.user.id)
     .maybeSingle();
 
-  if (profileError) return { error: json(500, { error: "admin lookup failed" }) };
-  if (!profile?.is_admin) return { error: json(403, { error: "Forbidden: admin only" }) };
+  if (profileError) {
+    return { error: json(500, { error: "admin lookup failed" }) };
+  }
+
+  if (!profile?.is_admin) {
+    return { error: json(403, { error: "Forbidden: admin only" }) };
+  }
 
   return { user: authData.user };
 }
 
 function assertDiscourseConfig() {
   const missing: string[] = [];
+
   if (!DISCOURSE_BASE_URL) missing.push("DISCOURSE_BASE_URL");
   if (!DISCOURSE_ADMIN_API_KEY) missing.push("DISCOURSE_ADMIN_API_KEY");
   if (!DISCOURSE_ADMIN_API_USERNAME) missing.push("DISCOURSE_ADMIN_API_USERNAME");
+
   if (missing.length > 0) {
     throw new Error(`Missing Discourse configuration: ${missing.join(", ")}`);
   }
@@ -139,7 +153,9 @@ async function discourseFetch(path: string, init: RequestInit = {}) {
   });
 
   const text = await response.text();
+
   let body: unknown = null;
+
   if (text) {
     try {
       body = JSON.parse(text);
@@ -149,9 +165,11 @@ async function discourseFetch(path: string, init: RequestInit = {}) {
   }
 
   if (!response.ok) {
-    const message = typeof body === "object" && body && "errors" in body
-      ? JSON.stringify((body as { errors: unknown }).errors)
-      : text || response.statusText;
+    const message =
+      typeof body === "object" && body && "errors" in body
+        ? JSON.stringify((body as { errors: unknown }).errors)
+        : text || response.statusText;
+
     throw new Error(`Discourse API failed (${response.status}): ${message}`);
   }
 
@@ -159,24 +177,24 @@ async function discourseFetch(path: string, init: RequestInit = {}) {
 }
 
 async function getDiscourseUser(userId: number) {
-  return await discourseFetch(`/admin/users/${userId}.json`) as DiscourseUser;
+  return (await discourseFetch(`/admin/users/${userId}.json`)) as DiscourseUser;
 }
 
 async function listUsersForFlag(flag: UserFlag, page: number, search: string) {
   const params = new URLSearchParams();
+
   params.set("page", String(page));
   params.set("show_emails", "true");
 
   if (search.includes("@")) {
     params.set("email", search);
   } else if (search) {
-    // Supported by current Discourse admin UI endpoints on many installs. If a
-    // deployment ignores it, we still apply a local filter after the response.
     params.set("filter", search);
   }
 
   const body = await discourseFetch(`/admin/users/list/${flag}.json?${params.toString()}`);
-  const users = Array.isArray(body) ? body as DiscourseUser[] : [];
+  const users = Array.isArray(body) ? (body as DiscourseUser[]) : [];
+
   return users.filter((user) => matchesSearch(user, search));
 }
 
@@ -185,16 +203,23 @@ async function listDiscourseUsers(flag: UserFlag, page: number, search: string) 
     return await listUsersForFlag(flag, page, search);
   }
 
-  // Discourse does not support an "all" flag for /admin/users/list/{flag}.json.
-  // Build the all-user view by merging the documented flags instead of making an
-  // invalid /list/all.json request that returns an Edge Function 500 in the UI.
+  /*
+    Discourse does not reliably support an "all" flag for:
+    /admin/users/list/{flag}.json
+
+    Instead of calling /admin/users/list/all.json and causing the Edge Function
+    to fail, build the all users view by merging the known supported flags.
+  */
   const merged = new Map<number, DiscourseUser>();
   const errors: string[] = [];
 
   for (const userFlag of ALL_USER_FLAGS) {
     try {
       const users = await listUsersForFlag(userFlag, page, search);
-      for (const user of users) merged.set(user.id, { ...merged.get(user.id), ...user });
+
+      for (const user of users) {
+        merged.set(user.id, { ...merged.get(user.id), ...user });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       errors.push(`${userFlag}: ${message}`);
@@ -209,6 +234,7 @@ async function listDiscourseUsers(flag: UserFlag, page: number, search: string) 
   return Array.from(merged.values()).sort((a, b) => {
     const aName = (a.username || a.email || "").toLowerCase();
     const bName = (b.username || b.email || "").toLowerCase();
+
     return aName.localeCompare(bName);
   });
 }
@@ -219,6 +245,7 @@ async function listStaffAdmins() {
   for (let page = 0; page < 20; page += 1) {
     const staff = await listUsersForFlag("staff", page, "");
     admins.push(...staff.filter((user) => Boolean(user.admin)));
+
     if (staff.length === 0) break;
   }
 
@@ -253,7 +280,11 @@ async function logAttempt(input: {
   }
 }
 
-async function changeAdminStatus(action: "promote" | "demote", targetUserId: number, actor: { id: string; email?: string | null }) {
+async function changeAdminStatus(
+  action: "promote" | "demote",
+  targetUserId: number,
+  actor: { id: string; email?: string | null },
+) {
   const before = await getDiscourseUser(targetUserId);
   const actorEmail = normalizeEmail(actor.email);
   const targetEmail = normalizeEmail(before.email);
@@ -264,6 +295,7 @@ async function changeAdminStatus(action: "promote" | "demote", targetUserId: num
 
   if (action === "demote" && before.admin) {
     const admins = await listStaffAdmins();
+
     if (admins.length <= 1) {
       throw new Error("Cannot demote the last Discourse admin.");
     }
@@ -278,6 +310,7 @@ async function changeAdminStatus(action: "promote" | "demote", targetUserId: num
   }
 
   const endpoint = action === "promote" ? "grant_admin" : "revoke_admin";
+
   await discourseFetch(`/admin/users/${targetUserId}/${endpoint}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -288,14 +321,24 @@ async function changeAdminStatus(action: "promote" | "demote", targetUserId: num
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return json(405, { error: "Method not allowed" });
+  }
 
   const adminCheck = await requireTeaTimeAdmin(req);
-  if (adminCheck.error) return adminCheck.error;
+
+  if (adminCheck.error) {
+    return adminCheck.error;
+  }
+
   const actor = adminCheck.user;
 
   let body: RequestBody;
+
   try {
     body = await req.json();
   } catch {
@@ -303,6 +346,7 @@ serve(async (req) => {
   }
 
   const action = body.action || "list";
+
   if (action !== "list" && action !== "promote" && action !== "demote") {
     return json(400, { error: "Invalid action" });
   }
@@ -324,13 +368,16 @@ serve(async (req) => {
     }
 
     const targetUserId = Number(body.discourse_user_id);
+
     if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
       return json(400, { error: "A valid discourse_user_id is required" });
     }
 
     let targetBefore: DiscourseUser | null = null;
+
     try {
       targetBefore = await getDiscourseUser(targetUserId);
+
       const updatedUser = await changeAdminStatus(action, targetUserId, {
         id: actor.id,
         email: actor.email,
@@ -362,6 +409,7 @@ serve(async (req) => {
         success: false,
         errorMessage: error instanceof Error ? error.message : String(error),
       });
+
       throw error;
     }
   } catch (error) {
