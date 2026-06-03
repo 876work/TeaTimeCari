@@ -38,6 +38,16 @@ export function HomePage({ onGetStarted }: HomePageProps) {
           Connect, share, and discover in a community built for authentic conversations
         </p>
 
+        <div className="mb-12">
+          <button
+            onClick={onGetStarted}
+            className="group inline-flex items-center px-8 py-4 bg-white text-gray-900 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl hover:bg-white/95 transform hover:scale-105 transition-all duration-300 ease-out ring-2 ring-white/40 hover:ring-white/70"
+          >
+            <span className="mr-3">Get Started</span>
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
+          </button>
+        </div>
+
         {/* Feature highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-3xl mx-auto">
           <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 text-white border border-white/25 shadow-lg">
@@ -67,14 +77,6 @@ export function HomePage({ onGetStarted }: HomePageProps) {
 
         {/* Call to Action */}
         <div className="space-y-6">
-          <button
-            onClick={onGetStarted}
-            className="group inline-flex items-center px-8 py-4 bg-white text-gray-900 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl hover:bg-white/95 transform hover:scale-105 transition-all duration-300 ease-out ring-2 ring-white/40 hover:ring-white/70"
-          >
-            <span className="mr-3">Get Started</span>
-            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
-          </button>
-
           <p className="text-white/80 text-sm font-medium">
             Join our growing community of verified members
           </p>
