@@ -22,6 +22,7 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
+import { DiscourseCommunityAdmins } from './DiscourseCommunityAdmins';
 import FunctionPing from '../../dev/FunctionPing';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -276,6 +277,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   // Delegate to sub-pages
   if (activePage === 'user-reviews') return <AdminUserReview />;
   if (activePage === 'flagged-posts') return <ReviewFlaggedPosts />;
+  if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>

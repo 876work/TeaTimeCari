@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Users, Flag, FileText, BarChart3, Home, LogOut } from 'lucide-react';
+import { Shield, Users, Flag, FileText, BarChart3, Home, MessageSquare } from 'lucide-react';
 import { LogoutButton } from '../Auth/LogoutButton';
 
 interface AdminLayoutProps {
@@ -19,6 +19,7 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
     { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'user-reviews', label: 'Users', icon: <Users className="w-4 h-4" /> },
     { id: 'flagged-posts', label: 'Flagged Posts', icon: <Flag className="w-4 h-4" /> },
+    { id: 'discourse-admins', label: 'Discourse/Community Admins', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
   ];
 
