@@ -43,7 +43,7 @@ export default function KycPending() {
           <div className="space-y-3">
             <button
               onClick={handleGoHome}
-              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg flex items-center justify-center"
             >
               <Home className="w-5 h-5 mr-2" />
               Return to Homepage

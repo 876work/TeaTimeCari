@@ -8,7 +8,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+    <div className="min-h-screen bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
       {/* Header with Notifications */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">

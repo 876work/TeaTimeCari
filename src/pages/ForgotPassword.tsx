@@ -55,8 +55,8 @@ export default function ForgotPassword() {
       <AuthLayout>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-8 h-8 text-[#A3C6E0]" />
+            <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-[#4B9EC8]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h1>
             <p className="text-gray-600 mb-6">
@@ -107,8 +107,8 @@ export default function ForgotPassword() {
     <AuthLayout>
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Lock className="w-8 h-8 text-[#A3C6E0]" />
+          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <Lock className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Your Password</h1>
           <p className="text-gray-600">
@@ -141,7 +141,7 @@ export default function ForgotPassword() {
                 id="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#A3C6E0]"
+                className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"
                 placeholder="Enter your email address"
                 required
                 disabled={loading}
@@ -156,7 +156,7 @@ export default function ForgotPassword() {
             disabled={loading || !email.trim()}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               !loading && email.trim()
-                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
@@ -197,7 +197,7 @@ export default function ForgotPassword() {
           
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
-              Need help? <Link to="/contact-us" className="text-[#A3C6E0] hover:text-[#8BB5D9] transition-colors">Contact our support team</Link>
+              Need help? <Link to="/contact-us" className="text-[#4B9EC8] hover:text-[#3382AA] transition-colors">Contact our support team</Link>
             </p>
           </div>
         </div>

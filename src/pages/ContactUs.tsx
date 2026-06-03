@@ -193,8 +193,8 @@ export default function ContactUs() {
     <AuthLayout>
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Mail className="w-8 h-8 text-[#A3C6E0]" />
+          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <Mail className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Contact Support</h1>
           <p className="text-gray-600">
@@ -230,8 +230,8 @@ export default function ContactUs() {
                 onBlur={handleBlur('name')}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.name && touched.name
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="Enter your full name"
                 required
@@ -262,8 +262,8 @@ export default function ContactUs() {
                 onBlur={handleBlur('email')}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.email && touched.email
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="Enter your email address"
                 required
@@ -295,8 +295,8 @@ export default function ContactUs() {
                 onBlur={handleBlur('phone')}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.phone && touched.phone
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="758xxxxxxx"
                 disabled={isSubmitting}
@@ -327,8 +327,8 @@ export default function ContactUs() {
                 rows={5}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
                   errors.message && touched.message
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="Please describe how we can help you..."
                 required
@@ -358,7 +358,7 @@ export default function ContactUs() {
             disabled={!isFormValid() || isSubmitting}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               isFormValid() && !isSubmitting
-                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

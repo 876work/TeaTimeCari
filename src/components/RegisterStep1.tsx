@@ -448,8 +448,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     <div className="max-w-md mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <User className="w-8 h-8 text-[#A3C6E0]" />
+          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
@@ -481,8 +481,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               onBlur={handleBlur('fullName')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.fullName && touched.fullName
-                  ? 'border-[#E0A3A3] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                  ? 'border-[#D96E6E] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
               }`}
               placeholder="e.g., John Smith"
               aria-invalid={errors.fullName && touched.fullName ? 'true' : 'false'}
@@ -511,10 +511,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 onBlur={handleBlur('email')}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   (errors.email && touched.email) || emailStatus.error
-                    ? 'border-[#E0A3A3] bg-red-50'
+                    ? 'border-[#D96E6E] bg-red-50'
                     : emailStatus.isAvailable === true
-                    ? 'border-[#A3C6E0] bg-blue-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="e.g., john@example.com"
                 aria-invalid={(errors.email && touched.email) || emailStatus.error ? 'true' : 'false'}
@@ -566,8 +566,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               onBlur={handleBlur('phone')}
               className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.phone && touched.phone
-                  ? 'border-[#E0A3A3] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                  ? 'border-[#D96E6E] bg-red-50'
+                  : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
               }`}
               placeholder="758-123-4567 or 7581234567"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
@@ -596,12 +596,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 onBlur={handleBlur('username')}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.username && touched.username
-                    ? 'border-[#E0A3A3] bg-red-50'
+                    ? 'border-[#D96E6E] bg-red-50'
                     : usernameStatus.isAvailable === true
-                    ? 'border-[#A3C6E0] bg-blue-50'
+                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
                     : usernameStatus.isAvailable === false
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="e.g., john_smith or johnsmith123"
                 aria-invalid={errors.username && touched.username ? 'true' : 'false'}
@@ -644,7 +644,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                           key={suggestion}
                           type="button"
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="px-3 py-1 text-xs bg-[#A3C6E0] bg-opacity-30 hover:bg-[#A3C6E0] hover:bg-opacity-50 text-blue-700 rounded-full transition-colors"
+                          className="px-3 py-1 text-xs bg-[#4B9EC8] bg-opacity-20 hover:bg-[#4B9EC8] hover:bg-opacity-40 text-[#3382AA] font-medium rounded-full transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -676,8 +676,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 onBlur={handleBlur('password')}
                 className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.password && touched.password
-                    ? 'border-[#E0A3A3] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#D96E6E] bg-red-50'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="Create a secure password"
                 required
@@ -725,10 +725,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 onBlur={handleBlur('confirmPassword')}
                 className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.confirmPassword && touched.confirmPassword
-                    ? 'border-[#E0A3A3] bg-red-50'
+                    ? 'border-[#D96E6E] bg-red-50'
                     : touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword
-                    ? 'border-[#A3C6E0] bg-blue-50'
-                    : 'border-gray-300 bg-white hover:border-[#A3C6E0]'
+                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
+                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
                 }`}
                 placeholder="Type your password again"
                 required
@@ -799,7 +799,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               disabled={!isFormValid()}
               className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 isFormValid()
-                  ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >

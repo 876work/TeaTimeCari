@@ -215,8 +215,8 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
     <div className="max-w-lg mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Camera className="w-8 h-8 text-[#A3C6E0]" />
+          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <Camera className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Photo Verification</h1>
           <p className="text-gray-600">Step 3 of 3: Identity Verification</p>
@@ -243,11 +243,11 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
               <button
                 type="button"
                 onClick={() => handleModeSelect('selfie')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#A3C6E0] hover:bg-blue-50 transition-all duration-200 group"
+                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#4B9EC8] hover:bg-[#D6EBF5] transition-all duration-200 group"
               >
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-[#A3C6E0] group-hover:bg-opacity-30 transition-colors">
-                    <User className="w-8 h-8 text-[#A3C6E0]" />
+                  <div className="w-16 h-16 mx-auto bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#4B9EC8] group-hover:bg-opacity-25 transition-colors">
+                    <User className="w-8 h-8 text-[#4B9EC8]" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Take Selfie</h3>
                   <p className="text-sm text-gray-600">
@@ -259,11 +259,11 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
               <button
                 type="button"
                 onClick={() => handleModeSelect('id')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#E0A3A3] hover:bg-red-50 transition-all duration-200 group"
+                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#D96E6E] hover:bg-[#F9E3E3] transition-all duration-200 group"
               >
                 <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-[#E0A3A3] group-hover:bg-opacity-30 transition-colors">
-                    <CreditCard className="w-8 h-8 text-[#E0A3A3]" />
+                  <div className="w-16 h-16 mx-auto bg-[#F9E3E3] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#D96E6E] group-hover:bg-opacity-25 transition-colors">
+                    <CreditCard className="w-8 h-8 text-[#D96E6E]" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Photograph ID</h3>
                   <p className="text-sm text-gray-600">
@@ -445,7 +445,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
             className={`
               ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
               ${isReadyToContinue && !isSubmitting
-                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}

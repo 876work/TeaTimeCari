@@ -217,7 +217,7 @@ export function UploadPost() {
   // Loading state for user verification
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="min-h-screen bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
         <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
@@ -233,7 +233,7 @@ export function UploadPost() {
   // Error state or access denied
   if (error && !currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="min-h-screen bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
         <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -256,7 +256,7 @@ export function UploadPost() {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div className="min-h-screen bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]">
         <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -301,8 +301,8 @@ export function UploadPost() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Camera className="w-8 h-8 text-[#A3C6E0]" />
+            <div className="w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Camera className="w-8 h-8 text-[#4B9EC8]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Upload a Photo</h1>
             <p className="text-gray-600">
@@ -335,14 +335,14 @@ export function UploadPost() {
                 htmlFor="file-upload"
                 className={`block w-full p-8 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors ${
                   isProcessing
-                    ? 'border-[#A3C6E0] bg-blue-50'
-                    : 'border-gray-300 hover:border-[#A3C6E0] hover:bg-blue-50'
+                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
+                    : 'border-gray-300 hover:border-[#4B9EC8] hover:bg-[#D6EBF5]'
                 }`}
               >
                 {isProcessing ? (
                   <div className="flex flex-col items-center">
-                    <Loader2 className="w-12 h-12 text-[#A3C6E0] animate-spin mb-4" />
-                    <p className="text-[#A3C6E0] font-medium">Processing image...</p>
+                    <Loader2 className="w-12 h-12 text-[#4B9EC8] animate-spin mb-4" />
+                    <p className="text-[#4B9EC8] font-medium">Processing image...</p>
                     <p className="text-sm text-gray-500 mt-1">Compressing and removing metadata</p>
                   </div>
                 ) : (
@@ -408,7 +408,7 @@ export function UploadPost() {
             disabled={!selectedFile || isUploading || isProcessing}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               selectedFile && !isUploading && !isProcessing
-                ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

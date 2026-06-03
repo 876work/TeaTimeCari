@@ -187,8 +187,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         {/* Registration Summary */}
         <div id="registration-summary" className="rounded-2xl border p-8 shadow-sm bg-white">
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-blue-600" />
+            <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+              <Shield className="w-8 h-8 text-[#4B9EC8]" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Summary</h2>
             <p className="text-sm text-gray-600">
@@ -310,7 +310,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               disabled={isDownloading || isSubmitting}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 !isDownloading && !isSubmitting
-                  ? 'bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
