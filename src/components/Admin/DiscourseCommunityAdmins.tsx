@@ -55,11 +55,44 @@ function getErrorMessage(error: unknown) {
   return 'Unknown error';
 }
 
+async function getFunctionErrorMessage(error: unknown) {
+  const fallback = getErrorMessage(error);
+  const maybeContext = (error as { context?: unknown })?.context;
+  const response = maybeContext instanceof Response
+    ? maybeContext
+    : (maybeContext as { response?: Response } | undefined)?.response;
+
+  if (!response) return fallback;
+
+  try {
+    const body = await response.clone().json();
+    if (body?.error) return String(body.error);
+    if (body?.message) return String(body.message);
+  } catch {
+    try {
+      const text = await response.clone().text();
+      if (text) return text;
+    } catch {
+      // Fall through to the Supabase client error message.
+    }
+  }
+
+  return fallback;
+}
+
 function displayName(user: DiscourseUser) {
   return user.name?.trim() || user.username?.trim() || user.email?.trim() || `Discourse user #${user.id}`;
 }
 
-function Badge({ label, enabled, tone }: { label: string; enabled: boolean; tone: 'blue' | 'green' | 'red' | 'slate' | 'purple' }) {
+function Badge({
+  label,
+  enabled,
+  tone,
+}: {
+  label: string;
+  enabled: boolean;
+  tone: 'blue' | 'green' | 'red' | 'slate' | 'purple';
+}) {
   const colors = {
     blue: enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200',
     green: enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200',
@@ -75,7 +108,12 @@ function Badge({ label, enabled, tone }: { label: string; enabled: boolean; tone
   );
 }
 
-function ConfirmationModal({ pendingAction, loading, onCancel, onConfirm }: {
+function ConfirmationModal({
+  pendingAction,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
   pendingAction: PendingAction;
   loading: boolean;
   onCancel: () => void;
@@ -96,6 +134,7 @@ function ConfirmationModal({ pendingAction, loading, onCancel, onConfirm }: {
               This changes Discourse admin status only. Tea Time Cari app admin access is not changed.
             </p>
           </div>
+
           <button
             type="button"
             onClick={onCancel}
@@ -110,9 +149,12 @@ function ConfirmationModal({ pendingAction, loading, onCancel, onConfirm }: {
         <div className="space-y-4 p-5">
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm font-medium text-slate-900">{userName}</p>
-            <p className="text-xs text-slate-500">@{pendingAction.user.username || 'unknown'} · {pendingAction.user.email || 'No email returned'}</p>
+            <p className="text-xs text-slate-500">
+              @{pendingAction.user.username || 'unknown'} · {pendingAction.user.email || 'No email returned'}
+            </p>
             <p className="mt-2 text-xs text-slate-500">Discourse user ID: {pendingAction.user.id}</p>
           </div>
+
           <p className="text-sm text-slate-600">
             {isPromote
               ? 'Promoting this user grants administrator privileges inside Discourse.'
@@ -129,6 +171,7 @@ function ConfirmationModal({ pendingAction, loading, onCancel, onConfirm }: {
           >
             Cancel
           </button>
+
           <button
             type="button"
             onClick={onConfirm}
@@ -186,8 +229,11 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
 
-      if (fnError) throw fnError;
-      if (!data?.ok) throw new Error(data?.error || 'Unable to load Discourse users.');
+      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+
+      if (!data?.ok) {
+        throw new Error(data?.error || 'Unable to load Discourse users.');
+      }
 
       setUsers(data.users ?? []);
       setPage(nextPage);
@@ -240,16 +286,24 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
 
-      if (fnError) throw fnError;
-      if (!data?.ok) throw new Error(data?.error || 'Unable to update Discourse admin status.');
+      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+
+      if (!data?.ok) {
+        throw new Error(data?.error || 'Unable to update Discourse admin status.');
+      }
 
       const updatedUser = data.user as DiscourseUser;
-      setUsers((prev) => prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
+
+      setUsers((prev) =>
+        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+      );
+
       setSuccess(
         pendingAction.action === 'promote'
           ? `${displayName(updatedUser)} is now a Discourse admin.`
           : `${displayName(updatedUser)} is no longer a Discourse admin.`,
       );
+
       setPendingAction(null);
     } catch (err) {
       setError(`Failed to update Discourse admin status: ${getErrorMessage(err)}`);
@@ -268,6 +322,7 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
               Review Discourse users and promote or demote Discourse-only administrator access.
             </p>
           </div>
+
           <button
             type="button"
             onClick={() => fetchUsers(page)}
@@ -284,10 +339,12 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Loaded Users</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : users.length}</p>
           </div>
+
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Discourse Admins</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : adminCount}</p>
           </div>
+
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Filter</p>
             <p className="mt-1 text-2xl font-bold capitalize text-slate-900">{filter}</p>
@@ -324,6 +381,7 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
                   className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
               </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -354,13 +412,24 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Admin</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    User
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Admin
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-slate-100 bg-white">
                 {loading && (
                   <tr>
@@ -379,60 +448,79 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
                   </tr>
                 )}
 
-                {!loading && users.map((user) => {
-                  const isSelf = Boolean(currentEmail && user.email?.trim().toLowerCase() === currentEmail);
-                  return (
-                    <tr key={user.id} className="hover:bg-slate-50/60">
-                      <td className="px-4 py-4 align-top">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                            {user.admin ? <Crown className="h-5 w-5 text-amber-500" /> : <UserCheck className="h-5 w-5" />}
+                {!loading &&
+                  users.map((user) => {
+                    const isSelf = Boolean(currentEmail && user.email?.trim().toLowerCase() === currentEmail);
+
+                    return (
+                      <tr key={user.id} className="hover:bg-slate-50/60">
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                              {user.admin ? (
+                                <Crown className="h-5 w-5 text-amber-500" />
+                              ) : (
+                                <UserCheck className="h-5 w-5" />
+                              )}
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{displayName(user)}</p>
+                              <p className="text-xs text-slate-500">
+                                @{user.username || 'unknown'} · ID {user.id}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">{displayName(user)}</p>
-                            <p className="text-xs text-slate-500">@{user.username || 'unknown'} · ID {user.id}</p>
+                        </td>
+
+                        <td className="px-4 py-4 align-top text-sm text-slate-600">
+                          {user.email || <span className="text-slate-400">No email returned</span>}
+                        </td>
+
+                        <td className="px-4 py-4 align-top">
+                          <Badge label="Admin" enabled={user.admin} tone="purple" />
+                        </td>
+
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge label="Active" enabled={user.active} tone="green" />
+                            <Badge label="Moderator" enabled={user.moderator} tone="blue" />
+                            <Badge label="Suspended" enabled={user.suspended} tone="red" />
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 align-top text-sm text-slate-600">
-                        {user.email || <span className="text-slate-400">No email returned</span>}
-                      </td>
-                      <td className="px-4 py-4 align-top">
-                        <Badge label="Admin" enabled={user.admin} tone="purple" />
-                      </td>
-                      <td className="px-4 py-4 align-top">
-                        <div className="flex flex-wrap gap-1.5">
-                          <Badge label="Active" enabled={user.active} tone="green" />
-                          <Badge label="Moderator" enabled={user.moderator} tone="blue" />
-                          <Badge label="Suspended" enabled={user.suspended} tone="red" />
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 align-top text-right">
-                        {user.admin ? (
-                          <button
-                            type="button"
-                            onClick={() => openAction('demote', user)}
-                            disabled={isSelf || adminCount <= 1}
-                            title={isSelf ? 'You cannot demote yourself.' : adminCount <= 1 ? 'Cannot demote the last loaded admin.' : undefined}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <ShieldOff className="h-4 w-4" />
-                            Demote Admin
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openAction('promote', user)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
-                          >
-                            <Shield className="h-4 w-4" />
-                            Promote Admin
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+
+                        <td className="px-4 py-4 align-top text-right">
+                          {user.admin ? (
+                            <button
+                              type="button"
+                              onClick={() => openAction('demote', user)}
+                              disabled={isSelf || adminCount <= 1}
+                              title={
+                                isSelf
+                                  ? 'You cannot demote yourself.'
+                                  : adminCount <= 1
+                                    ? 'Cannot demote the last loaded admin.'
+                                    : undefined
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <ShieldOff className="h-4 w-4" />
+                              Demote Admin
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openAction('promote', user)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
+                            >
+                              <Shield className="h-4 w-4" />
+                              Promote Admin
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -446,7 +534,9 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
             >
               Previous
             </button>
+
             <span className="text-sm text-slate-500">Page {page + 1}</span>
+
             <button
               type="button"
               onClick={() => fetchUsers(page + 1)}
