@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
@@ -12,7 +12,6 @@ import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
 import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
 import PendingApproval from './components/Register/PendingApproval';
-import { RegistrationStepper } from './components/Register/RegistrationStepper';
 import { GenderFeed } from './components/Feed/GenderFeed';
 import { UploadPost } from './components/Posts/UploadPost';
 import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
@@ -25,6 +24,7 @@ import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
 import Login from './pages/Login';
+import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
 import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
@@ -42,7 +42,7 @@ function App() {
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
-  const [selectedPostId] = React.useState<string | null>(null);
+  const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
     step1?: RegisterStep1Data;
     step2?: RegisterStep2Data;
@@ -111,6 +111,12 @@ function App() {
     setAdminActivePage('invite-codes');
   };
 
+
+  const handleGoToAdminLogs = () => {
+    setCurrentPage('admin');
+    setAdminActivePage('logs');
+  };
+
   const handleAdminNavigate = (page: string) => {
     setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping');
   };
@@ -122,6 +128,13 @@ function App() {
     setCurrentPage('user-profile');
   };
 
+  const handleGoToPostThread = (postId?: string) => {
+    if (postId) {
+      setSelectedPostId(postId);
+    }
+    setCurrentPage('post-thread');
+  };
+
   const handleBackToStep1 = () => {
     setCurrentStep(1);
   };
@@ -129,22 +142,6 @@ function App() {
 
   const handleBackToStep2 = () => {
     setCurrentStep(2);
-  };
-
-  const handleRegistrationStepClick = (step: number) => {
-    if (step === 1) {
-      setCurrentStep(1);
-      return;
-    }
-
-    if (step === 2 && registrationData.step1) {
-      setCurrentStep(2);
-      return;
-    }
-
-    if (step === 3 && registrationData.step1 && registrationData.step2) {
-      setCurrentStep(3);
-    }
   };
 
   const handleNewUser = () => {
@@ -194,15 +191,7 @@ function App() {
                       )}
                       
                       {currentPage === 'register' && (
-                        <RegistrationStepper
-                          currentStep={currentStep}
-                          completedSteps={[
-                            Boolean(registrationData.step1),
-                            Boolean(registrationData.step2),
-                            Boolean(registrationData.step3),
-                          ]}
-                          onStepClick={handleRegistrationStepClick}
-                        >
+                        <>
                           {currentStep === 1 && (
                             <RegisterStep1 
                               onNext={handleStep1Complete}
@@ -235,7 +224,7 @@ function App() {
                               }}
                             />
                           )}
-                        </RegistrationStepper>
+                        </>
                       )}
                       
                       {currentPage === 'feed' && (
