@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
 import { HowItWorksStepper } from './HowItWorksStepper';
-import { HomeHeader } from './HomeHeader';
+import { SiteHeader } from './SiteHeader';
 
 interface HomePageProps {
   onGetStarted: () => void;
@@ -11,7 +11,8 @@ interface HomePageProps {
 export function HomePage({ onGetStarted }: HomePageProps) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-4 sm:py-6">
-      <HomeHeader />
+      <SiteHeader />
+
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-10 w-32 h-32 bg-white bg-opacity-15 rounded-full animate-pulse"></div>
