@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
@@ -24,13 +24,46 @@ import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
 import Login from './pages/Login';
-import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
 import Signup from './pages/Signup';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
+
+type AdminPage =
+  | 'dashboard'
+  | 'user-reviews'
+  | 'flagged-posts'
+  | 'discourse-admins'
+  | 'logs'
+  | 'function-ping';
+
+const adminPagePaths: Record<AdminPage, string> = {
+  dashboard: '/admin/dashboard',
+  'user-reviews': '/admin/users',
+  'flagged-posts': '/admin/flagged-posts',
+  'discourse-admins': '/admin/discourse-admins',
+  logs: '/admin/logs',
+  'function-ping': '/admin/function-ping',
+};
+
+function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
+  const navigate = useNavigate();
+  const [activePage, setActivePage] = React.useState<AdminPage>(initialPage);
+
+  React.useEffect(() => {
+    setActivePage(initialPage);
+  }, [initialPage]);
+
+  const handleNavigate = (page: string) => {
+    const nextPage = page in adminPagePaths ? (page as AdminPage) : 'dashboard';
+    setActivePage(nextPage);
+    navigate(adminPagePaths[nextPage]);
+  };
+
+  return <AdminDashboard activePage={activePage} onNavigate={handleNavigate} />;
+}
 
 function App() {
   useAuthActivityTracking();
@@ -42,7 +75,7 @@ function App() {
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
-  const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
+  const [selectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
     step1?: RegisterStep1Data;
     step2?: RegisterStep2Data;
@@ -112,11 +145,6 @@ function App() {
   };
 
 
-  const handleGoToAdminLogs = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('logs');
-  };
-
   const handleAdminNavigate = (page: string) => {
     setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins');
   };
@@ -126,13 +154,6 @@ function App() {
       setSelectedUserId(userId);
     }
     setCurrentPage('user-profile');
-  };
-
-  const handleGoToPostThread = (postId?: string) => {
-    if (postId) {
-      setSelectedPostId(postId);
-    }
-    setCurrentPage('post-thread');
   };
 
   const handleBackToStep1 = () => {
@@ -173,6 +194,13 @@ function App() {
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminPortalRoute initialPage="dashboard" />} />
+              <Route path="/admin/users" element={<AdminPortalRoute initialPage="user-reviews" />} />
+              <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
+              <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
+              <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
+              <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/registrations" element={<RegistrationsPage />} />
               
               {/* Main App Route */}
