@@ -277,7 +277,7 @@ serve(async (req) => {
 
     const underReviewEmail = await sendUnderReviewEmail(
       normalized.email,
-      normalized.firstName || normalized.username,
+      normalized.firstName,
     ).catch((emailError) => ({ success: false, error: String(emailError) }));
 
     return json(200, {

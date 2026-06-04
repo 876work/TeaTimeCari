@@ -50,14 +50,12 @@ async function isAdmin(userId: string, email?: string | null) {
   return Boolean(data?.is_admin) || adminEmailFallback;
 }
 
-function getFirstName(registration: { firstName?: string | null; full_name?: string | null; username?: string | null; email?: string | null }) {
+function getFirstName(registration: { firstName?: string | null; full_name?: string | null }) {
   const firstName = registration.firstName?.trim();
   if (firstName) return firstName;
 
   const fullName = registration.full_name?.trim();
-  if (fullName) return fullName.split(/\s+/).filter(Boolean)[0] || "user";
-
-  return registration.username?.trim() || registration.email?.split("@")[0] || "user";
+  return fullName?.split(/\s+/).filter(Boolean)[0];
 }
 
 Deno.serve(async (req: Request) => {
