@@ -40,9 +40,11 @@ export default function ResetPassword() {
   return (
     <div className="mx-auto max-w-sm p-6">
       <h1 className="text-xl font-semibold mb-4">Set a new password</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-4">
+        <input type="hidden" name="form-name" value="reset-password" readOnly />
         <input
           type="password"
+          name="password"
           required
           placeholder="New password"
           value={password}
@@ -51,6 +53,7 @@ export default function ResetPassword() {
         />
         <input
           type="password"
+          name="confirm"
           required
           placeholder="Confirm new password"
           value={confirm}

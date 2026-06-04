@@ -114,7 +114,11 @@ export function PaymentForm({ amount, currency, feedAccess, onSuccess, onError }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form name="payment" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
+      <input type="hidden" name="form-name" value="payment" readOnly />
+      <input type="hidden" name="amount" value={amount} readOnly />
+      <input type="hidden" name="currency" value={currency} readOnly />
+      <input type="hidden" name="feedAccess" value={feedAccess} readOnly />
       {/* Payment Amount Display */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
         <div className="text-center">

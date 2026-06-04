@@ -248,7 +248,8 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form name="login" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="login" readOnly />
           <div>
             <label
               htmlFor="email"
@@ -265,6 +266,7 @@ export default function Login() {
               <input
                 type="email"
                 id="email"
+                name="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"
@@ -292,6 +294,7 @@ export default function Login() {
               <input
                 type={showPassword ? "text" : "password"}
                 id="password"
+                name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"

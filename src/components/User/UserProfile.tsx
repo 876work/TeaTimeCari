@@ -658,7 +658,8 @@ export function UserProfile({ userId }: UserProfileProps) {
                 </button>
               </div>
 
-              <form onSubmit={handleChangePassword} className="space-y-4">
+              <form name="profile-change-password" method="POST" data-netlify="true" onSubmit={handleChangePassword} className="space-y-4">
+                <input type="hidden" name="form-name" value="profile-change-password" readOnly />
                 <div>
                   <label htmlFor="new-password" className="mb-2 flex items-center text-sm font-semibold text-gray-800">
                     <Lock className="mr-2 h-4 w-4 text-gray-500" />
@@ -666,6 +667,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                   </label>
                   <input
                     id="new-password"
+                    name="newPassword"
                     type="password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
@@ -683,6 +685,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                   </label>
                   <input
                     id="confirm-new-password"
+                    name="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
@@ -700,6 +703,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                   </label>
                   <input
                     id="reauth-code"
+                    name="reauthCode"
                     type="text"
                     value={reauthCode}
                     onChange={(event) => setReauthCode(event.target.value)}

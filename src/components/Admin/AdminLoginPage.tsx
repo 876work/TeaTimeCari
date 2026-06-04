@@ -193,7 +193,8 @@ export function AdminLoginPage() {
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form name="admin-login" method="POST" data-netlify="true" onSubmit={handleLogin} className="space-y-4">
+                <input type="hidden" name="form-name" value="admin-login" readOnly />
                 <div>
                   <label htmlFor="admin-email" className="block text-sm font-medium text-gray-300 mb-2">
                     Admin Email
@@ -201,6 +202,7 @@ export function AdminLoginPage() {
                   <input
                     type="email"
                     id="admin-email"
+                    name="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -217,6 +219,7 @@ export function AdminLoginPage() {
                   <input
                     type="password"
                     id="admin-password"
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

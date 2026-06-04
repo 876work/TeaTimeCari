@@ -370,11 +370,13 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
               ))}
             </div>
 
-            <form onSubmit={handleSearchSubmit} className="flex w-full gap-2 lg:w-auto">
+            <form name="discourse-admin-search" method="POST" data-netlify="true" onSubmit={handleSearchSubmit} className="flex w-full gap-2 lg:w-auto">
+              <input type="hidden" name="form-name" value="discourse-admin-search" readOnly />
               <div className="relative flex-1 lg:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
+                  name="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search username or email"

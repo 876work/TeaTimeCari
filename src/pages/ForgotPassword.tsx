@@ -126,7 +126,8 @@ export default function ForgotPassword() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form name="forgot-password" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="forgot-password" readOnly />
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -139,6 +140,7 @@ export default function ForgotPassword() {
               <input
                 type="email"
                 id="email"
+                name="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"

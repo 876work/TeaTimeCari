@@ -464,7 +464,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form name="registration-step-1" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="registration-step-1" readOnly />
           {/* Full Name */}
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -476,6 +477,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             <input
               type="text"
               id="fullName"
+              name="fullName"
               value={formData.fullName}
               onChange={handleInputChange('fullName')}
               onBlur={handleBlur('fullName')}
@@ -506,6 +508,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <input
                 type="email"
                 id="email"
+                name="email"
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 onBlur={handleBlur('email')}
@@ -561,6 +564,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             <input
               type="text"
               id="phone"
+              name="phone"
               value={formData.phone}
               onChange={handleInputChange('phone')}
               onBlur={handleBlur('phone')}
@@ -591,6 +595,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <input
                 type="text"
                 id="username"
+                name="username"
                 value={formData.username}
                 onChange={handleInputChange('username')}
                 onBlur={handleBlur('username')}
@@ -671,6 +676,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
+                name="password"
                 value={formData.password}
                 onChange={handleInputChange('password')}
                 onBlur={handleBlur('password')}
@@ -720,6 +726,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 id="confirmPassword"
+                name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleInputChange('confirmPassword')}
                 onBlur={handleBlur('confirmPassword')}
