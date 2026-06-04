@@ -199,7 +199,7 @@ function App() {
             <Router>
             <Routes>
               <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
-              <Route path="/kyc-pending" element={<KycPending />} />
+              <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
               <Route path="/sso" element={<Sso />} />
               <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
               <Route path="/community" element={<CommunityRedirect />} />
@@ -230,7 +230,7 @@ function App() {
                 path="/*" 
                 element={
                   showWelcomePage ? (
-                    <PublicLayout><HomePage onGetStarted={handleGetStarted} /></PublicLayout>
+                    <PublicLayout showHeader={false}><HomePage onGetStarted={handleGetStarted} /></PublicLayout>
                   ) : (
                     <AppLayout>
                       {currentPage === 'user-type-selection' && (
