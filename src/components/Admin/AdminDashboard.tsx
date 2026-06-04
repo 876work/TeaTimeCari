@@ -27,12 +27,18 @@ import FunctionPing from '../../dev/FunctionPing';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
-function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
-  const message = error?.message?.toLowerCase() || '';
-  return (
-    error?.code === 'PGRST204' ||
-    (message.includes('schema cache') && message.includes('could not find'))
-  );
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const maybeError = error as { message?: unknown; error?: unknown; detail?: unknown; details?: unknown };
+    const parts = [maybeError.message, maybeError.error, maybeError.detail, maybeError.details]
+      .filter(Boolean)
+      .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)));
+    if (parts.length > 0) return parts.join(': ');
+    return JSON.stringify(error);
+  }
+  return String(error);
 }
 
 interface UserStat {
@@ -188,25 +194,28 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     setError(null);
 
     try {
-      let { data, error: dbError } = await supabase
-        .from('registrations')
-        .select('status, last_seen_at, created_at');
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) throw new Error('You must be logged in as an admin.');
 
-      if (dbError && isSchemaCacheColumnError(dbError)) {
-        console.warn(
-          'registrations.last_seen_at is unavailable; dashboard online counts will be unavailable',
-          dbError,
+      const { data, error: fnError } = await supabase.functions.invoke('get-admin-users', {
+        headers: { Authorization: `Bearer ${currentSession.access_token}` },
+      });
+      if (fnError) throw fnError;
+      if (!data?.ok) {
+        throw new Error(
+          [data?.error, data?.detail, data?.details]
+            .filter(Boolean)
+            .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)))
+            .join(': ') || 'Unable to load dashboard data.',
         );
-        ({ data, error: dbError } = await supabase
-          .from('registrations')
-          .select('status, created_at'));
       }
 
-      if (dbError) throw dbError;
-
-      const users: UserStat[] = (data || []).map((user) => ({
-        ...user,
-        last_seen_at: 'last_seen_at' in user ? user.last_seen_at : null,
+      const users: UserStat[] = (data.users || []).map((user: Partial<UserStat>) => ({
+        status: user.status || 'unknown',
+        created_at: user.created_at || null,
+        last_seen_at: user.last_seen_at || null,
       }));
       const now = Date.now();
 
@@ -252,8 +261,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       setDailyRegs(days);
       setLastUpdated(new Date());
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Failed to load dashboard data: ${msg}`);
+      setError(`Failed to load dashboard data: ${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
     }
@@ -275,7 +283,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   }, [isAdmin]);
 
   // Delegate to sub-pages
-  if (activePage === 'user-reviews') return <AdminUserReview />;
+  if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'flagged-posts') return <ReviewFlaggedPosts />;
   if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   if (activePage === 'function-ping') {

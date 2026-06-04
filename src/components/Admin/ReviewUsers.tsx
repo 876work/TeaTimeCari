@@ -12,13 +12,9 @@ import {
   ChevronDown,
   ChevronUp,
   Camera,
-  Wifi,
-  WifiOff,
   Users,
   CalendarDays,
   Globe,
-  Monitor,
-  Smartphone,
   MapPin,
   Clock,
   Ban,
@@ -79,7 +75,19 @@ const safeDisplayName = (u: UserRow) => {
   return (full ?? '').trim() || u.username || u.email || 'Unknown user';
 };
 
-const getErrorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const getErrorMessage = (err: unknown) => {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object') {
+    const maybeError = err as { message?: unknown; error?: unknown; detail?: unknown; details?: unknown };
+    const parts = [maybeError.message, maybeError.error, maybeError.detail, maybeError.details]
+      .filter(Boolean)
+      .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)));
+    if (parts.length > 0) return parts.join(': ');
+    return JSON.stringify(err);
+  }
+  return String(err);
+};
 
 const fmt = (value?: string | null) => {
   if (!value) return null;
@@ -235,7 +243,13 @@ function DetailPanel({ user }: { user: UserRow }) {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function AdminUserReview() {
+export function AdminUserReview({
+  activePage = 'user-reviews',
+  onNavigate,
+}: {
+  activePage?: string;
+  onNavigate?: (page: string) => void;
+}) {
   const supabase = useSupabaseClient();
   const session = useSession();
 
@@ -275,7 +289,14 @@ export function AdminUserReview() {
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
       if (fnErr) throw fnErr;
-      if (!data?.ok) throw new Error(data?.error || 'Unable to load users.');
+      if (!data?.ok) {
+        throw new Error(
+          [data?.error, data?.detail, data?.details]
+            .filter(Boolean)
+            .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)))
+            .join(': ') || 'Unable to load users.',
+        );
+      }
 
       const mapped: UserRow[] = (data.users ?? []).map((u: UserRow) => ({
         ...u,
@@ -393,6 +414,9 @@ export function AdminUserReview() {
 
   const summaryStats = {
     total: users.length,
+    pending: users.filter((u) => u.status === 'pending').length,
+    approved: users.filter((u) => u.status === 'approved').length,
+    verified: users.filter((u) => u.status === 'verified').length,
     online: users.filter(isOnline).length,
     offline: users.filter((u) => !isOnline(u)).length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
@@ -425,7 +449,7 @@ export function AdminUserReview() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <AdminLayout>
+    <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
 
         {/* Page header */}
@@ -458,8 +482,8 @@ export function AdminUserReview() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <SummaryCard label="Online Now" value={summaryStats.online} icon={<Wifi className="w-4 h-4" />} iconBg="bg-green-50" iconColor="text-green-600" />
-          <SummaryCard label="Offline" value={summaryStats.offline} icon={<WifiOff className="w-4 h-4" />} iconBg="bg-slate-100" iconColor="text-slate-500" />
+          <SummaryCard label="Pending Approval" value={summaryStats.pending} icon={<Clock className="w-4 h-4" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
+          <SummaryCard label="Approved" value={summaryStats.approved} icon={<CheckCircle className="w-4 h-4" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
           <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
         </div>
 
@@ -681,18 +705,20 @@ export function AdminUserReview() {
                                   <button
                                     onClick={() => handleApprove(user)}
                                     disabled={isProcessing}
-                                    title="Approve"
-                                    className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                    title="Approve user"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                   >
                                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                    <span>Approve</span>
                                   </button>
                                   <button
                                     onClick={() => handleReject(user)}
                                     disabled={isProcessing}
-                                    title="Reject"
-                                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                    title="Reject user"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
                                   >
                                     <XCircle className="w-4 h-4" />
+                                    <span>Reject</span>
                                   </button>
                                 </>
                               )}
