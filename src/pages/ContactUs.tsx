@@ -212,7 +212,8 @@ export default function ContactUs() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form name="contact" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="contact" readOnly />
           {/* Name */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,6 +226,7 @@ export default function ContactUs() {
               <input
                 type="text"
                 id="name"
+                name="name"
                 value={formData.name}
                 onChange={handleInputChange('name')}
                 onBlur={handleBlur('name')}
@@ -257,6 +259,7 @@ export default function ContactUs() {
               <input
                 type="email"
                 id="email"
+                name="email"
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 onBlur={handleBlur('email')}
@@ -290,6 +293,7 @@ export default function ContactUs() {
               <input
                 type="text"
                 id="phone"
+                name="phone"
                 value={formData.phone}
                 onChange={handleInputChange('phone')}
                 onBlur={handleBlur('phone')}
@@ -321,6 +325,7 @@ export default function ContactUs() {
               </div>
               <textarea
                 id="message"
+                name="message"
                 value={formData.message}
                 onChange={handleInputChange('message')}
                 onBlur={handleBlur('message')}

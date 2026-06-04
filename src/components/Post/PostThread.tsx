@@ -657,7 +657,8 @@ export function PostThread({ postId }: PostThreadProps) {
           </div>
 
           {/* Add Comment Form */}
-          <form onSubmit={handleSubmitComment} className="border-t border-gray-200 pt-6">
+          <form name="post-comment" method="POST" data-netlify="true" onSubmit={handleSubmitComment} className="border-t border-gray-200 pt-6">
+            <input type="hidden" name="form-name" value="post-comment" readOnly />
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reply to this post
@@ -690,6 +691,7 @@ export function PostThread({ postId }: PostThreadProps) {
                 
                 <textarea
                   ref={commentInputRef}
+                  name="comment"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Share your thoughts on this post..."
