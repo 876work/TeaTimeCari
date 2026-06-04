@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration } from '@/features/admin/registrations/api/approveRegistration';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -37,7 +38,7 @@ interface UserRow {
   gender?: 'Male' | 'Female' | null;
   captureType?: 'selfie' | 'id' | null;
   imageData?: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'verified' | 'banned';
+  status: 'pending' | 'approved' | 'rejected' | 'verified' | 'banned' | 'suspended';
   created_at?: string | null;
   password_temp?: string | null;
   rejection_reason?: string | null;
@@ -129,6 +130,7 @@ function StatusBadge({ status }: { status: string }) {
     approved: 'bg-blue-50 text-blue-700 border-blue-200',
     rejected: 'bg-slate-100 text-slate-600 border-slate-200',
     banned: 'bg-red-50 text-red-700 border-red-200',
+    suspended: 'bg-orange-50 text-orange-700 border-orange-200',
   };
   const cls = map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200';
   return (
@@ -288,7 +290,7 @@ export function AdminUserReview({
       const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]
@@ -361,7 +363,7 @@ export function AdminUserReview({
         },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
@@ -371,37 +373,27 @@ export function AdminUserReview({
     }
   };
 
-  const handleBan = async (user: UserRow) => {
-    if (!confirm(`Ban ${user.username ?? safeDisplayName(user)}?`)) return;
+  const updateSuspension = async (user: UserRow, action: 'suspend' | 'unsuspend') => {
+    const verb = action === 'suspend' ? 'Suspend' : 'Remove suspension for';
+    if (!confirm(`${verb} ${user.username ?? safeDisplayName(user)}?`)) return;
     setProcessingId(user.id);
     setError(null);
     try {
-      const { error: e } = await supabase
-        .from('registrations')
-        .update({ status: 'banned' })
-        .eq('id', user.id);
-      if (e && e.code !== '42P01') throw e;
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'banned' } : u)));
-    } catch (err) {
-      setError(`Failed to ban: ${getErrorMessage(err)}`);
-    } finally {
-      setProcessingId(null);
-    }
-  };
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+      if (!s) throw new Error('Not authenticated.');
 
-  const handleUnban = async (user: UserRow) => {
-    if (!confirm(`Unban ${user.username ?? safeDisplayName(user)}?`)) return;
-    setProcessingId(user.id);
-    setError(null);
-    try {
-      const { error: e } = await supabase
-        .from('registrations')
-        .update({ status: 'verified' })
-        .eq('id', user.id);
-      if (e && e.code !== '42P01') throw e;
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'verified' } : u)));
+      const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-status', {
+        body: { registration_id: user.id, action },
+        headers: { Authorization: `Bearer ${s.access_token}` },
+      });
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+      if (!data?.ok) throw new Error(data?.error || 'Failed to update user status');
+
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: data.status } : u)));
     } catch (err) {
-      setError(`Failed to unban: ${getErrorMessage(err)}`);
+      setError(`Failed to ${action === 'suspend' ? 'suspend user' : 'remove suspension'}: ${getErrorMessage(err)}`);
     } finally {
       setProcessingId(null);
     }
@@ -417,6 +409,7 @@ export function AdminUserReview({
     pending: users.filter((u) => u.status === 'pending').length,
     approved: users.filter((u) => u.status === 'approved').length,
     verified: users.filter((u) => u.status === 'verified').length,
+    suspended: users.filter((u) => u.status === 'suspended').length,
     online: users.filter(isOnline).length,
     offline: users.filter((u) => !isOnline(u)).length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
@@ -480,10 +473,11 @@ export function AdminUserReview({
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
           <SummaryCard label="Pending Approval" value={summaryStats.pending} icon={<Clock className="w-4 h-4" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
           <SummaryCard label="Approved" value={summaryStats.approved} icon={<CheckCircle className="w-4 h-4" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+          <SummaryCard label="Suspended" value={summaryStats.suspended} icon={<Ban className="w-4 h-4" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
           <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
         </div>
 
@@ -522,6 +516,7 @@ export function AdminUserReview({
                 <option value="verified">Verified</option>
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
+                <option value="suspended">Suspended</option>
               </select>
 
               <select
@@ -723,24 +718,24 @@ export function AdminUserReview({
                                 </>
                               )}
 
-                              {/* Ban (verified) */}
-                              {user.status === 'verified' && (
+                              {/* Suspend (approved/verified) */}
+                              {(user.status === 'approved' || user.status === 'verified') && (
                                 <button
-                                  onClick={() => handleBan(user)}
+                                  onClick={() => updateSuspension(user, 'suspend')}
                                   disabled={isProcessing}
-                                  title="Ban user"
-                                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                                  title="Suspend user"
+                                  className="p-1.5 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
                                 </button>
                               )}
 
-                              {/* Unban (banned) */}
-                              {user.status === 'banned' && (
+                              {/* Remove suspension */}
+                              {user.status === 'suspended' && (
                                 <button
-                                  onClick={() => handleUnban(user)}
+                                  onClick={() => updateSuspension(user, 'unsuspend')}
                                   disabled={isProcessing}
-                                  title="Unban user"
+                                  title="Remove suspension"
                                   className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
