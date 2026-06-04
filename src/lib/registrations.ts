@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { trackAuthLogin } from '@/hooks/useAuthActivityTracking';
 
 export interface RegistrationPayload {
   fullName: string;
@@ -18,6 +19,8 @@ export interface RegistrationResponse {
   alreadyExists?: boolean;
   recoveredAuthUser?: boolean;
   status?: 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
+  sessionSynced?: boolean;
+  sessionError?: string;
   error?: string;
   detail?: string;
 }
@@ -79,6 +82,17 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
     throw new Error('Password is required to create your account.');
   }
 
+  const { data: existingSession } = await supabase.auth.getSession();
+  const activeEmail = existingSession.session?.user.email?.trim().toLowerCase();
+
+  if (activeEmail && activeEmail !== normalizedPayload.email) {
+    const { error: signOutError } = await supabase.auth.signOut();
+
+    if (signOutError) {
+      throw new Error('For your security, please sign out of the current account before registering a different email.');
+    }
+  }
+
   console.log('Submitting registration with normalized data:', {
     email: normalizedPayload.email,
     username: normalizedPayload.username,
@@ -99,7 +113,30 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
     throw new Error(data?.error || 'Registration failed. Please try again.');
   }
 
-  console.log('Registration submitted successfully:', data);
+  if (!data.alreadyExists) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: normalizedPayload.email,
+      password: normalizedPayload.password,
+    });
+
+    if (signInError) {
+      await supabase.auth.signOut().catch((signOutError) => {
+        console.warn('Unable to clear auth session after registration sign-in failed:', signOutError);
+      });
+
+      data.sessionSynced = false;
+      data.sessionError = signInError.message;
+    } else {
+      data.sessionSynced = true;
+      await trackAuthLogin();
+    }
+  }
+
+  console.log('Registration submitted successfully:', {
+    alreadyExists: Boolean(data.alreadyExists),
+    isNewSubmission: !data.alreadyExists,
+    sessionSynced: data.sessionSynced ?? false,
+  });
 
   return {
     data,
