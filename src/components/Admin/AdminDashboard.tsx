@@ -24,6 +24,7 @@ import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
 import { DiscourseCommunityAdmins } from './DiscourseCommunityAdmins';
 import FunctionPing from '../../dev/FunctionPing';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -202,7 +203,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       const { data, error: fnError } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
-      if (fnError) throw fnError;
+      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]

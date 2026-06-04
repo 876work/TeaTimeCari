@@ -136,24 +136,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const rejectionReason = reason || "Your application did not meet our requirements";
-    
-    const subject = "Your account application has been reviewed";
+    const rejectionReason = reason || "No reason provided";
+
+    const subject = "Your TeaTime Cari account was not approved";
     const text = `Hi ${actualFirstName},
-  }
-}
-)
 
-Thank you for your interest in joining Tea Time Cari.
+We are unable to approve your account at this time.
 
-Unfortunately, we cannot approve your account at this time.
-
-Reason: ${rejectionReason}
-
-If you have questions about this decision or would like to appeal, please reply to this email with additional information.
-
-Regards,
-The Tea Time Cari Team`;
+Best regards,
+TeaTime Cari`;
 
     // Handle dry run
     if (dryRun) {
@@ -176,7 +167,7 @@ The Tea Time Cari Team`;
 
     // Send rejection email
     try {
-      const emailResult = await sendRejectionEmail(email, actualFirstName, rejectionReason);
+      const emailResult = await sendRejectionEmail(email, actualFirstName);
       if (!emailResult.success) {
         throw new Error(emailResult.error || "Failed to send rejection email");
       }
