@@ -21,20 +21,33 @@ function isSchemaCacheColumnError(error: { code?: string; message?: string } | n
   );
 }
 
-const BASE_REGISTRATION_SELECT = `
-        id,
-        firstName,
-        lastName,
-        email,
-        phone,
-        username,
-        gender,
-        captureType,
-        imageData,
-        status,
-        created_at,
-        rejection_reason
-      `;
+function missingColumnName(error: { message?: string } | null) {
+  const message = error?.message || "";
+  return (
+    message.match(/Could not find the '([^']+)' column/i)?.[1] ||
+    message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i)?.[1] ||
+    null
+  );
+}
+
+const REGISTRATION_FIELDS = [
+  "id",
+  "firstName",
+  "lastName",
+  "email",
+  "phone",
+  "username",
+  "gender",
+  "captureType",
+  "imageData",
+  "status",
+  "created_at",
+  "rejection_reason",
+];
+
+const OPTIONAL_REGISTRATION_FIELDS = new Set([
+  "rejection_reason",
+]);
 
 const TRACKING_FIELDS = [
   "registration_ip_address",
@@ -53,10 +66,10 @@ const TRACKING_FIELDS = [
   "last_seen_at",
 ];
 
-function withNullTrackingFields(users: Record<string, unknown>[]) {
+function withNullFields(users: Record<string, unknown>[], fields: string[]) {
   return users.map((user) => ({
     ...user,
-    ...Object.fromEntries(TRACKING_FIELDS.map((field) => [field, null])),
+    ...Object.fromEntries(fields.filter((field) => !(field in user)).map((field) => [field, null])),
   }));
 }
 
@@ -76,11 +89,56 @@ async function isAdmin(userId: string, email?: string | null) {
     .maybeSingle();
 
   if (error) {
-    if (error.code === "42703" || error.code === "42P01") return adminEmailFallback;
+    if (error.code === "42703" || error.code === "42P01" || isSchemaCacheColumnError(error)) {
+      return adminEmailFallback;
+    }
     throw error;
   }
 
   return Boolean(data?.is_admin) || adminEmailFallback;
+}
+
+async function fetchRegistrations() {
+  const selectedFields = new Set([...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
+  const omittedFields = new Set<string>();
+
+  for (let attempts = 0; attempts < REGISTRATION_FIELDS.length + TRACKING_FIELDS.length + 1; attempts += 1) {
+    const select = [...selectedFields].join(", ");
+    const { data, error } = await admin
+      .from("registrations")
+      .select(select)
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      return {
+        users: withNullFields((data ?? []) as Record<string, unknown>[], [...omittedFields]),
+        trackingFieldsAvailable: TRACKING_FIELDS.every((field) => selectedFields.has(field)),
+        omittedFields: [...omittedFields],
+      };
+    }
+
+    if (!isSchemaCacheColumnError(error)) throw error;
+
+    const missingColumn = missingColumnName(error);
+    const fieldToRemove = missingColumn && selectedFields.has(missingColumn)
+      ? missingColumn
+      : TRACKING_FIELDS.find((field) => selectedFields.has(field));
+
+    if (!fieldToRemove) throw error;
+
+    if (!TRACKING_FIELDS.includes(fieldToRemove) && !OPTIONAL_REGISTRATION_FIELDS.has(fieldToRemove)) {
+      throw error;
+    }
+
+    console.warn(
+      `registrations column ${fieldToRemove} is unavailable; retrying admin user lookup without it`,
+      error,
+    );
+    selectedFields.delete(fieldToRemove);
+    omittedFields.add(fieldToRemove);
+  }
+
+  throw new Error("Unable to resolve available registration columns");
 }
 
 serve(async (req) => {
@@ -95,30 +153,13 @@ serve(async (req) => {
     if (authError || !authData.user) return json(401, { error: "Unauthorized" });
     if (!(await isAdmin(authData.user.id, authData.user.email))) return json(403, { error: "Forbidden: admin only" });
 
-    let { data, error } = await admin
-      .from("registrations")
-      .select(`${BASE_REGISTRATION_SELECT}, ${TRACKING_FIELDS.join(", ")}`)
-      .order("created_at", { ascending: false });
-    let trackingFieldsAvailable = true;
-
-    if (error && isSchemaCacheColumnError(error)) {
-      console.warn(
-        "registrations tracking columns are unavailable; retrying admin user lookup without tracking fields",
-        error,
-      );
-      trackingFieldsAvailable = false;
-      ({ data, error } = await admin
-        .from("registrations")
-        .select(BASE_REGISTRATION_SELECT)
-        .order("created_at", { ascending: false }));
-    }
-
-    if (error) return json(500, { error: "users lookup failed", detail: error.message });
+    const result = await fetchRegistrations();
 
     return json(200, {
       ok: true,
-      users: trackingFieldsAvailable ? data ?? [] : withNullTrackingFields(data ?? []),
-      trackingFieldsAvailable,
+      users: result.users,
+      trackingFieldsAvailable: result.trackingFieldsAvailable,
+      omittedFields: result.omittedFields,
     });
   } catch (error) {
     return json(500, { error: "internal", detail: String(error) });
