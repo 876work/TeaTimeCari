@@ -70,16 +70,18 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function canViewProfiles(status?: string | null): boolean {
+  return ['approved', 'verified'].includes((status || '').toLowerCase());
+}
+
 export function UserProfile({ userId }: UserProfileProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
 
-  // Go back to feed function - defined early to avoid initialization errors
   const goBackToFeed = () => {
     window.history.back();
   };
 
-  // State management
   const [currentUser, setCurrentUser] = useState<UserProfileData | null>(null);
   const [profileUser, setProfileUser] = useState<UserProfileData | null>(null);
   const [userPosts, setUserPosts] = useState<UserPost[]>([]);
@@ -90,7 +92,7 @@ export function UserProfile({ userId }: UserProfileProps) {
     totalGreenFlags: 0,
     totalRedFlags: 0
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -104,155 +106,7 @@ export function UserProfile({ userId }: UserProfileProps) {
   const [securityLoading, setSecurityLoading] = useState(false);
   const [securityMessage, setSecurityMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Consolidated data fetching
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      setError(null);
-      
-      if (!session?.user?.id) {
-        setError('Please log in to view profiles.');
-        return;
-      }
-
-      if (!userId) {
-        setError('No user ID provided.');
-        return;
-      }
-
-      try {
-        // Fetch current user and check admin status
-        const { data: userData, error: userError } = await supabase
-          .from('registrations')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (userError) {
-          console.error('Error fetching current user:', userError);
-          setError('Failed to load user data. Please try again.');
-          return;
-        }
-
-        if (!userData) {
-          setError('User registration not found. Please complete registration first.');
-          return;
-        }
-
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to view profiles.');
-          return;
-        }
-
-        setCurrentUser(userData);
-        
-        // Simple admin check - in production, implement proper role-based access control
-        setIsAdmin(session?.user?.email?.includes('admin') || false);
-        
-        // Fetch profile user data
-        const { data: profileData, error: profileError } = await supabase
-          .from('registrations')
-          .select('id, firstName, lastName, username, gender, status, created_at')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Error fetching profile user:', profileError);
-          if (profileError.code === 'PGRST116') {
-            setError('User not found.');
-          } else {
-            setError('Failed to load profile data.');
-          }
-          return;
-        }
-
-        const fullName = [profileData?.firstName, profileData?.lastName]
-          .filter(Boolean)
-          .join(' ')
-          .trim() || profileData?.username || 'User';
-
-        setProfileUser(profileData ? { ...profileData, fullName } : null);
-        
-        // Fetch user posts, comments, and calculate stats
-        const { data: postsData, error: postsError } = await supabase
-          .from('posts')
-          .select('id, photo_url, green_flag_count, red_flag_count, created_at')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-
-        if (postsError && postsError.code !== '42P01') {
-          throw postsError;
-        }
-
-        const posts = postsData || [];
-        setUserPosts(posts);
-
-        // Fetch user comments with post info
-        const { data: commentsData, error: commentsError } = await supabase
-          .from('comments')
-          .select(`
-            id, 
-            content, 
-            created_at, 
-            post_id,
-            posts!inner(photo_url, username)
-          `)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-
-        if (commentsError && commentsError.code !== '42P01') {
-          console.error('Error fetching comments:', commentsError);
-          // Don't fail completely if comments can't be loaded
-          setUserComments([]);
-        } else {
-          const comments = (commentsData || []).map(comment => {
-            // Handle the posts relationship properly
-            const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
-            return {
-              ...comment,
-              post: post
-            };
-          });
-          setUserComments(comments);
-        }
-
-        // Calculate stats
-        const totalGreenFlags = posts.reduce((sum, post) => sum + post.green_flag_count, 0);
-        const totalRedFlags = posts.reduce((sum, post) => sum + post.red_flag_count, 0);
-        const totalComments = userComments.length;
-
-        setUserStats({
-          totalPosts: posts.length,
-          totalComments,
-          totalGreenFlags,
-          totalRedFlags
-        });
-
-        // If no real data, set mock data for demonstration
-        if (posts.length === 0 && totalComments === 0) {
-          setMockData(profileData);
-        }
-
-      } catch (err: unknown) {
-        console.error('Error fetching user data:', err);
-        setError(`Failed to load user data: ${getErrorMessage(err)}`);
-        // Fallback to mock data for demonstration
-        if (profileData) {
-          setMockData(profileData);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllData();
-  // Existing mock-data fallback is intentionally kept out of the dependency list to avoid refetch loops.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, userId, supabase]);
-
-  // Mock data for demonstration
   const setMockData = (profileData?: UserProfileData) => {
-    // Set mock profile user if not provided
     if (!profileData) {
       const mockProfileUser: UserProfileData = {
         id: userId,
@@ -323,7 +177,157 @@ export function UserProfile({ userId }: UserProfileProps) {
     });
   };
 
-  // Handle ban/unban user
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null);
+
+      let profileDataForFallback: UserProfileData | null = null;
+
+      try {
+        if (!session?.user?.id) {
+          setError('Please log in to view profiles.');
+          return;
+        }
+
+        if (!userId) {
+          setError('No user ID provided.');
+          return;
+        }
+
+        if (!isValidUUID(userId)) {
+          setError('The provided user ID is not valid. Please check the URL and try again.');
+          return;
+        }
+
+        const { data: userData, error: userError } = await supabase
+          .from('registrations')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (userError) {
+          console.error('Error fetching current user:', userError);
+          setError('Failed to load user data. Please try again.');
+          return;
+        }
+
+        if (!userData) {
+          setError('User registration not found. Please complete registration first.');
+          return;
+        }
+
+        if (!canViewProfiles(userData.status)) {
+          setError('Access denied. Your account must be approved to view profiles.');
+          return;
+        }
+
+        setCurrentUser(userData);
+
+        setIsAdmin(session?.user?.email?.includes('admin') || false);
+
+        const { data: profileData, error: profileError } = await supabase
+          .from('registrations')
+          .select('id, firstName, lastName, username, gender, status, created_at')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching profile user:', profileError);
+          if (profileError.code === 'PGRST116') {
+            setError('User not found.');
+          } else {
+            setError('Failed to load profile data.');
+          }
+          return;
+        }
+
+        if (!profileData) {
+          setError('User not found.');
+          return;
+        }
+
+        const fullName = [profileData.firstName, profileData.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || profileData.username || 'User';
+
+        profileDataForFallback = { ...profileData, fullName };
+        setProfileUser(profileDataForFallback);
+
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select('id, photo_url, green_flag_count, red_flag_count, created_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (postsError && postsError.code !== '42P01') {
+          throw postsError;
+        }
+
+        const posts = postsData || [];
+        setUserPosts(posts);
+
+        const { data: commentsData, error: commentsError } = await supabase
+          .from('comments')
+          .select(`
+            id,
+            content,
+            created_at,
+            post_id,
+            posts!inner(photo_url, username)
+          `)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        let comments: UserComment[] = [];
+
+        if (commentsError && commentsError.code !== '42P01') {
+          console.error('Error fetching comments:', commentsError);
+          setUserComments([]);
+        } else {
+          comments = (commentsData || []).map(comment => {
+            const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
+            return {
+              ...comment,
+              post
+            };
+          });
+          setUserComments(comments);
+        }
+
+        const totalGreenFlags = posts.reduce((sum, post) => sum + post.green_flag_count, 0);
+        const totalRedFlags = posts.reduce((sum, post) => sum + post.red_flag_count, 0);
+        const totalComments = comments.length;
+
+        setUserStats({
+          totalPosts: posts.length,
+          totalComments,
+          totalGreenFlags,
+          totalRedFlags
+        });
+
+        if (posts.length === 0 && totalComments === 0) {
+          setMockData(profileDataForFallback);
+        }
+      } catch (err: unknown) {
+        console.error('Error fetching user data:', err);
+        setError(`Failed to load user data: ${getErrorMessage(err)}`);
+
+        if (profileDataForFallback) {
+          setMockData(profileDataForFallback);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+
+    // Existing mock data fallback is intentionally kept out of the dependency list to avoid refetch loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, userId, supabase]);
+
   const handleToggleBan = async () => {
     if (!profileUser || !isAdmin || processingBan) return;
 
@@ -338,7 +342,7 @@ export function UserProfile({ userId }: UserProfileProps) {
 
     try {
       const newStatus = isBanned ? 'verified' : 'banned';
-      
+
       const { error: updateError } = await supabase
         .from('registrations')
         .update({ status: newStatus })
@@ -348,10 +352,8 @@ export function UserProfile({ userId }: UserProfileProps) {
         throw updateError;
       }
 
-      // Update local state
       setProfileUser(prev => prev ? { ...prev, status: newStatus } : null);
 
-      // Optional: Log moderation action
       try {
         await supabase
           .from('moderation_logs')
@@ -367,7 +369,6 @@ export function UserProfile({ userId }: UserProfileProps) {
       }
 
       alert(`User @${profileUser.username} has been ${action}ned successfully.`);
-
     } catch (err: unknown) {
       console.error(`Error ${action}ning user:`, err);
       setError(`Failed to ${action} user: ${getErrorMessage(err)}`);
@@ -445,19 +446,16 @@ export function UserProfile({ userId }: UserProfileProps) {
     setSecurityMessage({ ok: true, text: 'Your password has been updated successfully.' });
   };
 
-  // Open image modal
   const openImageModal = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setIsImageModalOpen(true);
   };
 
-  // Close image modal
   const closeImageModal = () => {
     setSelectedImage(null);
     setIsImageModalOpen(false);
   };
 
-  // Validate userId after hooks are initialized so React hook ordering stays stable.
   if (!userId || !isValidUUID(userId)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
@@ -480,8 +478,7 @@ export function UserProfile({ userId }: UserProfileProps) {
     );
   }
 
-  // Loading state
-  if (loading || !profileUser) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="flex items-center justify-center min-h-64">
@@ -494,15 +491,14 @@ export function UserProfile({ userId }: UserProfileProps) {
     );
   }
 
-  // Error state
-  if (error && !profileUser) {
+  if (!profileUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-red-600 mb-4">Profile Not Found</h2>
-            <p className="text-gray-700 mb-6">{error}</p>
+            <p className="text-gray-700 mb-6">{error || 'Profile data could not be loaded.'}</p>
             <button
               onClick={goBackToFeed}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
@@ -521,7 +517,6 @@ export function UserProfile({ userId }: UserProfileProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Back Button */}
         <button
           onClick={goBackToFeed}
           className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
@@ -530,22 +525,21 @@ export function UserProfile({ userId }: UserProfileProps) {
           Back to Feed
         </button>
 
-        {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center mb-4 sm:mb-0">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mr-4 ${
-                isBanned 
-                  ? 'bg-red-100' 
-                  : profileUser.gender === 'Male' 
-                    ? 'bg-blue-100' 
+                isBanned
+                  ? 'bg-red-100'
+                  : profileUser.gender === 'Male'
+                    ? 'bg-blue-100'
                     : 'bg-pink-100'
               }`}>
                 <User className={`w-8 h-8 ${
-                  isBanned 
-                    ? 'text-red-600' 
-                    : profileUser.gender === 'Male' 
-                      ? 'text-blue-600' 
+                  isBanned
+                    ? 'text-red-600'
+                    : profileUser.gender === 'Male'
+                      ? 'text-blue-600'
                       : 'text-pink-600'
                 }`} />
               </div>
@@ -576,7 +570,6 @@ export function UserProfile({ userId }: UserProfileProps) {
               </div>
             </div>
 
-            {/* Admin Controls */}
             {isAdmin && !isOwnProfile && (
               <button
                 onClick={handleToggleBan}
@@ -600,7 +593,6 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && profileUser && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4" role="alert">
             <div className="flex items-center">
@@ -610,7 +602,6 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
-        {/* Account Security */}
         {isOwnProfile && (
           <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-xl shadow-blue-900/10">
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#4B9EC8] px-6 py-6 text-white">
@@ -755,7 +746,6 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
-        {/* Stats Panel */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Statistics</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -766,6 +756,7 @@ export function UserProfile({ userId }: UserProfileProps) {
               <div className="text-2xl font-bold text-blue-600">{userStats.totalPosts}</div>
               <div className="text-sm text-gray-600">Posts</div>
             </div>
+
             <div className="text-center p-4 bg-purple-50 rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <MessageSquare className="w-5 h-5 text-purple-600 mr-1" />
@@ -773,6 +764,7 @@ export function UserProfile({ userId }: UserProfileProps) {
               <div className="text-2xl font-bold text-purple-600">{userStats.totalComments}</div>
               <div className="text-sm text-gray-600">Comments</div>
             </div>
+
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <CheckCircle className="w-5 h-5 text-green-600 mr-1" />
@@ -780,6 +772,7 @@ export function UserProfile({ userId }: UserProfileProps) {
               <div className="text-2xl font-bold text-green-600">{userStats.totalGreenFlags}</div>
               <div className="text-sm text-gray-600">Green Flags</div>
             </div>
+
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <Flag className="w-5 h-5 text-red-600 mr-1" />
@@ -790,13 +783,12 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         </div>
 
-        {/* Posts Grid */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <ImageIcon className="w-5 h-5 mr-2" />
             Posts ({userStats.totalPosts})
           </h2>
-          
+
           {userPosts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Camera className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -806,7 +798,7 @@ export function UserProfile({ userId }: UserProfileProps) {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {userPosts.map((post) => (
                 <div key={post.id} className="relative group">
-                  <div 
+                  <div
                     className="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                     onClick={() => openImageModal(post.photo_url)}
                   >
@@ -819,8 +811,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                       <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                     </div>
                   </div>
-                  
-                  {/* Flag counts overlay */}
+
                   <div className="absolute bottom-2 left-2 right-2 flex justify-between">
                     <div className="flex items-center bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs">
                       <CheckCircle className="w-3 h-3 mr-1" />
@@ -831,15 +822,13 @@ export function UserProfile({ userId }: UserProfileProps) {
                       {post.red_flag_count}
                     </div>
                   </div>
-                  
-                  {/* High red flag indicator */}
+
                   {post.red_flag_count > 10 && (
                     <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                       HIGH RISK
                     </div>
                   )}
-                  
-                  {/* Date */}
+
                   <div className="mt-2 text-xs text-gray-500 text-center">
                     {new Date(post.created_at).toLocaleDateString()}
                   </div>
@@ -849,13 +838,12 @@ export function UserProfile({ userId }: UserProfileProps) {
           )}
         </div>
 
-        {/* Comments List */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <MessageSquare className="w-5 h-5 mr-2" />
             Recent Comments ({userStats.totalComments})
           </h2>
-          
+
           {userComments.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -866,9 +854,8 @@ export function UserProfile({ userId }: UserProfileProps) {
               {userComments.map((comment) => (
                 <div key={comment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start space-x-4">
-                    {/* Post thumbnail */}
                     {comment.post && (
-                      <div 
+                      <div
                         className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden cursor-pointer"
                         onClick={() => openImageModal(comment.post!.photo_url)}
                       >
@@ -879,8 +866,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                         />
                       </div>
                     )}
-                    
-                    {/* Comment content */}
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center text-sm text-gray-500">
@@ -906,7 +892,6 @@ export function UserProfile({ userId }: UserProfileProps) {
           )}
         </div>
 
-        {/* Image Modal */}
         {isImageModalOpen && selectedImage && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
             <div className="relative max-w-4xl max-h-full">
