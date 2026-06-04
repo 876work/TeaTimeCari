@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
     }));
 
     // 3) Send one approval email via Resend. This is non-fatal if it fails.
-    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || username)
+    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || undefined)
       .catch((err) => ({
         success: false,
         error: String(err),

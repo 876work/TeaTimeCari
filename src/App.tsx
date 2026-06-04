@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { SessionContextProvider } from '@supabase/auth-helpers-react';
+import { SessionContextProvider, useSession } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
 import { StripeProvider } from './components/Payment/StripeProvider';
@@ -49,6 +49,17 @@ const adminPagePaths: Record<AdminPage, string> = {
   logs: '/admin/logs',
   'function-ping': '/admin/function-ping',
 };
+
+
+function OwnProfileRoute() {
+  const session = useSession();
+
+  if (!session?.user?.id) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <UserProfile userId={session.user.id} />;
+}
 
 function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
   const navigate = useNavigate();
@@ -195,6 +206,7 @@ function App() {
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/logout" element={<Logout />} />
+              <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />

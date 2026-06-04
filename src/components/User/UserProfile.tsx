@@ -15,9 +15,12 @@ import {
   Eye,
   X,
   Flag,
-  Heart,
   Users,
-  Camera
+  Camera,
+  Lock,
+  Mail,
+  KeyRound,
+  Sparkles
 } from 'lucide-react';
 import { isValidUUID } from '../../utils/validationUtils';
 
@@ -63,6 +66,14 @@ interface UserProfileProps {
   userId: string;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function canViewProfiles(status?: string | null): boolean {
+  return ['approved', 'verified'].includes((status || '').toLowerCase());
+}
+
 export function UserProfile({ userId }: UserProfileProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
@@ -72,29 +83,6 @@ export function UserProfile({ userId }: UserProfileProps) {
     window.history.back();
   };
 
-  // Validate userId before proceeding
-  if (!userId || !isValidUUID(userId)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Invalid User ID</h2>
-            <p className="text-gray-700 mb-6">
-              The provided user ID is not valid. Please check the URL and try again.
-            </p>
-            <button
-              onClick={goBackToFeed}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Go Back
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
   // State management
   const [currentUser, setCurrentUser] = useState<UserProfileData | null>(null);
   const [profileUser, setProfileUser] = useState<UserProfileData | null>(null);
@@ -113,25 +101,38 @@ export function UserProfile({ userId }: UserProfileProps) {
   const [processingBan, setProcessingBan] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [reauthCode, setReauthCode] = useState('');
+  const [reauthEmailSent, setReauthEmailSent] = useState(false);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Consolidated data fetching
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
       setError(null);
-      
-      if (!session?.user?.id) {
-        setError('Please log in to view profiles.');
-        return;
-      }
 
-      if (!userId) {
-        setError('No user ID provided.');
-        return;
-      }
+      let profileDataForFallback: UserProfileData | null = null;
 
       try {
-        // Fetch current user and check admin status
+        if (!session?.user?.id) {
+          setError('Please log in to view profiles.');
+          return;
+        }
+
+        if (!userId) {
+          setError('No user ID provided.');
+          return;
+        }
+
+        if (!isValidUUID(userId)) {
+          setError('The provided user ID is not valid. Please check the URL and try again.');
+          return;
+        }
+
+        // Fetch current user and check profile access status
         const { data: userData, error: userError } = await supabase
           .from('registrations')
           .select('*')
@@ -149,8 +150,8 @@ export function UserProfile({ userId }: UserProfileProps) {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to view profiles.');
+        if (!canViewProfiles(userData.status)) {
+          setError('Access denied. Your account must be approved to view profiles.');
           return;
         }
 
@@ -176,12 +177,18 @@ export function UserProfile({ userId }: UserProfileProps) {
           return;
         }
 
-        const fullName = [profileData?.firstName, profileData?.lastName]
+        if (!profileData) {
+          setError('User not found.');
+          return;
+        }
+
+        const fullName = [profileData.firstName, profileData.lastName]
           .filter(Boolean)
           .join(' ')
-          .trim() || profileData?.username || 'User';
+          .trim() || profileData.username || 'User';
 
-        setProfileUser(profileData ? { ...profileData, fullName } : null);
+        profileDataForFallback = { ...profileData, fullName };
+        setProfileUser(profileDataForFallback);
         
         // Fetch user posts, comments, and calculate stats
         const { data: postsData, error: postsError } = await supabase
@@ -210,12 +217,13 @@ export function UserProfile({ userId }: UserProfileProps) {
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
+        let comments: UserComment[] = [];
         if (commentsError && commentsError.code !== '42P01') {
           console.error('Error fetching comments:', commentsError);
           // Don't fail completely if comments can't be loaded
           setUserComments([]);
         } else {
-          const comments = (commentsData || []).map(comment => {
+          comments = (commentsData || []).map(comment => {
             // Handle the posts relationship properly
             const post = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
             return {
@@ -229,7 +237,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         // Calculate stats
         const totalGreenFlags = posts.reduce((sum, post) => sum + post.green_flag_count, 0);
         const totalRedFlags = posts.reduce((sum, post) => sum + post.red_flag_count, 0);
-        const totalComments = userComments.length;
+        const totalComments = comments.length;
 
         setUserStats({
           totalPosts: posts.length,
@@ -240,15 +248,15 @@ export function UserProfile({ userId }: UserProfileProps) {
 
         // If no real data, set mock data for demonstration
         if (posts.length === 0 && totalComments === 0) {
-          setMockData(profileData);
+          setMockData(profileDataForFallback);
         }
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching user data:', err);
-        setError(`Failed to load user data: ${err.message}`);
+        setError(`Failed to load user data: ${getErrorMessage(err)}`);
         // Fallback to mock data for demonstration
-        if (profileData) {
-          setMockData(profileData);
+        if (profileDataForFallback) {
+          setMockData(profileDataForFallback);
         }
       } finally {
         setLoading(false);
@@ -256,6 +264,8 @@ export function UserProfile({ userId }: UserProfileProps) {
     };
 
     fetchAllData();
+  // Existing mock-data fallback is intentionally kept out of the dependency list to avoid refetch loops.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, userId, supabase]);
 
   // Mock data for demonstration
@@ -376,12 +386,81 @@ export function UserProfile({ userId }: UserProfileProps) {
 
       alert(`User @${profileUser.username} has been ${action}ned successfully.`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Error ${action}ning user:`, err);
-      setError(`Failed to ${action} user: ${err.message}`);
+      setError(`Failed to ${action} user: ${getErrorMessage(err)}`);
     } finally {
       setProcessingBan(false);
     }
+  };
+
+  const resetPasswordForm = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setReauthCode('');
+    setReauthEmailSent(false);
+  };
+
+  const handleSendReauthCode = async () => {
+    if (!session?.user?.email) {
+      setSecurityMessage({ ok: false, text: 'Please sign in again before changing your password.' });
+      return;
+    }
+
+    setSecurityLoading(true);
+    setSecurityMessage(null);
+
+    const { error: reauthError } = await supabase.auth.reauthenticate();
+
+    setSecurityLoading(false);
+
+    if (reauthError) {
+      setSecurityMessage({ ok: false, text: reauthError.message });
+      return;
+    }
+
+    setReauthEmailSent(true);
+    setSecurityMessage({
+      ok: true,
+      text: `We sent a verification code to ${session.user.email}. Enter it below to finish updating your password.`,
+    });
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSecurityMessage(null);
+
+    if (newPassword.length < 10) {
+      setSecurityMessage({ ok: false, text: 'Your new password must be at least 10 characters long.' });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setSecurityMessage({ ok: false, text: 'The new passwords do not match.' });
+      return;
+    }
+
+    if (!reauthCode.trim()) {
+      setSecurityMessage({ ok: false, text: 'Enter the verification code from your reauthentication email.' });
+      return;
+    }
+
+    setSecurityLoading(true);
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+      nonce: reauthCode.trim(),
+    });
+
+    setSecurityLoading(false);
+
+    if (updateError) {
+      setSecurityMessage({ ok: false, text: updateError.message });
+      return;
+    }
+
+    resetPasswordForm();
+    setSecurityMessage({ ok: true, text: 'Your password has been updated successfully.' });
   };
 
   // Open image modal
@@ -396,8 +475,31 @@ export function UserProfile({ userId }: UserProfileProps) {
     setIsImageModalOpen(false);
   };
 
+  // Validate userId after hooks are initialized so React hook ordering stays stable.
+  if (!userId || !isValidUUID(userId)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Invalid User ID</h2>
+            <p className="text-gray-700 mb-6">
+              The provided user ID is not valid. Please check the URL and try again.
+            </p>
+            <button
+              onClick={goBackToFeed}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state
-  if (loading || !profileUser) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="flex items-center justify-center min-h-64">
@@ -411,14 +513,14 @@ export function UserProfile({ userId }: UserProfileProps) {
   }
 
   // Error state
-  if (error && !profileUser) {
+  if (!profileUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-red-600 mb-4">Profile Not Found</h2>
-            <p className="text-gray-700 mb-6">{error}</p>
+            <p className="text-gray-700 mb-6">{error || 'Profile data could not be loaded.'}</p>
             <button
               onClick={goBackToFeed}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
@@ -522,6 +624,151 @@ export function UserProfile({ userId }: UserProfileProps) {
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700 text-sm">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Account Security */}
+        {isOwnProfile && (
+          <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-xl shadow-blue-900/10">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#4B9EC8] px-6 py-6 text-white">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="mb-2 inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-50">
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Private account tools
+                  </div>
+                  <h2 className="text-2xl font-bold">Security settings</h2>
+                  <p className="mt-2 max-w-2xl text-sm text-blue-50/90">
+                    Change your password with Supabase reauthentication. We email you a one-time code first so your account stays protected.
+                  </p>
+                </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
+                  <Shield className="h-7 w-7" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
+                <div className="mb-4 flex items-center text-blue-900">
+                  <Mail className="mr-2 h-5 w-5" />
+                  <h3 className="font-semibold">How reauthentication works</h3>
+                </div>
+                <ol className="space-y-3 text-sm text-blue-950/80">
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">1</span>
+                    Send a verification code to your account email.
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+                    Enter the code here with your new password.
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">3</span>
+                    Supabase verifies the code before saving the password change.
+                  </li>
+                </ol>
+
+                <button
+                  type="button"
+                  onClick={handleSendReauthCode}
+                  disabled={securityLoading}
+                  className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {securityLoading && !reauthEmailSent ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  {reauthEmailSent ? 'Send another code' : 'Email me a verification code'}
+                </button>
+              </div>
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label htmlFor="new-password" className="mb-2 flex items-center text-sm font-semibold text-gray-800">
+                    <Lock className="mr-2 h-4 w-4 text-gray-500" />
+                    New password
+                  </label>
+                  <input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    autoComplete="new-password"
+                    minLength={10}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    placeholder="At least 10 characters"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="confirm-new-password" className="mb-2 flex items-center text-sm font-semibold text-gray-800">
+                    <Lock className="mr-2 h-4 w-4 text-gray-500" />
+                    Confirm new password
+                  </label>
+                  <input
+                    id="confirm-new-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    autoComplete="new-password"
+                    minLength={10}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    placeholder="Re-enter your new password"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="reauth-code" className="mb-2 flex items-center text-sm font-semibold text-gray-800">
+                    <KeyRound className="mr-2 h-4 w-4 text-gray-500" />
+                    Email verification code
+                  </label>
+                  <input
+                    id="reauth-code"
+                    type="text"
+                    value={reauthCode}
+                    onChange={(event) => setReauthCode(event.target.value)}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    placeholder="Enter the code from your email"
+                  />
+                </div>
+
+                {securityMessage && (
+                  <div className={`rounded-xl border p-3 text-sm ${
+                    securityMessage.ok
+                      ? 'border-green-200 bg-green-50 text-green-800'
+                      : 'border-red-200 bg-red-50 text-red-800'
+                  }`}>
+                    {securityMessage.text}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="submit"
+                    disabled={securityLoading || !reauthEmailSent}
+                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3d8bb3] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {securityLoading && reauthEmailSent ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Shield className="mr-2 h-4 w-4" />
+                    )}
+                    Update password securely
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetPasswordForm}
+                    className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

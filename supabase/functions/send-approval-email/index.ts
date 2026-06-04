@@ -1,11 +1,12 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
-import { generate6DigitCode, expiresAt, sha256Hex } from "../_shared/crypto.ts";
+import { generate6DigitCode, expiresAt } from "../_shared/crypto.ts";
 import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 
 interface EmailRequest {
   email: string;
-  firstName: string;
+  firstName?: string;
+  fullName?: string;
   dryRun?: boolean;
 }
 
@@ -23,6 +24,15 @@ interface EmailResponse {
     sendgridResponse?: string;
     configurationIssues?: string[];
   };
+}
+
+function getFirstNameFromFull(fullName: string): string | undefined {
+  return fullName.trim().split(/\s+/).filter(Boolean)[0];
+}
+
+function buildPreviewGreeting(firstName?: string): string {
+  const cleanName = firstName?.trim();
+  return cleanName ? `Hi ${cleanName},` : "Hello,";
 }
 
 async function generateAndStoreEmailCode(userId: string): Promise<{ code: string; error?: string }> {
@@ -82,18 +92,14 @@ Deno.serve(async (req: Request) => {
     const { email, firstName, dryRun } = requestData;
     
     // Handle both fullName and firstName for backward compatibility
-    let actualFirstName = firstName;
+    let actualFirstName = firstName?.trim();
     if (!actualFirstName && requestData.fullName) {
       actualFirstName = getFirstNameFromFull(requestData.fullName);
-    }
-    if (!actualFirstName) {
-      actualFirstName = 'user';
     }
 
     // Validate required fields
     const missingFields: string[] = [];
     if (!email) missingFields.push("email");
-    if (!actualFirstName || actualFirstName === 'user') missingFields.push("firstName or fullName");
 
     if (missingFields.length > 0) {
       return new Response(
@@ -148,32 +154,33 @@ Deno.serve(async (req: Request) => {
       // Continue without user ID for dry run or demo purposes
     }
 
-    // Generate email code if we have a user ID
-    let emailCode = `SLU${generate6DigitCode()}`;
+    // Generate email code if we have a user ID.
+    // The updated approval email no longer displays the code, but the existing
+    // code-generation side effect is preserved for any flows that still read it.
     let codeGenerationError: string | undefined;
 
     if (userId) {
-      const { code, error } = await generateAndStoreEmailCode(userId);
-      emailCode = code;
+      const { error } = await generateAndStoreEmailCode(userId);
       if (error) {
         codeGenerationError = error;
       }
     }
 
-    const subject = "Your account has been approved";
-    const text = `Hi ${actualFirstName},
-  }
-}
-)
-
-Good news — your account has been approved! 
-
-Your verification code is: ${emailCode}
-
-This code expires in 24 hours. Please enter it in the app to complete your account activation.
-
-Regards,
-The Tea Time Cari Team`;
+    const subject = "Your Tea Time Cari Account has been Approved";
+    const siteBaseUrl = (Deno.env.get("SITE_BASE_URL")?.trim() || "https://teatimecari.app").replace(/\/+$/, "");
+    const greeting = buildPreviewGreeting(actualFirstName);
+    const text = `${greeting}
+Your Tea Time Cari account has been approved.
+You can now log in here:
+${siteBaseUrl}/login
+Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy and Terms of Service before participating.
+Privacy Policy:
+${siteBaseUrl}/privacy-policy
+Terms of Service:
+${siteBaseUrl}/terms-of-service
+Welcome to the community.
+Best regards,
+Tea Time Cari Team`;
 
     // Handle dry run
     if (dryRun) {
