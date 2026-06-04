@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
+import { PublicLayout } from './components/PublicLayout';
 import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
 import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
 import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
@@ -197,19 +198,19 @@ function App() {
           <NotificationProvider>
             <Router>
             <Routes>
-              <Route path="/contact-us" element={<ContactUs />} />
+              <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
               <Route path="/kyc-pending" element={<KycPending />} />
               <Route path="/sso" element={<Sso />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
               <Route path="/community" element={<CommunityRedirect />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/Community-Guidelines" element={<CommunityGuidelines />} />
-              <Route path="/community-guidelines" element={<CommunityGuidelines />} />
-              <Route path="/faq" element={<Faq />} />
+              <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
+              <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
+              <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
+              <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
+              <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
+              <Route path="/Community-Guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
+              <Route path="/community-guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
+              <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
               <Route path="/logout" element={<Logout />} />
               <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
               
@@ -229,7 +230,7 @@ function App() {
                 path="/*" 
                 element={
                   showWelcomePage ? (
-                    <HomePage onGetStarted={handleGetStarted} />
+                    <PublicLayout><HomePage onGetStarted={handleGetStarted} /></PublicLayout>
                   ) : (
                     <AppLayout>
                       {currentPage === 'user-type-selection' && (
