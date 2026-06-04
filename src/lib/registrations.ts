@@ -8,7 +8,7 @@ export interface RegistrationPayload {
   gender: 'Male' | 'Female';
   captureType: 'selfie' | 'id';
   imageData: string;
-  status?: 'pending' | 'approved' | 'rejected' | 'banned';
+  status?: 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
   password_temp?: string;
 }
 
@@ -17,7 +17,7 @@ export interface RegistrationResponse {
   userId?: string;
   alreadyExists?: boolean;
   recoveredAuthUser?: boolean;
-  status?: 'pending' | 'approved' | 'rejected' | 'banned';
+  status?: 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
   error?: string;
   detail?: string;
 }

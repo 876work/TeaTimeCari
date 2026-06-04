@@ -60,6 +60,7 @@ interface DashboardStats {
   registeredToday: number;
   pending: number;
   banned: number;
+  suspended: number;
   approved: number;
   verified: number;
 }
@@ -180,6 +181,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     registeredToday: 0,
     pending: 0,
     banned: 0,
+    suspended: 0,
     approved: 0,
     verified: 0,
   });
@@ -238,6 +240,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         registeredToday: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
         pending: users.filter((u) => u.status === 'pending').length,
         banned: users.filter((u) => u.status === 'banned').length,
+        suspended: users.filter((u) => u.status === 'suspended').length,
         approved: users.filter((u) => u.status === 'approved').length,
         verified: users.filter((u) => u.status === 'verified').length,
       });
@@ -367,7 +370,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         </div>
 
         {/* Secondary stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             label="Pending Approval"
             value={stats.pending}
@@ -393,6 +396,15 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             iconBg="bg-blue-50"
             iconColor="text-blue-500"
             sub="Access granted"
+            loading={loading}
+          />
+          <StatCard
+            label="Suspended"
+            value={stats.suspended}
+            icon={<UserX className="w-5 h-5" />}
+            iconBg="bg-orange-50"
+            iconColor="text-orange-500"
+            sub="Temporarily blocked"
             loading={loading}
           />
           <StatCard

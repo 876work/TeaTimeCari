@@ -76,6 +76,7 @@ Thanks for signing up for TeaTime Cari. Your account is currently under review, 
 
 Best regards,
 TeaTime Cari`;
+
   const html = `<p>${greeting}</p><p>Thanks for signing up for TeaTime Cari. Your account is currently under review, and you will receive a response within 48 hours.</p><p>Best regards,<br/>TeaTime Cari</p>`;
 
   return sendResendEmail({ to, subject, html, text });
@@ -88,6 +89,7 @@ export async function sendApprovalEmail(to: string, firstName?: string): Promise
   const loginUrl = `${siteBaseUrl}/login`;
   const privacyUrl = `${siteBaseUrl}/privacy-policy`;
   const termsUrl = `${siteBaseUrl}/terms-of-service`;
+
   const text = `${greeting}
 
 Your account has been approved. You can now log in here: ${loginUrl}
@@ -96,6 +98,7 @@ Please be respectful at all times while participating in the community. Please a
 
 Best regards,
 TeaTime Cari`;
+
   const html = `<p>${greeting}</p><p>Your account has been approved. You can now log in here: <a href="${loginUrl}">${loginUrl}</a></p><p>Please be respectful at all times while participating in the community. Please also review our <a href="${privacyUrl}">Privacy Policy</a> and <a href="${termsUrl}">Terms of Service</a>.</p><p>Best regards,<br/>TeaTime Cari</p>`;
 
   return sendResendEmail({ to, subject, html, text });
@@ -104,13 +107,50 @@ TeaTime Cari`;
 export async function sendRejectionEmail(to: string, firstName?: string): Promise<ResendEmailResult> {
   const greeting = buildGreeting(firstName);
   const subject = "Your TeaTime Cari account was not approved";
+
   const text = `${greeting}
 
 We are unable to approve your account at this time.
 
 Best regards,
 TeaTime Cari`;
+
   const html = `<p>${greeting}</p><p>We are unable to approve your account at this time.</p><p>Best regards,<br/>TeaTime Cari</p>`;
+
+  return sendResendEmail({ to, subject, html, text });
+}
+
+export async function sendSuspensionEmail(to: string, firstName?: string): Promise<ResendEmailResult> {
+  const greeting = buildGreeting(firstName);
+  const subject = "Your TeaTime Cari account has been suspended";
+
+  const text = `${greeting}
+
+Your TeaTime Cari account has been suspended. You will not be able to log in or use the service at this time.
+
+Best regards,
+TeaTime Cari`;
+
+  const html = `<p>${greeting}</p><p>Your TeaTime Cari account has been suspended. You will not be able to log in or use the service at this time.</p><p>Best regards,<br/>TeaTime Cari</p>`;
+
+  return sendResendEmail({ to, subject, html, text });
+}
+
+export async function sendUnsuspensionEmail(to: string, firstName?: string): Promise<ResendEmailResult> {
+  const greeting = buildGreeting(firstName);
+  const subject = "Your TeaTime Cari account suspension has been removed";
+  const loginUrl = `${getSiteBaseUrl()}/login`;
+
+  const text = `${greeting}
+
+Your account suspension has been removed. You can now log in and use TeaTime Cari again.
+
+Login here: ${loginUrl}
+
+Best regards,
+TeaTime Cari`;
+
+  const html = `<p>${greeting}</p><p>Your account suspension has been removed. You can now log in and use TeaTime Cari again.</p><p>Login here: <a href="${loginUrl}">${loginUrl}</a></p><p>Best regards,<br/>TeaTime Cari</p>`;
 
   return sendResendEmail({ to, subject, html, text });
 }
