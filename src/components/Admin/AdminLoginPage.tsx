@@ -9,8 +9,7 @@ import {
   Ban,
   LogIn,
   Loader2,
-  AlertCircle,
-  CheckCircle
+  AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
@@ -35,7 +34,7 @@ export function AdminLoginPage() {
         }
 
         // Redirect to admin dashboard
-        window.location.href = '/';
+        window.location.href = '/admin/dashboard';
       })();
     }
   }, [session]);
@@ -62,16 +61,16 @@ export function AdminLoginPage() {
           return;
         }
 
-        // Successful admin login
+        // Successful admin login: open the admin portal overview.
         window.location.href = '/admin/dashboard';
       } else {
         setError('Access denied. This account does not have administrative privileges.');
         // Sign out non-admin user
         await supabase.auth.signOut();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
