@@ -5,6 +5,7 @@ import { RegisterStep1, type RegisterStep1Data } from '@/components/RegisterStep
 import { RegisterStep2, type RegisterStep2Data } from '@/components/Register/Step2';
 import { RegisterStep3, type RegisterStep3Data } from '@/components/Register/Step3';
 import PendingApproval from '@/components/Register/PendingApproval';
+import { GradientPageShell } from '@/components/GradientPageShell';
 
 export default function Signup() {
   const [currentStep, setCurrentStep] = React.useState(1);
@@ -35,7 +36,7 @@ export default function Signup() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#F8FBFD] via-white to-[#FDF8F8] px-4 py-8">
+    <GradientPageShell maxWidth="max-w-3xl" cardClassName="px-4 py-8 sm:px-6 md:px-8">
       <div className="mx-auto mb-8 max-w-2xl text-center">
         <Link to="/" className="text-sm font-medium text-[#4B9EC8] hover:text-[#3382AA]">
           ← Back to home
@@ -80,6 +81,6 @@ export default function Signup() {
           onGoBackToStep1={resetRegistration}
         />
       )}
-    </main>
+    </GradientPageShell>
   );
 }
