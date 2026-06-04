@@ -14,6 +14,8 @@ Use these paths from the site root to access the main Tea Time Cari pages.
 | `/reset-password` | Reset password page |
 | `/kyc-pending` | KYC pending status page |
 | `/contact-us` | Contact page |
+| `/Community-Guidelines` | Community guidelines page |
+| `/community-guidelines` | Community guidelines page (lowercase alias) |
 | `/community` | Community redirect |
 | `/sso` | SSO callback page |
 
