@@ -30,6 +30,15 @@ interface EmailResponse {
   };
 }
 
+function getFirstNameFromFull(fullName: string): string | undefined {
+  return fullName.trim().split(/\s+/).filter(Boolean)[0];
+}
+
+function buildPreviewGreeting(firstName?: string): string {
+  const cleanName = firstName?.trim();
+  return cleanName ? `Hi ${cleanName},` : "Hello,";
+}
+
 async function updateUserStatus(request: EmailRequest, reason: string): Promise<{ success: boolean; error?: string }> {
   try {
     let query = supabaseAdmin
@@ -93,18 +102,14 @@ Deno.serve(async (req: Request) => {
     const { email, firstName, reason, dryRun } = requestData;
     
     // Handle both fullName and firstName for backward compatibility
-    let actualFirstName = firstName;
+    let actualFirstName = firstName?.trim();
     if (!actualFirstName && requestData.fullName) {
       actualFirstName = getFirstNameFromFull(requestData.fullName);
-    }
-    if (!actualFirstName) {
-      actualFirstName = 'user';
     }
 
     // Validate required fields
     const missingFields: string[] = [];
     if (!email) missingFields.push("email");
-    if (!actualFirstName || actualFirstName === 'user') missingFields.push("firstName or fullName");
 
     if (missingFields.length > 0) {
       return new Response(
@@ -138,13 +143,14 @@ Deno.serve(async (req: Request) => {
 
     const rejectionReason = reason || "No reason provided";
 
-    const subject = "Your TeaTime Cari account was not approved";
-    const text = `Hi ${actualFirstName},
-
-We are unable to approve your account at this time.
-
+    const subject = "Your Tea Time Cari Account was not Approved";
+    const greeting = buildPreviewGreeting(actualFirstName);
+    const text = `${greeting}
+Thank you for your interest in Tea Time Cari.
+After reviewing your registration, we are unable to approve your account at this time.
+To help protect the privacy and safety of the community, some registrations may not be approved if they do not meet our account review requirements.
 Best regards,
-TeaTime Cari`;
+Tea Time Cari Team`;
 
     // Handle dry run
     if (dryRun) {

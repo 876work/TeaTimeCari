@@ -1,2 +1,9 @@
+[auth]
+site_url = "https://teatimecari.app"
+additional_redirect_urls = ["https://teatimecari.app/reset-password"]
+
+[auth.email]
+secure_password_change = true
+
 [functions.sso-complete]
 verify_jwt = false
