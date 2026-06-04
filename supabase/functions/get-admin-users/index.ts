@@ -28,23 +28,41 @@ function errorInfo(error: unknown) {
   return { message: String(error) };
 }
 
-function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
-  const message = error?.message?.toLowerCase() || "";
+type PostgrestLikeError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
+
+function errorSearchText(error: PostgrestLikeError | null) {
+  return [error?.message, error?.details, error?.hint].filter(Boolean).join(" ");
+}
+
+function normalizeColumnName(column: string | undefined) {
+  if (!column) return null;
+
+  const unquoted = column.replace(/"/g, "");
+  const parts = unquoted.split(".").filter(Boolean);
+  return parts[parts.length - 1] || null;
+}
+
+function isSchemaCacheColumnError(error: PostgrestLikeError | null) {
+  const text = errorSearchText(error).toLowerCase();
   return (
     error?.code === "PGRST204" ||
     error?.code === "42703" ||
-    (message.includes("schema cache") && message.includes("could not find")) ||
-    (message.includes("could not find") && message.includes("column")) ||
-    (message.includes("column") && message.includes("does not exist"))
+    (text.includes("schema cache") && text.includes("could not find")) ||
+    (text.includes("could not find") && text.includes("column")) ||
+    (text.includes("column") && text.includes("does not exist"))
   );
 }
 
-function missingColumnName(error: { message?: string } | null) {
-  const message = error?.message || "";
-  return (
-    message.match(/Could not find the '([^']+)' column/i)?.[1] ||
-    message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+does not exist/i)?.[1] ||
-    null
+function missingColumnName(error: PostgrestLikeError | null) {
+  const text = errorSearchText(error);
+  return normalizeColumnName(
+    text.match(/Could not find the '([^']+)' column/i)?.[1] ||
+    text.match(/column\s+((?:"?[a-zA-Z0-9_]+"?\.)?"?[a-zA-Z0-9_]+"?)\s+does not exist/i)?.[1],
   );
 }
 
