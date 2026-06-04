@@ -17,7 +17,10 @@ function isSchemaCacheColumnError(error: { code?: string; message?: string } | n
   const message = error?.message?.toLowerCase() || "";
   return (
     error?.code === "PGRST204" ||
-    (message.includes("schema cache") && message.includes("could not find"))
+    error?.code === "42703" ||
+    (message.includes("schema cache") && message.includes("could not find")) ||
+    (message.includes("could not find") && message.includes("column")) ||
+    (message.includes("column") && message.includes("does not exist"))
   );
 }
 
@@ -56,6 +59,7 @@ const TRACKING_FIELDS = [
   "registration_device",
   "registration_operating_system",
   "registration_user_agent",
+  "registration_tracked_at",
   "last_login_at",
   "last_login_ip_address",
   "last_login_ip_location",
@@ -162,6 +166,7 @@ serve(async (req) => {
       omittedFields: result.omittedFields,
     });
   } catch (error) {
+    console.error("get-admin-users error", error);
     return json(500, { error: "internal", detail: String(error) });
   }
 });
