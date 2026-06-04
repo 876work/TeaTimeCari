@@ -13,11 +13,29 @@ function json(status: number, body: unknown) {
   });
 }
 
+function errorInfo(error: unknown) {
+  if (error && typeof error === "object") {
+    const maybeError = error as { code?: unknown; message?: unknown; details?: unknown; hint?: unknown; name?: unknown };
+    return {
+      name: maybeError.name,
+      code: maybeError.code,
+      message: maybeError.message,
+      details: maybeError.details,
+      hint: maybeError.hint,
+    };
+  }
+
+  return { message: String(error) };
+}
+
 function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
   const message = error?.message?.toLowerCase() || "";
   return (
     error?.code === "PGRST204" ||
-    (message.includes("schema cache") && message.includes("could not find"))
+    error?.code === "42703" ||
+    (message.includes("schema cache") && message.includes("could not find")) ||
+    (message.includes("could not find") && message.includes("column")) ||
+    (message.includes("column") && message.includes("does not exist"))
   );
 }
 
@@ -56,6 +74,7 @@ const TRACKING_FIELDS = [
   "registration_device",
   "registration_operating_system",
   "registration_user_agent",
+  "registration_tracked_at",
   "last_login_at",
   "last_login_ip_address",
   "last_login_ip_location",
@@ -143,16 +162,28 @@ async function fetchRegistrations() {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "GET" && req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method !== "GET" && req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
+
+  let stage = "start";
 
   try {
+    stage = "read_auth_header";
     const token = getBearerToken(req);
-    if (!token) return json(401, { error: "Unauthorized" });
+    if (!token) return json(401, { ok: false, error: "Unauthorized", stage });
 
+    stage = "verify_user_token";
     const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json(401, { error: "Unauthorized" });
-    if (!(await isAdmin(authData.user.id, authData.user.email))) return json(403, { error: "Forbidden: admin only" });
+    if (authError || !authData.user) {
+      console.error("get-admin-users auth error", { stage, authError: errorInfo(authError) });
+      return json(401, { ok: false, error: "Unauthorized", stage, detail: authError?.message });
+    }
 
+    stage = "verify_admin";
+    if (!(await isAdmin(authData.user.id, authData.user.email))) {
+      return json(403, { ok: false, error: "Forbidden: admin only", stage });
+    }
+
+    stage = "fetch_registrations";
     const result = await fetchRegistrations();
 
     return json(200, {
@@ -162,6 +193,7 @@ serve(async (req) => {
       omittedFields: result.omittedFields,
     });
   } catch (error) {
-    return json(500, { error: "internal", detail: String(error) });
+    console.error("get-admin-users error", { stage, ...errorInfo(error) });
+    return json(500, { ok: false, error: "internal", stage, detail: errorInfo(error) });
   }
 });
