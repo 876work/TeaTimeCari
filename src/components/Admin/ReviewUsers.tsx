@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration } from '@/features/admin/registrations/api/approveRegistration';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -288,7 +289,7 @@ export function AdminUserReview({
       const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]
@@ -361,7 +362,7 @@ export function AdminUserReview({
         },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
