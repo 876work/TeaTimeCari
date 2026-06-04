@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { GradientPageShell } from '@/components/GradientPageShell';
 
 type FaqCategory = {
   id: string;
@@ -416,8 +417,8 @@ export default function Faq() {
   const activeCategory = allFaqs[openQuestion]?.categoryId ?? faqCategories[0].id;
 
   return (
-    <section className="bg-white dark:bg-gray-900">
-      <div className="container px-6 py-12 mx-auto">
+    <GradientPageShell maxWidth="max-w-5xl">
+      <div className="w-full">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
             Tea Time Cari FAQ
@@ -528,6 +529,6 @@ export default function Faq() {
           </div>
         </div>
       </div>
-    </section>
+    </GradientPageShell>
   );
 }

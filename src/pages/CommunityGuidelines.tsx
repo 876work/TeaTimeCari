@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { GradientPageShell } from "@/components/GradientPageShell";
 
 type GuidelinesSection = {
   title: string;
@@ -394,8 +395,7 @@ function BulletList({ items }: { items?: string[] }) {
 
 export default function CommunityGuidelines() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
-      <article className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <GradientPageShell maxWidth="max-w-5xl">
         <Link
           to="/"
           className="text-sm font-medium text-blue-600 hover:text-blue-700"
@@ -467,7 +467,6 @@ export default function CommunityGuidelines() {
             </section>
           ))}
         </div>
-      </article>
-    </main>
+    </GradientPageShell>
   );
 }
