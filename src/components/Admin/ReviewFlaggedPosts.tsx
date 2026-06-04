@@ -17,6 +17,18 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const maybeError = error as { message?: unknown };
+    if (typeof maybeError.message === 'string') return maybeError.message;
+    return JSON.stringify(error);
+  }
+  return String(error);
+}
+
 // Type definitions
 interface FlaggedPost {
   id: string;
@@ -37,7 +49,13 @@ interface FilterState {
   searchTerm: string;
 }
 
-export function ReviewFlaggedPosts() {
+export function ReviewFlaggedPosts({
+  activePage = 'flagged-posts',
+  onNavigate,
+}: {
+  activePage?: string;
+  onNavigate?: (page: string) => void;
+}) {
   const supabase = useSupabaseClient();
   const session = useSession();
   
@@ -118,9 +136,9 @@ export function ReviewFlaggedPosts() {
       }
 
       setFlaggedPosts(filteredData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching flagged posts:', err);
-      setError(`Failed to fetch flagged posts: ${err.message || err.toString()}`);
+      setError(`Failed to fetch flagged posts: ${getErrorMessage(err)}`);
       // Fallback to mock data for demonstration
       setMockData();
     } finally {
@@ -220,9 +238,9 @@ export function ReviewFlaggedPosts() {
       
       alert(`Post by @${username} has been deleted successfully.`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting post:', err);
-      setError(`Failed to delete post: ${err.message || err.toString()}`);
+      setError(`Failed to delete post: ${getErrorMessage(err)}`);
     } finally {
       setProcessingPostId(null);
     }
@@ -268,9 +286,9 @@ export function ReviewFlaggedPosts() {
       
       alert(`User @${username} has been banned successfully.`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error banning user:', err);
-      setError(`Failed to ban user: ${err.message || err.toString()}`);
+      setError(`Failed to ban user: ${getErrorMessage(err)}`);
     } finally {
       setProcessingPostId(null);
     }
@@ -302,7 +320,7 @@ export function ReviewFlaggedPosts() {
 
   if (!isAdmin) {
     return (
-      <AdminLayout>
+      <AdminLayout activePage={activePage} onNavigate={onNavigate}>
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
@@ -313,7 +331,7 @@ export function ReviewFlaggedPosts() {
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-6">

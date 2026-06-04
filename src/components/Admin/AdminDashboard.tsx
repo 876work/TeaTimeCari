@@ -284,7 +284,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
 
   // Delegate to sub-pages
   if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
-  if (activePage === 'flagged-posts') return <ReviewFlaggedPosts />;
+  if (activePage === 'flagged-posts') return <ReviewFlaggedPosts activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   if (activePage === 'function-ping') {
     return (
