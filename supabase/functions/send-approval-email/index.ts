@@ -168,16 +168,19 @@ Deno.serve(async (req: Request) => {
 
     const subject = "Your Tea Time Cari Account has been Approved";
     const siteBaseUrl = (Deno.env.get("SITE_BASE_URL")?.trim() || "https://teatimecari.app").replace(/\/+$/, "");
+    const communityGuidelinesUrl = `${siteBaseUrl}/community-guidelines`;
     const greeting = buildPreviewGreeting(actualFirstName);
     const text = `${greeting}
 Your Tea Time Cari account has been approved.
 You can now log in here:
 ${siteBaseUrl}/login
-Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy and Terms of Service before participating.
+Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy, Terms of Service, and Community Guidelines before participating.
 Privacy Policy:
 ${siteBaseUrl}/privacy-policy
 Terms of Service:
 ${siteBaseUrl}/terms-of-service
+Community Guidelines:
+${communityGuidelinesUrl}
 Welcome to the community.
 Best regards,
 Tea Time Cari Team`;
