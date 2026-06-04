@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
+import { HowItWorksStepper } from './HowItWorksStepper';
 
 interface HomePageProps {
   onGetStarted: () => void;
@@ -48,6 +49,8 @@ export function HomePage({ onGetStarted }: HomePageProps) {
             <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
           </button>
         </div>
+
+        <HowItWorksStepper onGetStarted={onGetStarted} />
 
         {/* Feature highlights */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-3xl mx-auto">
