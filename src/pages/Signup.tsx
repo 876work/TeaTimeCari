@@ -1,112 +1,85 @@
 // src/pages/Signup.tsx
-import { useState } from "react";
-import { registerAndSignIn, type SignupForm } from "@/lib/auth/register";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { RegisterStep1, type RegisterStep1Data } from '@/components/RegisterStep1';
+import { RegisterStep2, type RegisterStep2Data } from '@/components/Register/Step2';
+import { RegisterStep3, type RegisterStep3Data } from '@/components/Register/Step3';
+import PendingApproval from '@/components/Register/PendingApproval';
 
 export default function Signup() {
-  const [form, setForm] = useState<SignupForm>({
-    email: "",
-    password: "",
-    username: "",
-    firstName: "",
-    lastName: "",
-    full_name: "",
-    gender: "Female",
-  });
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [registrationData, setRegistrationData] = React.useState<{
+    step1?: RegisterStep1Data;
+    step2?: RegisterStep2Data;
+    step3?: RegisterStep3Data;
+  }>({});
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    setLoading(true);
-    try {
-      const { next } = await registerAndSignIn(form);
-      if (typeof next === "string") window.location.href = next;
-      // if next === null, finishDiscourseSso already redirected
-    } catch (e: any) {
-      setErr(e?.message || "Signup failed");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const handleStep1Complete = (data: RegisterStep1Data) => {
+    setRegistrationData((prev) => ({ ...prev, step1: data }));
+    setCurrentStep(2);
+  };
+
+  const handleStep2Complete = (data: RegisterStep2Data) => {
+    setRegistrationData((prev) => ({ ...prev, step2: data }));
+    setCurrentStep(3);
+  };
+
+  const handleStep3Complete = (data: RegisterStep3Data) => {
+    setRegistrationData((prev) => ({ ...prev, step3: data }));
+    setCurrentStep(4);
+  };
+
+  const resetRegistration = () => {
+    setRegistrationData({});
+    setCurrentStep(1);
+  };
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-semibold mb-4">Create your account</h1>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <div>
-          <label className="block text-sm mb-1">Email</label>
-          <input
-            required
-            type="email"
-            className="w-full border rounded p-2"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="block text-sm mb-1">Password</label>
-          <input
-            required
-            type="password"
-            className="w-full border rounded p-2"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="block text-sm mb-1">Username (optional)</label>
-          <input
-            type="text"
-            className="w-full border rounded p-2"
-            value={form.username || ""}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm mb-1">First name</label>
-            <input
-              type="text"
-              className="w-full border rounded p-2"
-              value={form.firstName || ""}
-              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Last name</label>
-            <input
-              type="text"
-              className="w-full border rounded p-2"
-              value={form.lastName || ""}
-              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm mb-1">Gender</label>
-          <select
-            className="w-full border rounded p-2"
-            value={form.gender || "Female"}
-            onChange={(e) =>
-              setForm({ ...form, gender: e.target.value as "Male" | "Female" })
-            }
-          >
-            <option>Female</option>
-            <option>Male</option>
-          </select>
-        </div>
+    <main className="min-h-screen bg-gradient-to-br from-[#F8FBFD] via-white to-[#FDF8F8] px-4 py-8">
+      <div className="mx-auto mb-8 max-w-2xl text-center">
+        <Link to="/" className="text-sm font-medium text-[#4B9EC8] hover:text-[#3382AA]">
+          ← Back to home
+        </Link>
+        <h1 className="mt-4 text-3xl font-bold text-gray-900">Apply to join TeaTime Cari</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Complete the application below. Our team reviews every signup before community access is granted.
+        </p>
+      </div>
 
-        {err && <p className="text-red-600 text-sm">{err}</p>}
+      {currentStep === 1 && (
+        <RegisterStep1
+          onNext={handleStep1Complete}
+          onBack={() => window.history.back()}
+          initialData={registrationData.step1}
+        />
+      )}
 
-        <button
-          type="submit"
-          className="w-full rounded bg-black text-white p-2 disabled:opacity-50"
-          disabled={loading}
-        >
-          {loading ? "Creating…" : "Create account"}
-        </button>
-      </form>
-    </div>
+      {currentStep === 2 && (
+        <RegisterStep2
+          onNext={handleStep2Complete}
+          onBack={() => setCurrentStep(1)}
+          initialData={registrationData.step2}
+        />
+      )}
+
+      {currentStep === 3 && (
+        <RegisterStep3
+          onNext={handleStep3Complete}
+          onBack={() => setCurrentStep(2)}
+          initialData={registrationData.step3}
+          registrationData={registrationData}
+        />
+      )}
+
+      {currentStep === 4 && (
+        <PendingApproval
+          registrationData={registrationData}
+          onGoHome={() => {
+            window.location.href = '/';
+          }}
+          onGoBackToStep1={resetRegistration}
+        />
+      )}
+    </main>
   );
 }
