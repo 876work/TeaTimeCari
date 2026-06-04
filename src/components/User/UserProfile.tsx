@@ -224,7 +224,13 @@ export function UserProfile({ userId }: UserProfileProps) {
 
         setCurrentUser(userData);
 
-        setIsAdmin(session?.user?.email?.includes('admin') || false);
+        const userIsAdmin = session?.user?.email?.includes('admin') || false;
+        setIsAdmin(userIsAdmin);
+
+        if (userId !== session.user.id && !userIsAdmin) {
+          setError('Access denied. You can only view your own profile.');
+          return;
+        }
 
         const { data: profileData, error: profileError } = await supabase
           .from('registrations')
