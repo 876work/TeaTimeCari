@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
 
 interface HomePageProps {
@@ -101,8 +102,11 @@ export function HomePage({ onGetStarted }: HomePageProps) {
         {/* Footer note */}
         <div className="mt-12 text-center">
           <p className="text-white/70 text-xs">
-            By continuing, you agree to our terms of service and privacy policy
+            By continuing, you agree to our terms of service and privacy policy.
           </p>
+          <Link to="/faq" className="mt-3 inline-flex text-sm font-semibold text-white/90 underline-offset-4 hover:text-white hover:underline">
+            Read the FAQ
+          </Link>
         </div>
       </div>
     </div>

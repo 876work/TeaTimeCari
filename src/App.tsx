@@ -29,6 +29,7 @@ import Signup from './pages/Signup';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import CommunityGuidelines from './pages/CommunityGuidelines';
+import Faq from './pages/Faq';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
@@ -208,6 +209,7 @@ function App() {
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/Community-Guidelines" element={<CommunityGuidelines />} />
               <Route path="/community-guidelines" element={<CommunityGuidelines />} />
+              <Route path="/faq" element={<Faq />} />
               <Route path="/logout" element={<Logout />} />
               <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
               
