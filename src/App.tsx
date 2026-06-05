@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { SessionContextProvider, useSession } from '@supabase/auth-helpers-react';
+import { SessionContextProvider, useSession, useSessionContext } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
 import { StripeProvider } from './components/Payment/StripeProvider';
@@ -20,7 +20,6 @@ import { UserProfile } from './components/User/UserProfile';
 import { PostThread } from './components/Post/PostThread';
 import { AdminLoginPage } from './components/Admin/AdminLoginPage';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
-import RegistrationsPage from './features/admin/registrations/RegistrationsPage';
 import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
@@ -66,11 +65,56 @@ function OwnProfileRoute() {
 
 function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
   const navigate = useNavigate();
+  const session = useSession();
+  const { isLoading } = useSessionContext();
   const [activePage, setActivePage] = React.useState<AdminPage>(initialPage);
+  const [adminAccess, setAdminAccess] = React.useState<{ userId: string; allowed: boolean } | null>(null);
 
   React.useEffect(() => {
     setActivePage(initialPage);
   }, [initialPage]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const userId = session?.user?.id;
+
+    if (isLoading) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!userId) {
+      setAdminAccess(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setAdminAccess(null);
+
+    const checkAdminAccess = async () => {
+      const adminEmailFallback = session.user.email?.toLowerCase().includes('admin') ?? false;
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      setAdminAccess({
+        userId,
+        allowed: Boolean(data?.is_admin) || adminEmailFallback,
+      });
+    };
+
+    checkAdminAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, session?.user?.email, session?.user?.id]);
 
   const handleNavigate = (page: string) => {
     const nextPage = page in adminPagePaths ? (page as AdminPage) : 'dashboard';
@@ -78,19 +122,28 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
     navigate(adminPagePaths[nextPage]);
   };
 
+  if (isLoading || (session?.user?.id && adminAccess?.userId !== session.user.id)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-sm text-slate-500">Checking admin access…</p>
+      </div>
+    );
+  }
+
+  if (!session?.user?.id || !adminAccess?.allowed) {
+    return <Navigate to="/login" replace />;
+  }
+
   return <AdminDashboard activePage={activePage} onNavigate={handleNavigate} />;
 }
 
 function App() {
   useAuthActivityTracking();
-  const discourseBaseUrl =
-    import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
-
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
   const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins'>('dashboard');
-  const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
+  const [selectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
   const [selectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
     step1?: RegisterStep1Data;
@@ -128,48 +181,8 @@ function App() {
     setRegistrationData({});
   };
 
-  const handleGoToFeed = () => {
-    setCurrentPage('feed');
-  };
-
-  const handleGoToUpload = () => {
-    setCurrentPage('upload');
-  };
-
-  const handleGoToOppositeFeed = () => {
-    setCurrentPage('opposite-feed');
-  };
-
-  const handleGoToAdminDashboard = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('dashboard');
-  };
-
-  const handleGoToAdminFlaggedPosts = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('flagged-posts');
-  };
-
-  const handleGoToAdminUserReviews = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('user-reviews');
-  };
-
-  const handleGoToAdminInviteCodes = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('invite-codes');
-  };
-
-
   const handleAdminNavigate = (page: string) => {
     setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins');
-  };
-
-  const handleGoToUserProfile = (userId?: string) => {
-    if (userId) {
-      setSelectedUserId(userId);
-    }
-    setCurrentPage('user-profile');
   };
 
   const handleBackToStep1 = () => {
@@ -223,7 +236,7 @@ function App() {
               <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
               <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
               <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
-              <Route path="/admin/registrations" element={<RegistrationsPage />} />
+              <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
               
               {/* Main App Route */}
               <Route 
