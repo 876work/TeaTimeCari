@@ -35,8 +35,24 @@ const DISCOURSE_BASE_URL = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(/\
 const DISCOURSE_ADMIN_API_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_ADMIN_API_USERNAME = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 
-const VALID_FLAGS = new Set<UserFlag>(["all", "active", "staff", "suspended", "new", "blocked", "suspect"]);
-const ALL_USER_FLAGS: UserFlag[] = ["active", "staff", "suspended", "new", "blocked", "suspect"];
+const VALID_FLAGS = new Set<UserFlag>([
+  "all",
+  "active",
+  "staff",
+  "suspended",
+  "new",
+  "blocked",
+  "suspect",
+]);
+
+const ALL_USER_FLAGS: UserFlag[] = [
+  "active",
+  "staff",
+  "suspended",
+  "new",
+  "blocked",
+  "suspect",
+];
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -48,7 +64,32 @@ function json(status: number, body: unknown) {
 function getBearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
+
   return match?.[1] || null;
+}
+
+function decodeJwtPayload(token: string) {
+  const payload = token.split(".")[1];
+
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const parsed = JSON.parse(atob(padded)) as { email?: string | null };
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEmail(value?: string | null) {
+  return (value || "").trim().toLowerCase();
+}
+
+function hasAdminEmail(value?: string | null) {
+  return normalizeEmail(value).includes("admin");
 }
 
 function getDiscourseHeaders() {
@@ -59,16 +100,13 @@ function getDiscourseHeaders() {
   };
 }
 
-function normalizeEmail(value?: string | null) {
-  return (value || "").trim().toLowerCase();
-}
-
 function normalizeSearch(value?: string | null) {
   return (value || "").trim().toLowerCase();
 }
 
 function isSuspended(user: DiscourseUser) {
   if (typeof user.suspended === "boolean") return user.suspended;
+
   return Boolean(user.suspended_till);
 }
 
@@ -112,10 +150,11 @@ async function requireTeaTimeAdmin(req: Request) {
     return { error: json(401, { error: "Unauthorized" }) };
   }
 
-  const adminEmailFallback = authData.user.email?.toLowerCase().includes("admin") ?? false;
+  const tokenPayload = decodeJwtPayload(token);
+
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("is_admin")
+    .select("is_admin, email")
     .eq("id", authData.user.id)
     .maybeSingle();
 
@@ -123,7 +162,21 @@ async function requireTeaTimeAdmin(req: Request) {
     return { error: json(500, { error: "admin lookup failed" }) };
   }
 
+  const adminEmailFallback = [
+    authData.user.email,
+    profile?.email,
+    tokenPayload?.email,
+  ].some(hasAdminEmail);
+
   if (!profile?.is_admin && !adminEmailFallback) {
+    console.warn("Discourse admin access denied", {
+      userId: authData.user.id,
+      authEmail: normalizeEmail(authData.user.email),
+      profileEmail: normalizeEmail(profile?.email),
+      hasProfileAdminFlag: Boolean(profile?.is_admin),
+      hasAdminEmailFallback: adminEmailFallback,
+    });
+
     return { error: json(403, { error: "Forbidden: admin only" }) };
   }
 
