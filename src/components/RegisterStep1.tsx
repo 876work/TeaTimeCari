@@ -444,13 +444,20 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     }
   };
   
+  const fieldLabelClass = "mb-2 block text-xs font-bold uppercase tracking-[0.25em] text-black";
+  const fieldDescriptionClass = "mb-3 text-xs leading-5 text-gray-500";
+  const fieldInputClass = "w-full border-0 border-b-2 border-l-2 border-black bg-transparent px-3 py-3 text-base text-black outline-none transition-all duration-200 placeholder:text-gray-400 focus:rounded-lg focus:border-2 focus:border-black focus:ring-0";
+  const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
+  const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
+
   return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="mx-auto max-w-xl">
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[16px_16px_32px_rgba(200,200,200,0.65),-16px_-16px_32px_rgba(254,254,254,0.9)] sm:p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-gray-500">Sign Up</p>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
         </div>
@@ -464,14 +471,14 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           </div>
         )}
         
-        <form name="registration-step-1" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
+        <form name="registration-step-1" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-7">
           <input type="hidden" name="form-name" value="registration-step-1" readOnly />
           {/* Full Name */}
           <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="fullName" className={fieldLabelClass}>
               Full Name
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               💡 Enter your first and last name as they appear on your ID
             </p>
             <input
@@ -481,11 +488,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               value={formData.fullName}
               onChange={handleInputChange('fullName')}
               onBlur={handleBlur('fullName')}
-              className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.fullName && touched.fullName
-                  ? 'border-[#D96E6E] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-              }`}
+              className={fieldInputClass}
               placeholder="e.g., John Smith"
               aria-invalid={errors.fullName && touched.fullName ? 'true' : 'false'}
             />
@@ -498,10 +501,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className={fieldLabelClass}>
               Email Address
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               📧 We'll use this to send you important updates and verification codes
             </p>
             <div className="relative">
@@ -512,13 +515,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 onBlur={handleBlur('email')}
-                className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  (errors.email && touched.email) || emailStatus.error
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : emailStatus.isAvailable === true
-                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-                }`}
+                className={fieldInputWithRightIconClass}
                 placeholder="e.g., john@example.com"
                 aria-invalid={(errors.email && touched.email) || emailStatus.error ? 'true' : 'false'}
               />
@@ -555,10 +552,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Phone Number */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="phone" className={fieldLabelClass}>
               Phone Number
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               📱 Saint Lucia format required - we may send verification codes here
             </p>
             <input
@@ -568,11 +565,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               value={formData.phone}
               onChange={handleInputChange('phone')}
               onBlur={handleBlur('phone')}
-              className={`w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.phone && touched.phone
-                  ? 'border-[#D96E6E] bg-red-50'
-                  : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-              }`}
+              className={fieldInputClass}
               placeholder="758-123-4567 or 7581234567"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
             />
@@ -585,10 +578,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Username */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="username" className={fieldLabelClass}>
               Username
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               🏷️ Choose a unique name - letters, numbers, and underscores only (3-20 characters)
             </p>
             <div className="relative">
@@ -599,15 +592,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 value={formData.username}
                 onChange={handleInputChange('username')}
                 onBlur={handleBlur('username')}
-                className={`w-full px-4 py-3 pr-12 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.username && touched.username
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : usernameStatus.isAvailable === true
-                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
-                    : usernameStatus.isAvailable === false
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-                }`}
+                className={fieldInputWithRightIconClass}
                 placeholder="e.g., john_smith or johnsmith123"
                 aria-invalid={errors.username && touched.username ? 'true' : 'false'}
               />
@@ -663,10 +648,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className={fieldLabelClass}>
               Password
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               🔒 Create a secure password - minimum 10 characters for account protection
             </p>
             <div className="relative">
@@ -680,11 +665,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 value={formData.password}
                 onChange={handleInputChange('password')}
                 onBlur={handleBlur('password')}
-                className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.password && touched.password
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-                }`}
+                className={passwordInputClass}
                 placeholder="Create a secure password"
                 required
                 autoComplete="new-password"
@@ -713,10 +694,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="confirmPassword" className={fieldLabelClass}>
               Confirm Password
             </label>
-            <p className="text-xs text-gray-500 mb-2">
+            <p className={fieldDescriptionClass}>
               🔄 Re-enter your password to make sure it's correct
             </p>
             <div className="relative">
@@ -730,13 +711,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 value={formData.confirmPassword}
                 onChange={handleInputChange('confirmPassword')}
                 onBlur={handleBlur('confirmPassword')}
-                className={`w-full pl-10 pr-12 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.confirmPassword && touched.confirmPassword
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : touched.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword
-                    ? 'border-[#4B9EC8] bg-[#D6EBF5]'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
-                }`}
+                className={passwordInputClass}
                 placeholder="Type your password again"
                 required
                 autoComplete="new-password"
@@ -796,7 +771,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <button
                 type="button"
                 onClick={onBack}
-                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="flex-1 rounded-lg border-2 border-black bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-black transition-all duration-300 hover:bg-black hover:text-white"
               >
                 Back
               </button>
@@ -804,10 +779,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             <button
               type="submit"
               disabled={!isFormValid()}
-              className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              className={`${onBack ? 'flex-1' : 'w-full'} rounded-lg border-2 px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] transition-all duration-300 ${
                 isFormValid()
-                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'border-black bg-black text-white hover:bg-white hover:text-black'
+                  : 'cursor-not-allowed border-gray-300 bg-gray-200 text-gray-500'
               }`}
             >
               Next Step

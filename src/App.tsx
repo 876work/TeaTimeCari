@@ -53,7 +53,6 @@ const adminPagePaths: Record<AdminPage, string> = {
   'function-ping': '/admin/health',
 };
 
-
 function OwnProfileRoute() {
   const session = useSession();
 
@@ -92,12 +91,20 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
 
       try {
         const nextAdminSession = await getAdminSession();
-        if (!cancelled) setAdminSession(nextAdminSession);
+
+        if (!cancelled) {
+          setAdminSession(nextAdminSession);
+        }
       } catch (error) {
         console.error('Admin access check failed:', error);
-        if (!cancelled) setAdminSession(null);
+
+        if (!cancelled) {
+          setAdminSession(null);
+        }
       } finally {
-        if (!cancelled) setAdminCheckComplete(true);
+        if (!cancelled) {
+          setAdminCheckComplete(true);
+        }
       }
     };
 
@@ -110,6 +117,7 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
 
   const handleNavigate = (page: string) => {
     const nextPage = page in adminPagePaths ? (page as AdminPage) : 'dashboard';
+
     setActivePage(nextPage);
     navigate(adminPagePaths[nextPage]);
   };
@@ -131,12 +139,33 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
 
 function App() {
   useAuthActivityTracking();
+
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
-  const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
-  const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
-  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins'>('dashboard');
-  const [selectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const [currentPage, setCurrentPage] = React.useState<
+    | 'user-type-selection'
+    | 'register'
+    | 'feed'
+    | 'upload'
+    | 'opposite-feed'
+    | 'admin'
+    | 'user-profile'
+    | 'post-thread'
+  >('user-type-selection');
+
+  const [adminActivePage, setAdminActivePage] = React.useState<
+    | 'dashboard'
+    | 'user-reviews'
+    | 'flagged-posts'
+    | 'invite-codes'
+    | 'logs'
+    | 'function-ping'
+    | 'discourse-admins'
+  >('dashboard');
+
+  const [selectedUserId] = React.useState<string>('mock-user-1');
   const [selectedPostId] = React.useState<string | null>(null);
+
   const [registrationData, setRegistrationData] = React.useState<{
     step1?: RegisterStep1Data;
     step2?: RegisterStep2Data;
@@ -163,19 +192,27 @@ function App() {
 
   const handleGoHome = () => {
     setCurrentPage('user-type-selection');
-    setCurrentStep(1); // Reset to basic info step
-    setShowWelcomePage(true); // Show welcome page again
+    setCurrentStep(1);
+    setShowWelcomePage(true);
     setRegistrationData({});
   };
 
   const handleAdminNavigate = (page: string) => {
-    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins');
+    setAdminActivePage(
+      page as
+        | 'dashboard'
+        | 'user-reviews'
+        | 'flagged-posts'
+        | 'invite-codes'
+        | 'logs'
+        | 'function-ping'
+        | 'discourse-admins',
+    );
   };
 
   const handleBackToStep1 = () => {
     setCurrentStep(1);
   };
-
 
   const handleBackToStep2 = () => {
     setCurrentStep(2);
@@ -191,12 +228,11 @@ function App() {
   };
 
   return (
-    <>
-      <SessionContextProvider supabaseClient={supabase}>
-        <SsoAutoFinisher />
-        <StripeProvider>
-          <NotificationProvider>
-            <Router>
+    <SessionContextProvider supabaseClient={supabase}>
+      <SsoAutoFinisher />
+      <StripeProvider>
+        <NotificationProvider>
+          <Router>
             <Routes>
               <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
               <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
@@ -213,7 +249,7 @@ function App() {
               <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
               <Route path="/logout" element={<Logout />} />
               <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
-              
+
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/teamin" element={<AdminLoginPage />} />
@@ -226,48 +262,53 @@ function App() {
               <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
-              
+
               {/* Main App Route */}
-              <Route 
-                path="/*" 
+              <Route
+                path="/*"
                 element={
                   showWelcomePage ? (
-                    <PublicLayout showHeader={false}><HomePage /></PublicLayout>
+                    <PublicLayout showHeader={false}>
+                      <HomePage />
+                    </PublicLayout>
                   ) : (
                     <AppLayout>
                       {currentPage === 'user-type-selection' && (
-                        <UserTypeSelection 
+                        <UserTypeSelection
                           onNewUser={handleNewUser}
                           onReturningUser={handleReturningUser}
                         />
                       )}
-                      
+
                       {currentPage === 'register' && (
                         <>
                           {currentStep === 1 && (
-                            <RegisterStep1 
+                            <RegisterStep1
                               onNext={handleStep1Complete}
                               onBack={() => setCurrentPage('user-type-selection')}
                               initialData={registrationData.step1}
                             />
                           )}
+
                           {currentStep === 2 && (
-                            <RegisterStep2 
+                            <RegisterStep2
                               onNext={handleStep2Complete}
                               onBack={handleBackToStep1}
                               initialData={registrationData.step2}
                             />
                           )}
+
                           {currentStep === 3 && (
-                            <RegisterStep3 
+                            <RegisterStep3
                               onNext={handleStep3Complete}
                               onBack={handleBackToStep2}
                               initialData={registrationData.step3}
                               registrationData={registrationData}
                             />
                           )}
+
                           {currentStep === 4 && (
-                            <PendingApproval 
+                            <PendingApproval
                               registrationData={registrationData}
                               onGoHome={handleGoHome}
                               onGoBackToStep1={() => {
@@ -278,41 +319,33 @@ function App() {
                           )}
                         </>
                       )}
-                      
-                      {currentPage === 'feed' && (
-                        <GenderFeed />
-                      )}
-                      
-                      {currentPage === 'upload' && (
-                        <UploadPost />
-                      )}
-                      
-                      {currentPage === 'opposite-feed' && (
-                        <OppositeGenderFeed />
-                      )}
-                      
+
+                      {currentPage === 'feed' && <GenderFeed />}
+
+                      {currentPage === 'upload' && <UploadPost />}
+
+                      {currentPage === 'opposite-feed' && <OppositeGenderFeed />}
+
                       {currentPage === 'admin' && (
                         <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
                       )}
-                      
+
                       {currentPage === 'user-profile' && (
                         <UserProfile userId={selectedUserId} />
                       )}
-                      
+
                       {currentPage === 'post-thread' && (
                         <PostThread postId={selectedPostId} />
                       )}
-                      
                     </AppLayout>
                   )
-                } 
+                }
               />
             </Routes>
-            </Router>
-          </NotificationProvider>
-        </StripeProvider>
-      </SessionContextProvider>
-    </>
+          </Router>
+        </NotificationProvider>
+      </StripeProvider>
+    </SessionContextProvider>
   );
 }
 
