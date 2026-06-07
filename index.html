@@ -74,6 +74,23 @@
       <input type="hidden" name="form-name" value="post-comment" />
       <textarea name="comment"></textarea>
     </form>
+    <!-- GetResponse Chats -->
+    <script>
+      var grChatConfig = {
+        urlParams: 'c=3e71ad317e80d7d6ddf870ac95c86fc56e89008391e5af6561e71d5d67',
+        iuv: 'v1',
+      };
+      // Custom configuration goes here
+      (function (a, e) {
+        Array.isArray(window.__GrChatData__) ? window.__GrChatData__.push(e) : (window.__GrChatData__ = [e]);
+        var r = document.createElement('script');
+        r.defer = true;
+        r.src = 'https://i.getresponse.chat/embedded_chat.js';
+        var t = document.getElementsByTagName('script')[0];
+        t.parentNode.insertBefore(r, t);
+      })(0, grChatConfig);
+    </script>
+    <!-- End GetResponse Chats -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
