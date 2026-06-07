@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { requireAdmin } from "../_shared/adminAuth.ts";
 
 type Action = "list" | "promote" | "demote";
 type UserFlag = "all" | "active" | "staff" | "suspended" | "new" | "blocked" | "suspect";
@@ -61,36 +62,10 @@ function json(status: number, body: unknown) {
   });
 }
 
-function getBearerToken(req: Request) {
-  const header = req.headers.get("authorization") || "";
-  const match = header.match(/^Bearer\s+(.+)$/i);
-
-  return match?.[1] || null;
-}
-
-function decodeJwtPayload(token: string) {
-  const payload = token.split(".")[1];
-
-  if (!payload) return null;
-
-  try {
-    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-    const parsed = JSON.parse(atob(padded)) as { email?: string | null };
-
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeEmail(value?: string | null) {
   return (value || "").trim().toLowerCase();
 }
 
-function hasAdminEmail(value?: string | null) {
-  return normalizeEmail(value).includes("admin");
-}
 
 function getDiscourseHeaders() {
   return {
@@ -135,52 +110,6 @@ function matchesSearch(user: DiscourseUser, search: string) {
   return [user.username, user.name, user.email]
     .map((value) => (value || "").toLowerCase())
     .some((value) => value.includes(search));
-}
-
-async function requireTeaTimeAdmin(req: Request) {
-  const token = getBearerToken(req);
-
-  if (!token) {
-    return { error: json(401, { error: "Unauthorized" }) };
-  }
-
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-  if (authError || !authData.user) {
-    return { error: json(401, { error: "Unauthorized" }) };
-  }
-
-  const tokenPayload = decodeJwtPayload(token);
-
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("is_admin, email")
-    .eq("id", authData.user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return { error: json(500, { error: "admin lookup failed" }) };
-  }
-
-  const adminEmailFallback = [
-    authData.user.email,
-    profile?.email,
-    tokenPayload?.email,
-  ].some(hasAdminEmail);
-
-  if (!profile?.is_admin && !adminEmailFallback) {
-    console.warn("Discourse admin access denied", {
-      userId: authData.user.id,
-      authEmail: normalizeEmail(authData.user.email),
-      profileEmail: normalizeEmail(profile?.email),
-      hasProfileAdminFlag: Boolean(profile?.is_admin),
-      hasAdminEmailFallback: adminEmailFallback,
-    });
-
-    return { error: json(403, { error: "Forbidden: admin only" }) };
-  }
-
-  return { user: authData.user };
 }
 
 function assertDiscourseConfig() {
@@ -383,13 +312,13 @@ serve(async (req) => {
     return json(405, { error: "Method not allowed" });
   }
 
-  const adminCheck = await requireTeaTimeAdmin(req);
+  const preflightAdminCheck = await requireAdmin(req, "admin:access");
 
-  if (adminCheck.error) {
-    return adminCheck.error;
+  if (!preflightAdminCheck.actor) {
+    return json(preflightAdminCheck.status, { error: preflightAdminCheck.error });
   }
 
-  const actor = adminCheck.user;
+  const actor = { id: preflightAdminCheck.actor.userId, email: preflightAdminCheck.actor.email };
 
   let body: RequestBody;
 
@@ -403,6 +332,11 @@ serve(async (req) => {
 
   if (action !== "list" && action !== "promote" && action !== "demote") {
     return json(400, { error: "Invalid action" });
+  }
+
+  if (action !== "list") {
+    const actionAdminCheck = await requireAdmin(req, "discourse:admin_manage");
+    if (!actionAdminCheck.actor) return json(actionAdminCheck.status, { error: actionAdminCheck.error });
   }
 
   try {

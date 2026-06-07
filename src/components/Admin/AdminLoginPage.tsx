@@ -1,285 +1,185 @@
-import React, { useState, useEffect } from 'react';
-import { useSession } from '@supabase/auth-helpers-react';
-import {
-  Shield,
-  AlertTriangle,
-  Eye, 
-  Lock, 
-  Skull, 
-  Ban,
-  LogIn,
-  Loader2,
-  AlertCircle
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2, Lock, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { getAdminSession } from '@/lib/adminAuth';
 import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
 
+function safeNext(value: string | null) {
+  if (!value || !value.startsWith('/admin') || value.startsWith('/admin/login')) return '/admin/dashboard';
+  return value;
+}
+
 export function AdminLoginPage() {
-  const session = useSession();
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = useMemo(() => safeNext(new URLSearchParams(location.search).get('next')), [location.search]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Check if user is already logged in as admin
   useEffect(() => {
-    if (session?.user?.email?.includes('admin')) {
-      (async () => {
+    let cancelled = false;
+
+    const verifyExistingSession = async () => {
+      try {
+        const adminSession = await getAdminSession();
+        if (!adminSession || cancelled) return;
+
         if (hasPendingSso()) {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          await finishDiscourseSso(currentSession?.access_token ?? '');
+          const { data: { session } } = await supabase.auth.getSession();
+          await finishDiscourseSso(session?.access_token ?? '');
           return;
         }
 
-        // Redirect to admin dashboard
-        window.location.href = '/admin/dashboard';
-      })();
-    }
-  }, [session]);
+        navigate(nextPath, { replace: true });
+      } catch {
+        // Existing sessions that are not admins should stay on the admin login page.
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+    verifyExistingSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, nextPath]);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      const normalizedEmail = email.trim().toLowerCase();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
         password,
       });
 
-      if (signInError) {
-        throw signInError;
-      }
+      if (signInError) throw signInError;
 
-      if (data.user && data.user.email?.includes('admin')) {
-        if (hasPendingSso()) {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          await finishDiscourseSso(currentSession?.access_token ?? '');
-          return;
-        }
-
-        // Successful admin login: open the admin portal overview.
-        window.location.href = '/admin/dashboard';
-      } else {
-        setError('Access denied. This account does not have administrative privileges.');
-        // Sign out non-admin user
+      const adminSession = await getAdminSession();
+      if (!adminSession) {
         await supabase.auth.signOut();
+        setError('This account does not have Tea Time Cari admin access.');
+        return;
       }
+
+      if (hasPendingSso()) {
+        const { data: { session } } = await supabase.auth.getSession();
+        await finishDiscourseSso(session?.access_token ?? '');
+        return;
+      }
+
+      navigate(nextPath, { replace: true });
     } catch (err: unknown) {
-      console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
+      console.error('Admin login error:', err);
+      setError(err instanceof Error ? err.message : 'Admin login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black flex items-center justify-center p-4">
-      {/* Animated warning background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-red-500 opacity-10 animate-pulse"></div>
-        <div className="absolute top-0 left-0 w-full h-full">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-bounce"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
-              }}
-            >
-              <AlertTriangle className="w-4 h-4 text-red-400 opacity-30" />
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Return to Tea Time Cari
+        </button>
 
-      <div className="relative z-10 max-w-md w-full">
-        {/* Main Warning Card */}
-        <div className="bg-black border-4 border-red-500 rounded-2xl shadow-2xl p-8 mb-6 animate-pulse">
-          <div className="text-center">
-            {/* Skull and warning icons */}
-            <div className="flex justify-center items-center mb-6">
-              <Skull className="w-12 h-12 text-red-500 mr-4 animate-bounce" />
-              <Ban className="w-16 h-16 text-red-600 animate-spin" style={{ animationDuration: '3s' }} />
-              <Skull className="w-12 h-12 text-red-500 ml-4 animate-bounce" style={{ animationDelay: '0.5s' }} />
+        <div className="rounded-2xl border border-slate-800 bg-white shadow-2xl">
+          <div className="border-b border-slate-100 p-7 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
+              <Shield className="h-7 w-7 text-blue-600" />
             </div>
-
-            <h1 className="text-4xl font-black text-red-500 mb-4 tracking-wider animate-pulse">
-              ⚠️ UNAUTHORIZED ACCESS ⚠️
-            </h1>
-            
-            <div className="bg-red-900 border-2 border-red-500 rounded-lg p-4 mb-6">
-              <p className="text-red-200 font-bold text-lg mb-2">
-                🚨 RESTRICTED AREA 🚨
-              </p>
-              <p className="text-red-300 text-sm leading-relaxed">
-                This is a PRIVATE administrative portal. If you are not an authorized administrator, 
-                you are <span className="font-bold text-red-100">STRICTLY PROHIBITED</span> from accessing this area.
-              </p>
-            </div>
-
-            <div className="space-y-3 text-red-200 text-sm">
-              <div className="flex items-center justify-center">
-                <Eye className="w-4 h-4 mr-2 text-red-400" />
-                <span>All access attempts are monitored and logged</span>
-              </div>
-              <div className="flex items-center justify-center">
-                <Shield className="w-4 h-4 mr-2 text-red-400" />
-                <span>Unauthorized access may result in legal action</span>
-              </div>
-              <div className="flex items-center justify-center">
-                <Lock className="w-4 h-4 mr-2 text-red-400" />
-                <span>This system is protected by advanced security</span>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold text-slate-900">Tea Time Cari Admin</h1>
+            <p className="mt-2 text-sm text-slate-500">Sign in with an authorized administrator account.</p>
           </div>
-        </div>
 
-        {/* Warning Messages */}
-        <div className="space-y-4 mb-6">
-          <div className="bg-red-800 border-2 border-red-600 rounded-lg p-4 animate-pulse">
-            <p className="text-red-100 text-center font-bold">
-              ⛔ LEAVE IMMEDIATELY IF YOU ARE NOT AUTHORIZED ⛔
-            </p>
-          </div>
-          
-          <div className="bg-yellow-900 border-2 border-yellow-600 rounded-lg p-4">
-            <p className="text-yellow-100 text-center text-sm">
-              🔒 Only system administrators with valid credentials may proceed beyond this point
-            </p>
-          </div>
-        </div>
+          <form name="admin-login" method="POST" data-netlify="true" onSubmit={handleLogin} className="space-y-5 p-7">
+            <input type="hidden" name="form-name" value="admin-login" readOnly />
 
-        {/* Action Buttons */}
-        <div className="space-y-4">
-          <button
-            onClick={() => window.location.href = '/'}
-            className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
-          >
-            🏠 LEAVE NOW - GO TO HOMEPAGE
-          </button>
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4" role="alert">
+                <div className="flex gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            )}
 
-          {!showLoginForm ? (
+            <div>
+              <label htmlFor="admin-email" className="mb-2 block text-sm font-medium text-slate-700">
+                Admin email
+              </label>
+              <input
+                type="email"
+                id="admin-email"
+                name="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="admin@teatimecari.app"
+                required
+                disabled={isLoading || checkingSession}
+                autoComplete="email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="admin-password" className="mb-2 block text-sm font-medium text-slate-700">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="admin-password"
+                  name="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="Enter your password"
+                  required
+                  disabled={isLoading || checkingSession}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
             <button
-              onClick={() => setShowLoginForm(true)}
-              className="w-full py-3 px-6 bg-red-900 hover:bg-red-800 text-red-200 font-medium rounded-lg transition-all duration-200 border-2 border-red-600"
+              type="submit"
+              disabled={isLoading || checkingSession || !email || !password}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              <div className="flex items-center justify-center">
-                <Shield className="w-5 h-5 mr-2" />
-                I AM AN AUTHORIZED ADMINISTRATOR
-              </div>
+              {isLoading || checkingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              {checkingSession ? 'Checking session…' : isLoading ? 'Signing in…' : 'Sign in to admin'}
             </button>
-          ) : (
-            /* Admin Login Form */
-            <div className="bg-gray-900 border-2 border-gray-600 rounded-lg p-6">
-              <div className="text-center mb-4">
-                <Shield className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                <h3 className="text-lg font-bold text-white">Administrator Login</h3>
-                <p className="text-gray-400 text-sm">Enter your admin credentials</p>
-              </div>
-
-              {error && (
-                <div className="mb-4 p-3 bg-red-900 border border-red-600 rounded-lg" role="alert">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-4 h-4 text-red-400 mr-2" />
-                    <span className="text-red-200 text-sm">{error}</span>
-                  </div>
-                </div>
-              )}
-
-              <form name="admin-login" method="POST" data-netlify="true" onSubmit={handleLogin} className="space-y-4">
-                <input type="hidden" name="form-name" value="admin-login" readOnly />
-                <div>
-                  <label htmlFor="admin-email" className="block text-sm font-medium text-gray-300 mb-2">
-                    Admin Email
-                  </label>
-                  <input
-                    type="email"
-                    id="admin-email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="admin@example.com"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="admin-password" className="block text-sm font-medium text-gray-300 mb-2">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    id="admin-password"
-                    name="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your password"
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowLoginForm(false);
-                      setError(null);
-                      setEmail('');
-                      setPassword('');
-                    }}
-                    className="flex-1 py-3 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                    disabled={isLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading || !email || !password}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                      !isLoading && email && password
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Verifying...
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center">
-                        <LogIn className="w-4 h-4 mr-2" />
-                        Login
-                      </div>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-            </div>
-          )}
+          </form>
         </div>
 
-        {/* Footer Warning */}
-        <div className="text-center mt-6">
-          <p className="text-red-400 text-xs font-medium animate-pulse">
-            🚨 This area is under constant surveillance 🚨
-          </p>
-          <p className="text-red-500 text-xs mt-1">
-            Unauthorized access attempts will be reported to authorities
-          </p>
-        </div>
+        <p className="mt-5 text-center text-xs text-slate-500">
+          Admin access is role-protected and audited. Unauthorized users should return to the main site.
+        </p>
       </div>
     </div>
   );

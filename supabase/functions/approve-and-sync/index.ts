@@ -3,6 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendApprovalEmail } from "../_shared/resendEmail.ts";
 import { buildDiscourseGroups } from "../_shared/sso.ts";
+import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 
 /* ---------------- CORS helpers ---------------- */
 function cors(req: Request) {
@@ -210,6 +211,10 @@ Deno.serve(async (req) => {
       return jerr(headers, 500, "Supabase service configuration is missing");
     }
 
+    const adminCheck = await requireAdmin(req, "users:approve");
+    if (!adminCheck.actor) return jerr(headers, adminCheck.status, adminCheck.error);
+    const actor = adminCheck.actor;
+
     // Use a service-role client without forwarding the caller Authorization header
     // so approval can bypass RLS while still being called from the admin UI.
     const supa = createClient(SUPABASE_URL, SERVICE_ROLE, {
@@ -219,24 +224,10 @@ Deno.serve(async (req) => {
       },
     });
 
-    const token = (req.headers.get("authorization") || "").match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!token) return jerr(headers, 401, "Unauthorized");
-
-    const { data: auth, error: authErr } = await supa.auth.getUser(token);
-    if (authErr || !auth?.user) return jerr(headers, 401, "Unauthorized");
-
-    const adminEmailFallback = auth.user.email?.toLowerCase().includes("admin") ?? false;
-    const { data: me, error: meErr } = await supa
-      .from("profiles")
-      .select("id, is_admin")
-      .eq("id", auth.user.id)
-      .maybeSingle();
-
-    if (meErr && meErr.code !== "42703" && meErr.code !== "42P01") {
-      return jerr(headers, 500, meErr.message || "Admin lookup failed");
+    const action = String(body.action ?? "approve");
+    if (action !== "approve" && action !== "retry_discourse_sync") {
+      return jerr(headers, 400, "action must be approve or retry_discourse_sync");
     }
-
-    if (!me?.is_admin && !adminEmailFallback) return jerr(headers, 403, "Forbidden: admin only");
 
     // Optionally allow gender/xaccess from body; otherwise read from DB
     const bodyGender = normalizeGender(String(body.gender ?? ""));
@@ -270,11 +261,15 @@ Deno.serve(async (req) => {
     // Build SSO groups through the shared helper so approval-time sync matches login-time SSO.
     const groups = buildDiscourseGroups(genderNorm, xaccessFlag);
 
-    // 1) Approve in Supabase first. External integrations below are non-fatal so
-    // a Discourse or email outage cannot leave an approved applicant pending.
-    await approveRegistrationRecord(supa, reg, genderNorm);
+    if (action === "approve") {
+      // 1) Approve in Supabase first. External integrations below are non-fatal so
+      // a Discourse or email outage cannot leave an approved applicant pending.
+      await approveRegistrationRecord(supa, reg, genderNorm);
+    } else if (reg.status !== "approved") {
+      return jerr(headers, 400, "Only approved registrations can retry Discourse sync");
+    }
 
-    // 2) Sync to Discourse via SSO. This is non-fatal.
+    // 2) Sync to Discourse via SSO. This is non-fatal for approval.
     const displayName = nameFrom(reg) || username;
 
     const discourse = await discourseSyncSSO({
@@ -290,16 +285,43 @@ Deno.serve(async (req) => {
       error: String(err?.message ?? err),
     }));
 
-    // 3) Send one approval email via Resend. This is non-fatal if it fails.
-    const emailApproved = await sendApprovalEmail(email, String(reg.firstName || "").trim() || undefined)
-      .catch((err) => ({
-        success: false,
-        error: String(err),
-      }));
+    // 3) Send one approval email via Resend. This is non-fatal if it fails. Do not
+    // resend approval email during a Discourse retry.
+    const emailApproved = action === "approve"
+      ? await sendApprovalEmail(email, String(reg.firstName || "").trim() || undefined)
+        .catch((err) => ({
+          success: false,
+          error: String(err),
+        }))
+      : { success: true, skipped: true, reason: "retry_discourse_sync" };
+
+    const discourseOk = Boolean(discourse.success);
+    const emailOk = Boolean(emailApproved.success);
+    const resultStatus = action === "retry_discourse_sync"
+      ? (discourseOk ? "discourse_sync_retried" : "discourse_sync_retry_failed")
+      : !discourseOk
+        ? "approved_with_sync_error"
+        : !emailOk
+          ? "approved_with_email_error"
+          : "approved";
+
+    await writeAdminAuditLog({
+      actor,
+      req,
+      action: action === "retry_discourse_sync" ? "discourse_sync_retried" : "user_approved",
+      targetType: "registration",
+      targetId: reg.id,
+      targetEmail: email,
+      previousStatus: String(reg.status || "pending"),
+      nextStatus: action === "approve" ? "approved" : String(reg.status || "approved"),
+      metadata: { discourse, email: emailApproved, groups, resultStatus },
+      success: action === "retry_discourse_sync" ? discourseOk : true,
+      errorMessage: discourseOk ? null : String((discourse as { error?: unknown }).error ?? "Discourse sync failed"),
+    });
 
     return ok(headers, {
       ok: true,
-      status: discourse.success || discourse.skipped ? "approved" : "approved_with_sync_error",
+      status: resultStatus,
       registration_id: reg.id,
       discourse: {
         synced_via_sso: discourse.success,

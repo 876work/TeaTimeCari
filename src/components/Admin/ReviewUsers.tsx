@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
-import { approveRegistration } from '@/features/admin/registrations/api/approveRegistration';
+import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -259,6 +259,7 @@ export function AdminUserReview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [actionMessages, setActionMessages] = useState<Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>>({});
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
@@ -331,12 +332,61 @@ export function AdminUserReview({
     try {
       const data = await approveRegistration(user.id);
       const status = data?.status ?? 'approved';
+      const syncError = data?.discourse?.error || data?.discourse?.message || 'Discourse sync failed.';
+      const emailError = data?.emails?.approved?.error || 'Approval email failed.';
+
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'approved' } : u)));
+
       if (status === 'approved_with_sync_error') {
-        setError(`User approved but Discourse sync failed: ${data?.discourse?.error ?? 'Unknown error'}`);
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: {
+            type: 'warning',
+            message: `Approved, but Discourse sync needs attention: ${syncError}`,
+            canRetryDiscourse: true,
+          },
+        }));
+      } else if (status === 'approved_with_email_error') {
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: {
+            type: 'warning',
+            message: `Approved, but the approval email needs attention: ${emailError}`,
+          },
+        }));
+      } else {
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'success', message: 'Approved, emailed, and synced to Discourse.' },
+        }));
       }
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
       setError(`Failed to approve: ${getErrorMessage(err)}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRetryDiscourseSync = async (user: UserRow) => {
+    setProcessingId(user.id);
+    setError(null);
+    try {
+      const data = await retryDiscourseSync(user.id);
+      const status = data?.status;
+      if (status === 'discourse_sync_retried') {
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'success', message: 'Discourse sync retry completed successfully.' },
+        }));
+      } else {
+        const syncError = data?.discourse?.error || data?.discourse?.message || 'Discourse sync retry failed.';
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'warning', message: syncError, canRetryDiscourse: true },
+        }));
+      }
+    } catch (err) {
+      setError(`Failed to retry Discourse sync: ${getErrorMessage(err)}`);
     } finally {
       setProcessingId(null);
     }
@@ -365,7 +415,13 @@ export function AdminUserReview({
       });
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      if (data?.status === 'rejected_with_email_error') {
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'warning', message: `Rejected, but rejection email needs attention: ${data.warning || 'Email failed.'}` },
+        }));
+      }
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'rejected' } : u)));
     } catch (err) {
       setError(`Failed to reject: ${getErrorMessage(err)}`);
     } finally {
@@ -614,6 +670,11 @@ export function AdminUserReview({
                               <div>
                                 <p className="text-sm font-medium text-slate-900">{safeDisplayName(user)}</p>
                                 <p className="text-xs text-slate-400">@{user.username ?? '—'}</p>
+                                {actionMessages[user.id] && (
+                                  <p className={`mt-1 max-w-xs text-xs ${actionMessages[user.id].type === 'success' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                    {actionMessages[user.id].message}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -716,6 +777,18 @@ export function AdminUserReview({
                                     <span>Reject</span>
                                   </button>
                                 </>
+                              )}
+
+                              {actionMessages[user.id]?.canRetryDiscourse && (
+                                <button
+                                  onClick={() => handleRetryDiscourseSync(user)}
+                                  disabled={isProcessing}
+                                  title="Retry Discourse sync"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                >
+                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                  <span>Retry sync</span>
+                                </button>
                               )}
 
                               {/* Suspend (approved/verified) */}
