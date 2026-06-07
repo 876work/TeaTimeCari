@@ -45,6 +45,13 @@ export default function Signup() {
         <p className="mt-2 text-sm text-gray-600">
           Complete the application below. Our team reviews every signup before community access is granted.
         </p>
+        <p className="mt-4 text-sm text-gray-600">
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold text-[#4B9EC8] hover:text-[#3382AA]">
+            Sign in instead
+          </Link>
+          .
+        </p>
       </div>
 
       {currentStep === 1 && (

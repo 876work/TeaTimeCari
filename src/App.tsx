@@ -162,8 +162,7 @@ function App() {
   };
 
   const handleGetStarted = () => {
-    setShowWelcomePage(false);
-    setCurrentPage('user-type-selection');
+    window.location.href = '/signup';
   };
 
   const handleGoHome = () => {
