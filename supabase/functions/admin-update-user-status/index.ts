@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { sendSuspensionEmail, sendUnsuspensionEmail } from "../_shared/resendEmail.ts";
+import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 
 type AdminAction = "suspend" | "unsuspend";
 
@@ -17,39 +18,6 @@ function json(status: number, body: unknown) {
   });
 }
 
-function getBearerToken(req: Request) {
-  const header = req.headers.get("authorization") || "";
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] || null;
-}
-
-function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
-  const message = error?.message?.toLowerCase() || "";
-  return (
-    error?.code === "PGRST204" ||
-    error?.code === "42703" ||
-    (message.includes("schema cache") && message.includes("could not find")) ||
-    (message.includes("column") && message.includes("does not exist"))
-  );
-}
-
-async function isAdmin(userId: string, email?: string | null) {
-  const adminEmailFallback = email?.toLowerCase().includes("admin") ?? false;
-
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "42P01" || isSchemaCacheColumnError(error)) return adminEmailFallback;
-    throw error;
-  }
-
-  return Boolean(data?.is_admin) || adminEmailFallback;
-}
-
 function getFirstName(registration: { firstName?: string | null; full_name?: string | null }) {
   const firstName = registration.firstName?.trim();
   if (firstName) return firstName;
@@ -63,14 +31,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
 
   try {
-    const token = getBearerToken(req);
-    if (!token) return json(401, { ok: false, error: "Unauthorized" });
-
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData.user) return json(401, { ok: false, error: "Unauthorized" });
-    if (!(await isAdmin(authData.user.id, authData.user.email))) {
-      return json(403, { ok: false, error: "Forbidden: admin only" });
-    }
+    const adminCheck = await requireAdmin(req, "users:suspend");
+    if (!adminCheck.actor) return json(adminCheck.status, { ok: false, error: adminCheck.error });
+    const actor = adminCheck.actor;
 
     const body = (await req.json().catch(() => ({}))) as StatusRequest;
     const registrationId = body.registration_id || body.user_id;
@@ -103,6 +66,19 @@ Deno.serve(async (req: Request) => {
     const emailResult = action === "suspend"
       ? await sendSuspensionEmail(registration.email, firstName)
       : await sendUnsuspensionEmail(registration.email, firstName);
+
+    await writeAdminAuditLog({
+      actor,
+      req,
+      action: action === "suspend" ? "user_suspended" : "user_unsuspended",
+      targetType: "registration",
+      targetId: registrationId,
+      targetEmail: registration.email,
+      previousStatus: registration.status,
+      nextStatus,
+      metadata: { email: emailResult },
+      success: true,
+    });
 
     return json(200, {
       ok: true,

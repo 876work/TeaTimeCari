@@ -23,6 +23,7 @@ import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
 import { DiscourseCommunityAdmins } from './DiscourseCommunityAdmins';
+import { AdminAuditLogs } from './AdminAuditLogs';
 import FunctionPing from '../../dev/FunctionPing';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 
@@ -290,6 +291,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'flagged-posts') return <ReviewFlaggedPosts activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
+  if (activePage === 'logs') return <AdminAuditLogs activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>

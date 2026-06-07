@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { sendRejectionEmail } from "../_shared/resendEmail.ts";
+import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 
 interface EmailRequest {
   email: string;
@@ -43,7 +44,7 @@ async function updateUserStatus(request: EmailRequest, reason: string): Promise<
   try {
     let query = supabaseAdmin
       .from('registrations')
-      .update({ 
+      .update({
         status: 'rejected',
         rejection_reason: reason || 'No reason provided'
       });
@@ -69,9 +70,9 @@ async function updateUserStatus(request: EmailRequest, reason: string): Promise<
     return { success: true };
   } catch (err: any) {
     console.error('Error updating user status:', err);
-    return { 
-      success: false, 
-      error: `Failed to update user status: ${err.message || err}` 
+    return {
+      success: false,
+      error: `Failed to update user status: ${err.message || err}`
     };
   }
 }
@@ -82,25 +83,34 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const adminCheck = await requireAdmin(req, "users:reject");
+    if (!adminCheck.actor) {
+      return new Response(
+        JSON.stringify({ success: false, error: adminCheck.error } as EmailResponse),
+        { status: adminCheck.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const actor = adminCheck.actor;
+
     let requestData: EmailRequest;
     try {
       requestData = await req.json();
     } catch (parseError) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: "Invalid JSON in request body",
           details: { parseError: parseError.message }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
 
     const { email, firstName, reason, dryRun } = requestData;
-    
+
     // Handle both fullName and firstName for backward compatibility
     let actualFirstName = firstName?.trim();
     if (!actualFirstName && requestData.fullName) {
@@ -113,14 +123,14 @@ Deno.serve(async (req: Request) => {
 
     if (missingFields.length > 0) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: `Missing required fields: ${missingFields.join(', ')}`,
           details: { missingFields }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -129,14 +139,14 @@ Deno.serve(async (req: Request) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: "Invalid email format",
           details: { providedEmail: email }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -155,9 +165,9 @@ Tea Time Cari Team`;
     // Handle dry run
     if (dryRun) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          dryRun: true, 
+        JSON.stringify({
+          success: true,
+          dryRun: true,
           preview: { to: email, subject, text },
           details: {
             reason: rejectionReason,
@@ -177,9 +187,23 @@ Tea Time Cari Team`;
       if (!emailResult.success) {
         throw new Error(emailResult.error || "Failed to send rejection email");
       }
-      
+
+      await writeAdminAuditLog({
+        actor,
+        req,
+        action: "user_rejected",
+        targetType: "registration",
+        targetId: requestData.registration_id || requestData.user_id || null,
+        targetEmail: email,
+        nextStatus: "rejected",
+        reason: rejectionReason,
+        metadata: { email: emailResult, statusUpdated, statusUpdateError: statusError },
+        success: statusUpdated,
+        errorMessage: statusError ?? null,
+      });
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
           details: {
             emailSent: true,
@@ -194,7 +218,7 @@ Tea Time Cari Team`;
       );
     } catch (emailError: any) {
       console.error("[send-rejection-email] Email sending failed:", emailError.message);
-      
+
       // Extract details from email error
       const errorDetails: any = {
         emailSent: false,
@@ -213,15 +237,30 @@ Tea Time Cari Team`;
         errorDetails.configurationIssues = [emailError.message];
       }
 
+      await writeAdminAuditLog({
+        actor,
+        req,
+        action: "user_rejected",
+        targetType: "registration",
+        targetId: requestData.registration_id || requestData.user_id || null,
+        targetEmail: email,
+        nextStatus: "rejected",
+        reason: rejectionReason,
+        metadata: { email: { success: false, error: emailError.message }, statusUpdated, statusUpdateError: statusError },
+        success: statusUpdated,
+        errorMessage: statusError ?? emailError.message ?? "Failed to send rejection email",
+      });
+
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: emailError.message || 'Failed to send rejection email',
+        JSON.stringify({
+          success: true,
+          status: 'rejected_with_email_error',
+          warning: emailError.message || 'Failed to send rejection email',
           details: errorDetails
         } as EmailResponse),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -229,17 +268,17 @@ Tea Time Cari Team`;
   } catch (err: any) {
     console.error("[send-rejection-email] Unexpected error:", err?.message || err);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         error: `Unexpected error: ${err?.message || err}`,
-        details: { 
+        details: {
           errorType: err?.constructor?.name || 'Unknown',
-          stack: err?.stack 
+          stack: err?.stack
         }
       } as EmailResponse),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
     );
   }

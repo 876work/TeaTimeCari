@@ -5,6 +5,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { supabase } from '@/lib/supabaseClient';
+import { getAdminSession, AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import { HomePage } from './components/HomePage';
 import { AppLayout } from './components/AppLayout';
@@ -49,7 +50,7 @@ const adminPagePaths: Record<AdminPage, string> = {
   'flagged-posts': '/admin/flagged-posts',
   'discourse-admins': '/admin/discourse-admins',
   logs: '/admin/logs',
-  'function-ping': '/admin/function-ping',
+  'function-ping': '/admin/health',
 };
 
 
@@ -68,7 +69,8 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
   const session = useSession();
   const { isLoading } = useSessionContext();
   const [activePage, setActivePage] = React.useState<AdminPage>(initialPage);
-  const [adminAccess, setAdminAccess] = React.useState<{ userId: string; allowed: boolean } | null>(null);
+  const [adminSession, setAdminSession] = React.useState<AdminSession | null>(null);
+  const [adminCheckComplete, setAdminCheckComplete] = React.useState(false);
 
   React.useEffect(() => {
     setActivePage(initialPage);
@@ -76,37 +78,27 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
 
   React.useEffect(() => {
     let cancelled = false;
-    const userId = session?.user?.id;
-
-    if (isLoading) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (!userId) {
-      setAdminAccess(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setAdminAccess(null);
 
     const checkAdminAccess = async () => {
-      const adminEmailFallback = session.user.email?.toLowerCase().includes('admin') ?? false;
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', userId)
-        .maybeSingle();
+      if (isLoading) return;
 
-      if (cancelled) return;
+      if (!session?.user?.id) {
+        setAdminSession(null);
+        setAdminCheckComplete(true);
+        return;
+      }
 
-      setAdminAccess({
-        userId,
-        allowed: Boolean(data?.is_admin) || adminEmailFallback,
-      });
+      setAdminCheckComplete(false);
+
+      try {
+        const nextAdminSession = await getAdminSession();
+        if (!cancelled) setAdminSession(nextAdminSession);
+      } catch (error) {
+        console.error('Admin access check failed:', error);
+        if (!cancelled) setAdminSession(null);
+      } finally {
+        if (!cancelled) setAdminCheckComplete(true);
+      }
     };
 
     checkAdminAccess();
@@ -114,7 +106,7 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
     return () => {
       cancelled = true;
     };
-  }, [isLoading, session?.user?.email, session?.user?.id]);
+  }, [isLoading, session?.user?.id]);
 
   const handleNavigate = (page: string) => {
     const nextPage = page in adminPagePaths ? (page as AdminPage) : 'dashboard';
@@ -122,7 +114,7 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
     navigate(adminPagePaths[nextPage]);
   };
 
-  if (isLoading || (session?.user?.id && adminAccess?.userId !== session.user.id)) {
+  if (isLoading || !adminCheckComplete) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-sm text-slate-500">Checking admin access…</p>
@@ -130,8 +122,8 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
     );
   }
 
-  if (!session?.user?.id || !adminAccess?.allowed) {
-    return <Navigate to="/login" replace />;
+  if (!session?.user?.id || !adminSession) {
+    return <Navigate to={`/admin/login?next=${encodeURIComponent(adminPagePaths[initialPage])}`} replace />;
   }
 
   return <AdminDashboard activePage={activePage} onNavigate={handleNavigate} />;
@@ -228,6 +220,7 @@ function App() {
               <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
               
               {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/teamin" element={<AdminLoginPage />} />
               <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="/admin/dashboard" element={<AdminPortalRoute initialPage="dashboard" />} />
@@ -235,6 +228,7 @@ function App() {
               <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
               <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
               <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
+              <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
               
