@@ -130,14 +130,15 @@ export default function Login() {
         }
 
         navigate("/kyc-pending", { replace: true });
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!isMounted) {
           return;
         }
 
+        const message = err instanceof Error ? err.message : "";
         setError(
           `Unable to verify approval status. Please try again. ${
-            err?.message ? `(${err.message})` : ""
+            message ? `(${message})` : ""
           }`.trim()
         );
       }
@@ -208,10 +209,11 @@ export default function Login() {
 
       await trackAuthLogin();
       await redirectAfterApprovalCheck(userId);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
       setError(
         `Unable to verify approval status. Please try again. ${
-          err?.message ? `(${err.message})` : ""
+          message ? `(${message})` : ""
         }`.trim()
       );
 
@@ -241,9 +243,15 @@ export default function Login() {
             className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
             role="alert"
           >
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="text-red-700 text-sm">{error}</span>
+                <p className="mt-2 text-sm text-red-700">
+                  Need help?{' '}
+                  <Link to="/contact-us" className="font-semibold underline">Contact support</Link>.
+                </p>
+              </div>
             </div>
           </div>
         )}

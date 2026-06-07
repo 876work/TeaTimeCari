@@ -126,6 +126,12 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
                   {link.label}
                 </NavLink>
               ))}
+              {showNotifications && isAuthenticated && (
+                <div className="mt-2 flex items-center justify-between rounded-xl border-t border-white/20 px-4 py-3">
+                  <span className="text-sm font-semibold text-[#11263F]">Notifications</span>
+                  <NotificationBell />
+                </div>
+              )}
               <div className="mt-2 grid gap-2 border-t border-white/20 pt-3">
                 {isAuthenticated ? (
                   <>

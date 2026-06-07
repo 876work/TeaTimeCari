@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Link } from "react-router-dom";
-import { CheckCircle, Loader2, AlertCircle, Download, User, Mail, Phone, Camera, Calendar, Shield } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, Download, User, Mail, Camera, Calendar, Shield } from 'lucide-react';
+import { RegistrationProgress } from './RegistrationProgress';
 import html2canvas from 'html2canvas';
 import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
 import { RegisterStep1Data } from '../RegisterStep1';
@@ -25,7 +25,6 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 }) => {
   const didRun = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
@@ -63,7 +62,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         }
       }, 'image/png', 0.95);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error downloading summary:', err);
       alert('Failed to download summary. Please try again.');
     } finally {
@@ -111,7 +110,6 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         const result = await submitRegistration(registrationPayload);
         
         // Set success state and message based on whether record already existed
-        setIsSubmitted(true);
         setAlreadyExists(result.alreadyExists);
         
         if (result.alreadyExists) {
@@ -127,9 +125,10 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           isNewSubmission: result.isNewSubmission
         });
         
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Please try again.';
         console.error('Error submitting registration:', err);
-        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+        setError(`Failed to submit registration: ${message}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -143,6 +142,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
     return (
       <div className="max-w-md mx-auto p-6">
         <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
+          <RegistrationProgress currentStep={4} className="mb-6 text-left" />
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Submitting Your Application</h1>
           <p className="text-sm text-gray-600">
@@ -160,9 +160,12 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2 text-red-600">Registration Failed</h1>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-4">
             {error}
           </p>
+          <Link to="/contact-us" className="mb-6 inline-flex text-sm font-semibold text-[#4B9EC8] underline">
+            Contact support if you need help
+          </Link>
           <div className="flex items-center gap-3">
             <button
               onClick={onGoBackToStep1}
@@ -186,6 +189,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   return (
     <div className="max-w-md mx-auto p-6">
       <div className="space-y-6">
+        <RegistrationProgress currentStep={4} className="mb-6" />
+
         {/* Registration Summary */}
         <div id="registration-summary" className="rounded-2xl border p-8 shadow-sm bg-white">
           <div className="text-center mb-8">
@@ -339,7 +344,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                 Go to Home
               </button>
               <Link
-                to="/help"
+                to="/contact-us"
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"
               >
                 Need help?
