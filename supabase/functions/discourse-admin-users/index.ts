@@ -51,6 +51,26 @@ function getBearerToken(req: Request) {
   return match?.[1] || null;
 }
 
+function decodeJwtPayload(token: string) {
+  const payload = token.split(".")[1];
+
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const parsed = JSON.parse(atob(padded)) as { email?: string | null };
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function hasAdminEmail(value?: string | null) {
+  return normalizeEmail(value).includes("admin");
+}
+
 function getDiscourseHeaders() {
   return {
     "Api-Key": DISCOURSE_ADMIN_API_KEY,
@@ -112,9 +132,10 @@ async function requireTeaTimeAdmin(req: Request) {
     return { error: json(401, { error: "Unauthorized" }) };
   }
 
+  const tokenPayload = decodeJwtPayload(token);
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
-    .select("is_admin")
+    .select("is_admin, email")
     .eq("id", authData.user.id)
     .maybeSingle();
 
@@ -122,7 +143,17 @@ async function requireTeaTimeAdmin(req: Request) {
     return { error: json(500, { error: "admin lookup failed" }) };
   }
 
-  if (!profile?.is_admin) {
+  const adminEmailFallback = [authData.user.email, profile?.email, tokenPayload?.email].some(hasAdminEmail);
+
+  if (!profile?.is_admin && !adminEmailFallback) {
+    console.warn("Discourse admin access denied", {
+      userId: authData.user.id,
+      authEmail: normalizeEmail(authData.user.email),
+      profileEmail: normalizeEmail(profile?.email),
+      hasProfileAdminFlag: Boolean(profile?.is_admin),
+      hasAdminEmailFallback: adminEmailFallback,
+    });
+
     return { error: json(403, { error: "Forbidden: admin only" }) };
   }
 
