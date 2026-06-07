@@ -1,14 +1,9 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
 import { HowItWorksStepper } from './HowItWorksStepper';
 import { SiteHeader } from './SiteHeader';
 
-interface HomePageProps {
-  onGetStarted: () => void;
-}
-
-export function HomePage({ onGetStarted }: HomePageProps) {
+export function HomePage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-4 sm:py-6">
       <SiteHeader />
@@ -44,16 +39,16 @@ export function HomePage({ onGetStarted }: HomePageProps) {
         </p>
 
         <div className="mb-12">
-          <button
-            onClick={onGetStarted}
+          <Link
+            to="/signup"
             className="group inline-flex items-center px-8 py-4 bg-white text-gray-900 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl hover:bg-white/95 transform hover:scale-105 transition-all duration-300 ease-out ring-2 ring-white/40 hover:ring-white/70"
           >
             <span className="mr-3">Get Started</span>
             <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
-          </button>
+          </Link>
         </div>
 
-        <HowItWorksStepper onGetStarted={onGetStarted} />
+        <HowItWorksStepper />
 
         {/* Feature highlights */}
         <div id="about" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-3xl mx-auto scroll-mt-32">
