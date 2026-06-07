@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Check, X, AlertCircle, Loader2, User, Eye, EyeOff, Lock } from 'lucide-react';
+import { RegistrationProgress } from './Register/RegistrationProgress';
 import { useDebounce } from '../hooks/useDebounce';
 import { validateEmail, validatePhoneNumber, validateUsername } from '../utils/usernameValidation';
 
@@ -449,16 +450,26 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   const fieldInputClass = "w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]";
   const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
   const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
+  const normalizedEmailName = formData.email.split('@')[0]?.toLowerCase() || '';
+  const passwordLower = formData.password.toLowerCase();
+  const avoidsPersonalInfo = Boolean(
+    formData.password &&
+    (!formData.username || !passwordLower.includes(formData.username.toLowerCase())) &&
+    (!normalizedEmailName || !passwordLower.includes(normalizedEmailName))
+  );
 
   return (
     <div className="mx-auto max-w-xl">
       <div className="bg-white rounded-2xl shadow-xl p-8">
+        <RegistrationProgress currentStep={1} className="mb-6" />
+
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Apply to Join</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
+          <p className="mt-2 text-sm text-slate-500">Complete this application in one session. If approved, community access details are emailed after review.</p>
         </div>
         
         {globalError && (
@@ -547,6 +558,9 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 ✅ Email is available
               </p>
             )}
+            {isCheckingEmail && (
+              <p className="mt-2 text-sm text-slate-500" role="status">Checking email availability…</p>
+            )}
           </div>
           
           {/* Phone Number */}
@@ -613,6 +627,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               </p>
             )}
             
+            {isCheckingUsername && (
+              <p className="mt-2 text-sm text-slate-500" role="status">Checking username availability…</p>
+            )}
+
             {usernameStatus.isAvailable === true && (
               <p className="mt-2 text-sm text-green-600" role="status">
                 ✅ Username is available
@@ -622,7 +640,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             {usernameStatus.isAvailable === false && (
               <div className="mt-2">
                 <p className="text-sm text-red-600 mb-2" role="alert">
-                  ❌ Username is taken
+                  ❌ Username is already in use. Try a suggestion or choose another.
                 </p>
                 {usernameStatus.suggestions.length > 0 && (
                   <div>
@@ -675,7 +693,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -721,7 +739,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                tabIndex={-1}
+                aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -756,6 +774,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? 'text-green-700' : ''}`}>
                 <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? '✅' : '•'}</span>
                 Passwords must match
+              </li>
+              <li className={`flex items-center ${avoidsPersonalInfo ? 'text-green-700' : ''}`}>
+                <span className="mr-2">{avoidsPersonalInfo ? '✅' : '•'}</span>
+                Avoid using your username or email
               </li>
               <li className="flex items-center text-blue-600">
                 <span className="mr-2">💡</span>
