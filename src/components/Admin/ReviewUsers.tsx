@@ -394,6 +394,7 @@ export function AdminUserReview({
 
   const handleReject = async (user: UserRow) => {
     const name = user.username ?? safeDisplayName(user);
+    if (!confirm(`Reject ${name}? This will mark the registration as rejected and send a rejection email.`)) return;
     const reason = prompt(`Rejection reason for ${name} (optional):`);
     if (reason === null) return;
     setProcessingId(user.id);
