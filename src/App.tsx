@@ -161,11 +161,6 @@ function App() {
     setCurrentStep(4);
   };
 
-  const handleGetStarted = () => {
-    setShowWelcomePage(false);
-    setCurrentPage('user-type-selection');
-  };
-
   const handleGoHome = () => {
     setCurrentPage('user-type-selection');
     setCurrentStep(1); // Reset to basic info step
@@ -237,7 +232,7 @@ function App() {
                 path="/*" 
                 element={
                   showWelcomePage ? (
-                    <PublicLayout showHeader={false}><HomePage onGetStarted={handleGetStarted} /></PublicLayout>
+                    <PublicLayout showHeader={false}><HomePage /></PublicLayout>
                   ) : (
                     <AppLayout>
                       {currentPage === 'user-type-selection' && (
