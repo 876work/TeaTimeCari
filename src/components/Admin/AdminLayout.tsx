@@ -11,6 +11,7 @@ interface AdminLayoutProps {
 interface NavItem {
   id: string;
   label: string;
+  mobileLabel?: string;
   icon: React.ReactNode;
 }
 
@@ -19,8 +20,8 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
     { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'user-reviews', label: 'Users', icon: <Users className="w-4 h-4" /> },
     { id: 'flagged-posts', label: 'Flagged Posts', icon: <Flag className="w-4 h-4" /> },
-    { id: 'discourse-admins', label: 'Discourse/Community Admins', icon: <MessageSquare className="w-4 h-4" /> },
-    { id: 'logs', label: 'Logs', icon: <FileText className="w-4 h-4" /> },
+    { id: 'discourse-admins', label: 'Community Admins', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'logs', label: 'Audit Logs', mobileLabel: 'Logs', icon: <FileText className="w-4 h-4" /> },
     { id: 'function-ping', label: 'Health', icon: <Activity className="w-4 h-4" /> },
   ];
 
@@ -74,7 +75,7 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
                 >
                   <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{item.icon}</span>
                   <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden">{item.icon}</span>
+                  <span className="sm:hidden">{item.mobileLabel ?? item.label}</span>
                 </button>
               );
             })}

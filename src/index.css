@@ -183,39 +183,7 @@
     --toast-deg: 359deg;
     animation: privacy-toast-jump 0.5s ease-in-out forwards;
   }
-}
 
-@keyframes privacy-toast-jump {
-  0%,
-  50% {
-    transform: translateX(var(--toast-xdist)) translateY(0);
-  }
-
-  25% {
-    transform: translateX(var(--toast-xdist)) translateY(var(--toast-dist)) rotate(var(--toast-deg));
-  }
-}
-
-@keyframes privacy-toast-shadow {
-  0%,
-  50% {
-    transform: scale(1);
-  }
-
-  25% {
-    opacity: 0.85;
-    transform: scale(0.75) skew(-10deg);
-  }
-}
-
-@keyframes privacy-toast-rotate {
-  to {
-    outline-color: var(--toast-accent);
-    outline-offset: -2px;
-  }
-}
-
-@layer components {
   .home-start-toggle {
     --start-blue: #4B9EC8;
     --start-purple: #9B6BAE;
@@ -463,14 +431,25 @@
     transition: opacity 0.35s ease;
   }
 
-  .home-start-status-ready { right: 0.72rem; }
-  .home-start-status-go { left: 0.78rem; opacity: 0; background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(217, 110, 110, 0.7)); }
+  .home-start-status-ready {
+    right: 0.72rem;
+  }
+
+  .home-start-status-go {
+    left: 0.78rem;
+    opacity: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.9), rgba(217, 110, 110, 0.7));
+  }
 
   .home-start-toggle:hover .home-start-status-ready,
-  .home-start-toggle:focus-visible .home-start-status-ready { opacity: 0; }
+  .home-start-toggle:focus-visible .home-start-status-ready {
+    opacity: 0;
+  }
 
   .home-start-toggle:hover .home-start-status-go,
-  .home-start-toggle:focus-visible .home-start-status-go { opacity: 1; }
+  .home-start-toggle:focus-visible .home-start-status-go {
+    opacity: 1;
+  }
 
   .home-start-energy-rings {
     position: absolute;
@@ -484,7 +463,9 @@
   }
 
   .home-start-toggle:hover .home-start-energy-rings,
-  .home-start-toggle:focus-visible .home-start-energy-rings { left: calc(100% - 63px); }
+  .home-start-toggle:focus-visible .home-start-energy-rings {
+    left: calc(100% - 63px);
+  }
 
   .home-start-energy-ring {
     position: absolute;
@@ -496,9 +477,29 @@
     transform: translate(-50%, -50%);
   }
 
-  .home-start-energy-ring:nth-child(1) { width: 52px; height: 52px; border-top-color: rgba(255, 255, 255, 0.5); border-right-color: rgba(75, 158, 200, 0.42); animation: home-start-spin 3s linear infinite; }
-  .home-start-energy-ring:nth-child(2) { width: 42px; height: 42px; border-bottom-color: rgba(255, 255, 255, 0.46); border-left-color: rgba(155, 107, 174, 0.42); animation: home-start-spin 2s linear infinite reverse; }
-  .home-start-energy-ring:nth-child(3) { width: 31px; height: 31px; border-left-color: rgba(255, 255, 255, 0.42); border-top-color: rgba(217, 110, 110, 0.42); animation: home-start-spin 1.5s linear infinite; }
+  .home-start-energy-ring:nth-child(1) {
+    width: 52px;
+    height: 52px;
+    border-top-color: rgba(255, 255, 255, 0.5);
+    border-right-color: rgba(75, 158, 200, 0.42);
+    animation: home-start-spin 3s linear infinite;
+  }
+
+  .home-start-energy-ring:nth-child(2) {
+    width: 42px;
+    height: 42px;
+    border-bottom-color: rgba(255, 255, 255, 0.46);
+    border-left-color: rgba(155, 107, 174, 0.42);
+    animation: home-start-spin 2s linear infinite reverse;
+  }
+
+  .home-start-energy-ring:nth-child(3) {
+    width: 31px;
+    height: 31px;
+    border-left-color: rgba(255, 255, 255, 0.42);
+    border-top-color: rgba(217, 110, 110, 0.42);
+    animation: home-start-spin 1.5s linear infinite;
+  }
 
   .home-start-interface-lines {
     position: absolute;
@@ -540,44 +541,115 @@
   }
 
   .home-start-toggle:hover .home-start-glow,
-  .home-start-toggle:focus-visible .home-start-glow { opacity: 0.78; }
+  .home-start-toggle:focus-visible .home-start-glow {
+    opacity: 0.78;
+  }
+}
+
+@keyframes privacy-toast-jump {
+  0%,
+  50% {
+    transform: translateX(var(--toast-xdist)) translateY(0);
+  }
+
+  25% {
+    transform: translateX(var(--toast-xdist)) translateY(var(--toast-dist)) rotate(var(--toast-deg));
+  }
+}
+
+@keyframes privacy-toast-shadow {
+  0%,
+  50% {
+    transform: scale(1);
+  }
+
+  25% {
+    opacity: 0.85;
+    transform: scale(0.75) skew(-10deg);
+  }
+}
+
+@keyframes privacy-toast-rotate {
+  to {
+    outline-color: var(--toast-accent);
+    outline-offset: -2px;
+  }
 }
 
 @keyframes home-start-track-line-move {
-  to { transform: translateX(22px); }
+  to {
+    transform: translateX(22px);
+  }
 }
 
 @keyframes home-start-pulse {
-  from { opacity: 0.6; transform: translate(-50%, -50%) scale(0.92); }
-  to { opacity: 0.92; transform: translate(-50%, -50%) scale(1.1); }
+  from {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+
+  to {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
 }
 
 @keyframes home-start-thumb-scan {
-  0% { top: -5px; opacity: 0; }
-  20%, 80% { opacity: 0.78; }
-  100% { top: 58px; opacity: 0; }
+  0% {
+    top: -5px;
+    opacity: 0;
+  }
+
+  20%,
+  80% {
+    opacity: 0.78;
+  }
+
+  100% {
+    top: 58px;
+    opacity: 0;
+  }
 }
 
 @keyframes home-start-particle-float {
-  0% { opacity: 0; transform: translateY(0) scale(1); }
-  20% { opacity: 0.85; }
-  100% { opacity: 0; transform: translateY(-32px) scale(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+
+  20% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-32px) scale(0);
+  }
 }
 
 @keyframes home-start-blink {
-  0%, 100% { opacity: 0.6; transform: translateY(-50%) scale(0.92); }
-  50% { opacity: 1; transform: translateY(-50%) scale(1.12); }
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: translateY(-50%) scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.12);
+  }
 }
 
 @keyframes home-start-spin {
-  to { transform: translate(-50%, -50%) rotate(360deg); }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-start-toggle,
-  .home-start-toggle *,
-  .home-start-toggle::before,
-  .home-start-toggle::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
