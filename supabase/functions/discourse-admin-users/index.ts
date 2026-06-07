@@ -35,8 +35,24 @@ const DISCOURSE_BASE_URL = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(/\
 const DISCOURSE_ADMIN_API_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_ADMIN_API_USERNAME = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 
-const VALID_FLAGS = new Set<UserFlag>(["all", "active", "staff", "suspended", "new", "blocked", "suspect"]);
-const ALL_USER_FLAGS: UserFlag[] = ["active", "staff", "suspended", "new", "blocked", "suspect"];
+const VALID_FLAGS = new Set<UserFlag>([
+  "all",
+  "active",
+  "staff",
+  "suspended",
+  "new",
+  "blocked",
+  "suspect",
+]);
+
+const ALL_USER_FLAGS: UserFlag[] = [
+  "active",
+  "staff",
+  "suspended",
+  "new",
+  "blocked",
+  "suspect",
+];
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -48,6 +64,7 @@ function json(status: number, body: unknown) {
 function getBearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
+
   return match?.[1] || null;
 }
 
@@ -67,6 +84,10 @@ function decodeJwtPayload(token: string) {
   }
 }
 
+function normalizeEmail(value?: string | null) {
+  return (value || "").trim().toLowerCase();
+}
+
 function hasAdminEmail(value?: string | null) {
   return normalizeEmail(value).includes("admin");
 }
@@ -79,16 +100,13 @@ function getDiscourseHeaders() {
   };
 }
 
-function normalizeEmail(value?: string | null) {
-  return (value || "").trim().toLowerCase();
-}
-
 function normalizeSearch(value?: string | null) {
   return (value || "").trim().toLowerCase();
 }
 
 function isSuspended(user: DiscourseUser) {
   if (typeof user.suspended === "boolean") return user.suspended;
+
   return Boolean(user.suspended_till);
 }
 
@@ -133,6 +151,7 @@ async function requireTeaTimeAdmin(req: Request) {
   }
 
   const tokenPayload = decodeJwtPayload(token);
+
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("is_admin, email")
@@ -143,7 +162,11 @@ async function requireTeaTimeAdmin(req: Request) {
     return { error: json(500, { error: "admin lookup failed" }) };
   }
 
-  const adminEmailFallback = [authData.user.email, profile?.email, tokenPayload?.email].some(hasAdminEmail);
+  const adminEmailFallback = [
+    authData.user.email,
+    profile?.email,
+    tokenPayload?.email,
+  ].some(hasAdminEmail);
 
   if (!profile?.is_admin && !adminEmailFallback) {
     console.warn("Discourse admin access denied", {
