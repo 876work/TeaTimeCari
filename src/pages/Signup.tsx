@@ -5,7 +5,7 @@ import { RegisterStep1, type RegisterStep1Data } from '@/components/RegisterStep
 import { RegisterStep2, type RegisterStep2Data } from '@/components/Register/Step2';
 import { RegisterStep3, type RegisterStep3Data } from '@/components/Register/Step3';
 import PendingApproval from '@/components/Register/PendingApproval';
-import { GradientPageShell } from '@/components/GradientPageShell';
+import { AuthLayout } from '@/components/AuthLayout';
 
 export default function Signup() {
   const [currentStep, setCurrentStep] = React.useState(1);
@@ -36,24 +36,7 @@ export default function Signup() {
   };
 
   return (
-    <GradientPageShell maxWidth="max-w-3xl" cardClassName="px-4 py-8 sm:px-6 md:px-8">
-      <div className="mx-auto mb-8 max-w-2xl text-center">
-        <Link to="/" className="text-sm font-medium text-[#4B9EC8] hover:text-[#3382AA]">
-          ← Back to home
-        </Link>
-        <h1 className="mt-4 text-3xl font-bold text-gray-900">Apply to join TeaTime Cari</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Complete the application below. Our team reviews every signup before community access is granted.
-        </p>
-        <p className="mt-4 text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-[#4B9EC8] hover:text-[#3382AA]">
-            Sign in instead
-          </Link>
-          .
-        </p>
-      </div>
-
+    <AuthLayout maxWidth="max-w-xl">
       {currentStep === 1 && (
         <RegisterStep1
           onNext={handleStep1Complete}
@@ -88,6 +71,18 @@ export default function Signup() {
           onGoBackToStep1={resetRegistration}
         />
       )}
-    </GradientPageShell>
+
+      <div className="bg-white rounded-2xl shadow-xl p-4 text-center">
+        <p className="text-sm text-gray-600">
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold text-[#4B9EC8] hover:text-[#3382AA] transition-colors">
+            Sign in instead
+          </Link>
+        </p>
+        <Link to="/" className="mt-3 inline-flex text-sm text-gray-600 hover:text-gray-800 transition-colors">
+          ← Back to Home
+        </Link>
+      </div>
+    </AuthLayout>
   );
 }
