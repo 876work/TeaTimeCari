@@ -1,7 +1,8 @@
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { incrementInviteCodeUsage } from '../../utils/inviteCodeUtils';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard } from 'lucide-react';
+import { RegistrationProgress } from './RegistrationProgress';
+import type { RegisterStep1Data } from '../RegisterStep1';
+import type { RegisterStep2Data } from './Step2';
 
 export interface RegisterStep3Data {
   captureType: 'selfie' | 'id';
@@ -14,8 +15,8 @@ interface RegisterStep3Props {
   onBack?: () => void;
   initialData?: RegisterStep3Data;
   registrationData?: {
-    step1?: { firstName: string; lastName: string; email: string; phone: string; username: string };
-    step2?: { gender: 'Male' | 'Female' };
+    step1?: RegisterStep1Data;
+    step2?: RegisterStep2Data;
   };
 }
 
@@ -24,8 +25,6 @@ type CameraState = 'idle' | 'requesting' | 'active' | 'error';
 type CaptureState = 'none' | 'captured' | 'previewing';
 
 export function RegisterStep3({ onNext, onBack, initialData, registrationData }: RegisterStep3Props) {
-  const supabase = useSupabaseClient();
-  
   // State management
   const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
   const [cameraState, setCameraState] = useState<CameraState>('idle');
@@ -200,9 +199,10 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
           imageBlob: imageBlob
         });
         
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Please try again.';
         console.error('Error submitting registration:', err);
-        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+        setError(`Failed to submit registration: ${message}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -214,12 +214,15 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
   return (
     <div className="max-w-lg mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
+        <RegistrationProgress currentStep={3} className="mb-6" />
+
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <Camera className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Photo Verification</h1>
           <p className="text-gray-600">Step 3 of 3: Identity Verification</p>
+          <p className="mt-2 text-sm text-slate-500">After submission, a team member usually reviews applications within 24–48 hours.</p>
         </div>
 
         {/* Warning Message */}
@@ -336,6 +339,15 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
                         <p className="font-medium mb-2">Camera Error</p>
                         <p className="text-sm">{error}</p>
+                        <div className="mt-4 rounded-lg bg-white/80 p-3 text-left text-xs text-red-800">
+                          <p className="font-semibold">Try these quick fixes:</p>
+                          <ul className="mt-2 list-disc space-y-1 pl-4">
+                            <li>Allow camera permissions for this site.</li>
+                            <li>Open this page in Safari or Chrome.</li>
+                            <li>Try again from your phone if this device has no camera.</li>
+                          </ul>
+                          <a href="/contact-us" className="mt-2 inline-flex font-semibold text-red-700 underline">Contact support if you cannot continue</a>
+                        </div>
                         <button
                           onClick={() => {
                             setError(null);
@@ -427,6 +439,40 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
           </div>
         )}
 
+
+        {isReadyToContinue && (
+          <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+            <h2 className="text-lg font-bold text-slate-900">Review before submitting</h2>
+            <p className="mt-1 text-sm text-slate-600">Please confirm these details before your application enters admin review.</p>
+            <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="font-semibold text-slate-500">Full name</dt>
+                <dd className="text-slate-900">{registrationData?.step1?.fullName || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-500">Username</dt>
+                <dd className="text-slate-900">{registrationData?.step1?.username ? `@${registrationData.step1.username}` : 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-500">Email</dt>
+                <dd className="text-slate-900">{registrationData?.step1?.email || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-500">Phone</dt>
+                <dd className="text-slate-900">{registrationData?.step1?.phone || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-500">Gender</dt>
+                <dd className="text-slate-900">{registrationData?.step2?.gender || 'Not provided'}</dd>
+              </div>
+              <div>
+                <dt className="font-semibold text-slate-500">Verification method</dt>
+                <dd className="text-slate-900">{captureMode === 'selfie' ? 'Live selfie capture' : 'ID document photo'}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
         {/* Navigation Buttons */}
         <div className="flex space-x-4 mt-8">
           {onBack && (
@@ -456,7 +502,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                 Submitting...
               </div>
             ) : (
-              'Complete Registration'
+              'Submit Application'
             )}
           </button>
         </div>

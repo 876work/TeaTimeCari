@@ -740,6 +740,7 @@ export function AdminUserReview({
                               <button
                                 onClick={() => setExpandedId(isExpanded ? null : user.id)}
                                 title={isExpanded ? 'Hide details' : 'View details'}
+                                aria-label={`${isExpanded ? 'Hide' : 'View'} details for ${user.username || user.email}`}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                               >
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -750,6 +751,7 @@ export function AdminUserReview({
                                 <button
                                   onClick={() => setImageModal(user.imageData!)}
                                   title="View photo"
+                                  aria-label={`View registration photo for ${user.username || user.email}`}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
                                   <Camera className="w-4 h-4" />
@@ -763,6 +765,7 @@ export function AdminUserReview({
                                     onClick={() => handleApprove(user)}
                                     disabled={isProcessing}
                                     title="Approve user"
+                                    aria-label={`Approve ${user.username || user.email}`}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                   >
                                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
@@ -772,6 +775,7 @@ export function AdminUserReview({
                                     onClick={() => handleReject(user)}
                                     disabled={isProcessing}
                                     title="Reject user"
+                                    aria-label={`Reject ${user.username || user.email}`}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
                                   >
                                     <XCircle className="w-4 h-4" />
@@ -785,6 +789,7 @@ export function AdminUserReview({
                                   onClick={() => handleRetryDiscourseSync(user)}
                                   disabled={isProcessing}
                                   title="Retry Discourse sync"
+                                  aria-label={`Retry Discourse sync for ${user.username || user.email}`}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -798,9 +803,11 @@ export function AdminUserReview({
                                   onClick={() => updateSuspension(user, 'suspend')}
                                   disabled={isProcessing}
                                   title="Suspend user"
-                                  className="p-1.5 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                                  aria-label={`Suspend ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-50 text-xs font-medium text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                                  <span>Suspend</span>
                                 </button>
                               )}
 
@@ -810,9 +817,11 @@ export function AdminUserReview({
                                   onClick={() => updateSuspension(user, 'unsuspend')}
                                   disabled={isProcessing}
                                   title="Remove suspension"
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                  aria-label={`Remove suspension for ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                  <span>Unsuspend</span>
                                 </button>
                               )}
                             </div>
