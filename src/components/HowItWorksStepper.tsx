@@ -1,6 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight, Check, RotateCcw } from 'lucide-react';
+
+interface HowItWorksStepperProps {
+  onGetStarted: () => void;
+}
 
 interface Step {
   label: string;
@@ -34,7 +37,7 @@ const steps: Step[] = [
   },
 ];
 
-export function HowItWorksStepper() {
+export function HowItWorksStepper({ onGetStarted }: HowItWorksStepperProps) {
   const [activeStep, setActiveStep] = React.useState(0);
   const isComplete = activeStep === steps.length;
   const currentStep = steps[Math.min(activeStep, steps.length - 1)];
@@ -132,13 +135,14 @@ export function HowItWorksStepper() {
                   A private community is taking shape in Saint Lucia. Create your account, follow the rules, and help keep the space respectful, factual, and safe.
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    to="/signup"
+                  <button
+                    type="button"
+                    onClick={onGetStarted}
                     className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                   >
                     <span className="mr-2">Get Started</span>
                     <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
-                  </Link>
+                  </button>
                   <button
                     type="button"
                     onClick={handleReset}
