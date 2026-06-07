@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, Heart, ArrowRight, Star, Shield, Clock } from 'lucide-react';
+import { Users, Heart, Star, Shield, Clock } from 'lucide-react';
 import { HowItWorksStepper } from './HowItWorksStepper';
 import { SiteHeader } from './SiteHeader';
 
@@ -38,13 +38,44 @@ export function HomePage() {
           Connect, share, and discover in a community built for authentic conversations
         </p>
 
-        <div className="mb-12">
-          <Link
-            to="/signup"
-            className="group inline-flex items-center px-8 py-4 bg-white text-gray-900 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl hover:bg-white/95 transform hover:scale-105 transition-all duration-300 ease-out ring-2 ring-white/40 hover:ring-white/70"
-          >
-            <span className="mr-3">Get Started</span>
-            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform duration-200" />
+        <div className="mb-12 flex justify-center">
+          <Link to="/signup" className="home-start-toggle" aria-label="Get Started with Tea Time Cari">
+            <span className="home-start-track-lines" aria-hidden="true">
+              <span className="home-start-track-line" />
+            </span>
+            <span className="home-start-thumb" aria-hidden="true">
+              <span className="home-start-thumb-core" />
+              <span className="home-start-thumb-inner" />
+              <span className="home-start-thumb-scan" />
+              <span className="home-start-particles">
+                <span className="home-start-particle" />
+                <span className="home-start-particle" />
+                <span className="home-start-particle" />
+                <span className="home-start-particle" />
+                <span className="home-start-particle" />
+              </span>
+            </span>
+            <span className="home-start-data">
+              <span className="home-start-text home-start-text-ready">Get Started</span>
+              <span className="home-start-text home-start-text-go">Let's Go</span>
+              <span className="home-start-status home-start-status-ready" aria-hidden="true" />
+              <span className="home-start-status home-start-status-go" aria-hidden="true" />
+            </span>
+            <span className="home-start-energy-rings" aria-hidden="true">
+              <span className="home-start-energy-ring" />
+              <span className="home-start-energy-ring" />
+              <span className="home-start-energy-ring" />
+            </span>
+            <span className="home-start-interface-lines" aria-hidden="true">
+              <span className="home-start-interface-line" />
+              <span className="home-start-interface-line" />
+              <span className="home-start-interface-line" />
+              <span className="home-start-interface-line" />
+              <span className="home-start-interface-line" />
+              <span className="home-start-interface-line" />
+            </span>
+            <span className="home-start-reflection" aria-hidden="true" />
+            <span className="home-start-glow" aria-hidden="true" />
           </Link>
         </div>
 
