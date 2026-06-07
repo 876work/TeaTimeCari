@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2, Lock, Shield } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { getAdminSession } from '@/lib/adminAuth';
 import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
@@ -20,7 +20,6 @@ export function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,96 +87,131 @@ export function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-10">
+      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute left-10 top-20 h-32 w-32 animate-pulse rounded-full bg-white/15" />
+        <div className="absolute right-20 top-40 h-24 w-24 animate-bounce rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-32 left-1/4 h-40 w-40 animate-pulse rounded-full bg-white/10" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-20 right-1/3 h-20 w-20 animate-bounce rounded-full bg-white/15" style={{ animationDelay: '0.5s' }} />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-white/85 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           Return to Tea Time Cari
         </button>
 
-        <div className="rounded-2xl border border-slate-800 bg-white shadow-2xl">
-          <div className="border-b border-slate-100 p-7 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
-              <Shield className="h-7 w-7 text-blue-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900">Tea Time Cari Admin</h1>
-            <p className="mt-2 text-sm text-slate-500">Sign in with an authorized administrator account.</p>
-          </div>
+        <div className="rounded-[22px] bg-gradient-to-br from-[#D6EBF5] via-[#9B6BAE] to-[#D96E6E] p-[2px] shadow-2xl transition-all duration-300 hover:shadow-[0_0_30px_1px_rgba(214,235,245,0.35)]">
+          <div className="rounded-[20px] bg-[#171717] transition-all duration-200 hover:scale-[0.98]">
+            <form
+              name="admin-login"
+              method="POST"
+              data-netlify="true"
+              onSubmit={handleLogin}
+              className="flex flex-col gap-4 rounded-[20px] px-8 pb-8 pt-7 text-white"
+            >
+              <input type="hidden" name="form-name" value="admin-login" readOnly />
 
-          <form name="admin-login" method="POST" data-netlify="true" onSubmit={handleLogin} className="space-y-5 p-7">
-            <input type="hidden" name="form-name" value="admin-login" readOnly />
-
-            {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4" role="alert">
-                <div className="flex gap-3">
-                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-                  <p className="text-sm text-red-700">{error}</p>
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 p-2 ring-1 ring-white/15">
+                  <img
+                    src="/teaLogo.png"
+                    alt="Tea Time Cari"
+                    className="h-full w-full object-contain drop-shadow-lg"
+                  />
                 </div>
+                <p id="admin-login-heading" className="text-xl font-bold tracking-wide text-white">
+                  Tea Time Cari Admin
+                </p>
+                <p className="mt-2 text-sm text-white/65">
+                  Sign in with an authorized administrator account.
+                </p>
               </div>
-            )}
 
-            <div>
-              <label htmlFor="admin-email" className="mb-2 block text-sm font-medium text-slate-700">
-                Admin email
-              </label>
-              <input
-                type="email"
-                id="admin-email"
-                name="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="admin@teatimecari.app"
-                required
-                disabled={isLoading || checkingSession}
-                autoComplete="email"
-              />
-            </div>
+              {error && (
+                <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4" role="alert">
+                  <div className="flex gap-3">
+                    <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-300" />
+                    <p className="text-sm text-red-100">{error}</p>
+                  </div>
+                </div>
+              )}
 
-            <div>
-              <label htmlFor="admin-password" className="mb-2 block text-sm font-medium text-slate-700">
-                Password
-              </label>
-              <div className="relative">
+              <div className="mt-2 flex items-center gap-3 rounded-full bg-[#171717] px-4 py-3 text-white shadow-[inset_2px_5px_10px_rgb(5,5,5)]">
+                <label htmlFor="admin-email" className="sr-only">
+                  Admin email
+                </label>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  height={16}
+                  width={16}
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 flex-shrink-0 text-white/85"
+                  aria-hidden="true"
+                >
+                  <path d="M13.106 7.222c0-2.967-2.249-5.032-5.482-5.032-3.35 0-5.646 2.318-5.646 5.702 0 3.493 2.235 5.708 5.762 5.708.862 0 1.689-.123 2.304-.335v-.862c-.43.199-1.354.328-2.29.328-2.926 0-4.813-1.88-4.813-4.798 0-2.844 1.921-4.881 4.594-4.881 2.735 0 4.608 1.688 4.608 4.156 0 1.682-.554 2.769-1.416 2.769-.492 0-.772-.28-.772-.76V5.206H8.923v.834h-.11c-.266-.595-.881-.964-1.6-.964-1.4 0-2.378 1.162-2.378 2.823 0 1.737.957 2.906 2.379 2.906.8 0 1.415-.39 1.709-1.087h.11c.081.67.703 1.148 1.503 1.148 1.572 0 2.57-1.415 2.57-3.643zm-7.177.704c0-1.197.54-1.907 1.456-1.907.93 0 1.524.738 1.524 1.907S8.308 9.84 7.371 9.84c-.895 0-1.442-.725-1.442-1.914z" />
+                </svg>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type="email"
+                  id="admin-email"
+                  name="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  required
+                  disabled={isLoading || checkingSession}
+                  autoComplete="email"
+                  aria-label="Admin email"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 rounded-full bg-[#171717] px-4 py-3 text-white shadow-[inset_2px_5px_10px_rgb(5,5,5)]">
+                <label htmlFor="admin-password" className="sr-only">
+                  Password
+                </label>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  height={16}
+                  width={16}
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 flex-shrink-0 text-white/85"
+                  aria-hidden="true"
+                >
+                  <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+                </svg>
+                <input
+                  type="password"
                   id="admin-password"
                   name="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 pr-12 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="Enter your password"
+                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none disabled:cursor-not-allowed disabled:opacity-60"
                   required
                   disabled={isLoading || checkingSession}
                   autoComplete="current-password"
+                  aria-label="Password"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 hover:text-slate-600"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || checkingSession || !email || !password}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {isLoading || checkingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-              {checkingSession ? 'Checking session…' : isLoading ? 'Signing in…' : 'Sign in to admin'}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={isLoading || checkingSession || !email || !password}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#252525] px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-black disabled:cursor-not-allowed disabled:bg-[#252525]/60 disabled:text-white/45"
+              >
+                {isLoading || checkingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                {checkingSession ? 'Checking session…' : isLoading ? 'Signing in…' : 'Login'}
+              </button>
+            </form>
+          </div>
         </div>
 
-        <p className="mt-5 text-center text-xs text-slate-500">
+        <p className="mt-5 text-center text-xs text-white/75 drop-shadow-sm">
           Admin access is role-protected and audited. Unauthorized users should return to the main site.
         </p>
       </div>
