@@ -444,21 +444,20 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     }
   };
   
-  const fieldLabelClass = "mb-2 block text-xs font-bold uppercase tracking-[0.25em] text-black";
+  const fieldLabelClass = "block text-sm font-medium text-gray-700 mb-2";
   const fieldDescriptionClass = "mb-3 text-xs leading-5 text-gray-500";
-  const fieldInputClass = "w-full border-0 border-b-2 border-l-2 border-black bg-transparent px-3 py-3 text-base text-black outline-none transition-all duration-200 placeholder:text-gray-400 focus:rounded-lg focus:border-2 focus:border-black focus:ring-0";
+  const fieldInputClass = "w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]";
   const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
   const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[16px_16px_32px_rgba(200,200,200,0.65),-16px_-16px_32px_rgba(254,254,254,0.9)] sm:p-8">
+      <div className="bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.3em] text-gray-500">Sign Up</p>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Your Account</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Apply to Join</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
         </div>
         
@@ -471,7 +470,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           </div>
         )}
         
-        <form name="registration-step-1" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-7">
+        <form name="registration-step-1" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
           <input type="hidden" name="form-name" value="registration-step-1" readOnly />
           {/* Full Name */}
           <div>
@@ -634,7 +633,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                           key={suggestion}
                           type="button"
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="px-3 py-1 text-xs bg-[#4B9EC8] bg-opacity-20 hover:bg-[#4B9EC8] hover:bg-opacity-40 text-[#3382AA] font-medium rounded-full transition-colors"
+                          className="px-3 py-1 text-xs bg-[#D6EBF5] hover:bg-[#BEE0EF] text-[#3382AA] font-medium rounded-full transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -771,7 +770,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <button
                 type="button"
                 onClick={onBack}
-                className="flex-1 rounded-lg border-2 border-black bg-white px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] text-black transition-all duration-300 hover:bg-black hover:text-white"
+                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               >
                 Back
               </button>
@@ -779,10 +778,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             <button
               type="submit"
               disabled={!isFormValid()}
-              className={`${onBack ? 'flex-1' : 'w-full'} rounded-lg border-2 px-4 py-3 text-xs font-bold uppercase tracking-[0.2em] transition-all duration-300 ${
+              className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 isFormValid()
-                  ? 'border-black bg-black text-white hover:bg-white hover:text-black'
-                  : 'cursor-not-allowed border-gray-300 bg-gray-200 text-gray-500'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
               Next Step
