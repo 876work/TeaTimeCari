@@ -40,9 +40,7 @@ const getFieldError = (
         : "Please enter a valid email address";
 
     case "phone":
-      return value.trim() && !/^758\d{7}$/.test(value.replace(/\D/g, ""))
-        ? "Phone number must be in format: 758xxxxxxx"
-        : null;
+      return null;
 
     case "message":
       if (!value.trim()) {
@@ -416,7 +414,7 @@ export default function ContactUs() {
                     ? "border-[#D96E6E] bg-red-50"
                     : "border-gray-300 bg-white hover:border-[#4B9EC8]"
                 }`}
-                placeholder="758xxxxxxx"
+                placeholder="Enter your phone number"
                 disabled={isSubmitting}
                 autoComplete="tel"
               />

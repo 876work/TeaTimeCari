@@ -29,16 +29,10 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Validates if a string is a valid phone number (Saint Lucia format)
+ * Validates if a string contains a phone number value
  * @param phone - The phone string to validate
- * @returns true if the string is a valid phone number, false otherwise
+ * @returns true if the string contains a phone number value, false otherwise
  */
 export function isValidPhoneNumber(phone: string): boolean {
-  if (!phone || typeof phone !== 'string') {
-    return false;
-  }
-
-  // Saint Lucia phone number format: 758xxxxxxx
-  const phoneRegex = /^758\d{7}$/;
-  return phoneRegex.test(phone.replace(/\D/g, ''));
+  return typeof phone === 'string' && Boolean(phone.trim());
 }
