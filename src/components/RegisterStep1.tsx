@@ -73,6 +73,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Helper note visibility state
+  const [activeHelpField, setActiveHelpField] = useState<keyof RegisterStep1Data | null>(null);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   
   // Debounce username for API calls
   const debouncedUsername = useDebounce(formData.username, 500);
@@ -445,10 +449,11 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     }
   };
   
-  const fieldLabelClass = "mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700";
-  const fieldDescriptionClass = "mb-3 text-xs leading-5 text-gray-500";
-  const fieldPrivacyNoteClass = "mt-1 block font-medium text-slate-600";
-  const fieldHelpIconClass = "h-4 w-4 text-[#4B9EC8]";
+  const fieldLabelClass = "text-sm font-medium text-gray-700";
+  const fieldLabelRowClass = "mb-2 flex flex-wrap items-center gap-1.5";
+  const fieldHelpButtonClass = "inline-flex h-6 w-6 items-center justify-center rounded-full text-[#4B9EC8] transition-colors hover:bg-[#D6EBF5] hover:text-[#3382AA] focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2";
+  const fieldHelpIconClass = "h-4 w-4";
+  const fieldHelpNoteClass = "mb-3 rounded-lg bg-[#F5FBFE] px-3 py-2 text-xs leading-5 text-slate-600 ring-1 ring-[#D6EBF5]";
   const fieldInputClass = "w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]";
   const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
   const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
@@ -459,6 +464,46 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     (!formData.username || !passwordLower.includes(formData.username.toLowerCase())) &&
     (!normalizedEmailName || !passwordLower.includes(normalizedEmailName))
   );
+  const showPasswordRequirements = isPasswordFocused || Boolean(formData.password);
+
+  const helperNotes: Record<keyof RegisterStep1Data, string> = {
+    fullName: 'Used for account review only. This will not appear on your profile.',
+    email: 'Used for account updates, login, and verification. This will not appear on your profile.',
+    phone: 'Used only if we need to verify your account. This will not appear on your profile.',
+    username: 'This is the name other users may see inside Tea Time Cari. You can choose something private.',
+    password: 'Use at least 10 characters. Avoid using your username or email.',
+    confirmPassword: 'Re enter your password to make sure it matches.'
+  };
+
+  const renderFieldLabel = (field: keyof RegisterStep1Data, label: string) => {
+    const helperId = `${field}-help-note`;
+    const isOpen = activeHelpField === field;
+
+    return (
+      <>
+        <div className={fieldLabelRowClass}>
+          <label htmlFor={field} className={fieldLabelClass}>
+            {label}
+          </label>
+          <button
+            type="button"
+            onClick={() => setActiveHelpField(isOpen ? null : field)}
+            className={fieldHelpButtonClass}
+            aria-label={`Show help for ${label}`}
+            aria-expanded={isOpen}
+            aria-controls={helperId}
+          >
+            <HelpCircle className={fieldHelpIconClass} aria-hidden="true" />
+          </button>
+        </div>
+        {isOpen && (
+          <p id={helperId} className={fieldHelpNoteClass} role="note">
+            {helperNotes[field]}
+          </p>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="mx-auto max-w-xl">
@@ -471,7 +516,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Apply to Join</h1>
           <p className="text-gray-600">Step 1 of 3: Basic Information</p>
-          <p className="mt-2 text-sm text-slate-500">Complete this application in one session. If approved, community access details are emailed after review.</p>
+          <p className="mt-2 text-sm text-slate-500">Create your Tea Time Cari account in a few quick steps. If approved, we’ll email your access details after review.</p>
         </div>
         
         {globalError && (
@@ -487,14 +532,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           <input type="hidden" name="form-name" value="registration-step-1" readOnly />
           {/* Full Name */}
           <div>
-            <label htmlFor="fullName" className={fieldLabelClass}>
-              <span>Full Name</span>
-              <HelpCircle className={fieldHelpIconClass} aria-label="Full name privacy note" />
-            </label>
-            <p className={fieldDescriptionClass}>
-              💡 Enter your first and last name as they appear on your ID.
-              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
-            </p>
+            {renderFieldLabel('fullName', 'Full Name')}
             <input
               type="text"
               id="fullName"
@@ -515,14 +553,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Email */}
           <div>
-            <label htmlFor="email" className={fieldLabelClass}>
-              <span>Email Address</span>
-              <HelpCircle className={fieldHelpIconClass} aria-label="Email address privacy note" />
-            </label>
-            <p className={fieldDescriptionClass}>
-              📧 We'll use this to send you important updates and verification codes.
-              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
-            </p>
+            {renderFieldLabel('email', 'Email Address')}
             <div className="relative">
               <input
                 type="email"
@@ -571,14 +602,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Phone Number */}
           <div>
-            <label htmlFor="phone" className={fieldLabelClass}>
-              <span>Phone Number</span>
-              <HelpCircle className={fieldHelpIconClass} aria-label="Phone number privacy note" />
-            </label>
-            <p className={fieldDescriptionClass}>
-              📱 Saint Lucia format required - we may send verification codes here.
-              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
-            </p>
+            {renderFieldLabel('phone', 'Phone Number')}
             <input
               type="text"
               id="phone"
@@ -599,14 +623,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Username */}
           <div>
-            <label htmlFor="username" className={fieldLabelClass}>
-              <span>Username</span>
-              <HelpCircle className={fieldHelpIconClass} aria-label="Username display note" />
-            </label>
-            <p className={fieldDescriptionClass}>
-              🏷️ Choose a unique name - letters, numbers, and underscores only (3-20 characters).
-              <span className={fieldPrivacyNoteClass}>This will be displayed on the Tea Time Cari App only.</span>
-            </p>
+            {renderFieldLabel('username', 'Username')}
             <div className="relative">
               <input
                 type="text"
@@ -675,12 +692,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           
           {/* Password */}
           <div>
-            <label htmlFor="password" className={fieldLabelClass}>
-              Password
-            </label>
-            <p className={fieldDescriptionClass}>
-              🔒 Create a secure password - minimum 10 characters for account protection
-            </p>
+            {renderFieldLabel('password', 'Password')}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -691,7 +703,11 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange('password')}
-                onBlur={handleBlur('password')}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => {
+                  setIsPasswordFocused(false);
+                  handleBlur('password')();
+                }}
                 className={passwordInputClass}
                 placeholder="Create a secure password"
                 required
@@ -721,12 +737,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
 
           {/* Confirm Password */}
           <div>
-            <label htmlFor="confirmPassword" className={fieldLabelClass}>
-              Confirm Password
-            </label>
-            <p className={fieldDescriptionClass}>
-              🔄 Re-enter your password to make sure it's correct
-            </p>
+            {renderFieldLabel('confirmPassword', 'Confirm Password')}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -771,30 +782,25 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           </div>
 
           {/* Password Requirements */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 font-medium mb-3 flex items-center">
-              <span className="mr-2">🛡️</span>
-              Password Security Requirements:
-            </p>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li className={`flex items-center ${formData.password.length >= 10 ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{formData.password.length >= 10 ? '✅' : '•'}</span>
-                At least 10 characters long
-              </li>
-              <li className={`flex items-center ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? '✅' : '•'}</span>
-                Passwords must match
-              </li>
-              <li className={`flex items-center ${avoidsPersonalInfo ? 'text-green-700' : ''}`}>
-                <span className="mr-2">{avoidsPersonalInfo ? '✅' : '•'}</span>
-                Avoid using your username or email
-              </li>
-              <li className="flex items-center text-blue-600">
-                <span className="mr-2">💡</span>
-                <span className="text-xs">Tip: Use a mix of letters, numbers, and symbols for better security</span>
-              </li>
-            </ul>
-          </div>
+          {showPasswordRequirements && (
+            <div className="rounded-lg bg-gradient-to-r from-blue-50 to-pink-50 p-3 ring-1 ring-[#D6EBF5]" role="status" aria-live="polite">
+              <p className="mb-2 text-sm font-medium text-slate-700">Password must include:</p>
+              <ul className="space-y-1 text-xs leading-5 text-slate-600">
+                <li className={`flex items-center gap-2 ${formData.password.length >= 10 ? 'text-green-700' : ''}`}>
+                  <span aria-hidden="true">{formData.password.length >= 10 ? '✓' : '•'}</span>
+                  At least 10 characters
+                </li>
+                <li className={`flex items-center gap-2 ${formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? 'text-green-700' : ''}`}>
+                  <span aria-hidden="true">{formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && formData.password.length >= 10 ? '✓' : '•'}</span>
+                  Passwords must match
+                </li>
+                <li className={`flex items-center gap-2 ${avoidsPersonalInfo ? 'text-green-700' : ''}`}>
+                  <span aria-hidden="true">{avoidsPersonalInfo ? '✓' : '•'}</span>
+                  Avoid using your username or email
+                </li>
+              </ul>
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex space-x-4">
