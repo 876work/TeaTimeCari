@@ -1,6 +1,5 @@
 import React from 'react';
 import { Footer } from './Footer';
-import { PrivacyToast } from './PrivacyToast';
 import { SiteHeader } from './SiteHeader';
 
 interface PublicLayoutProps {
@@ -17,7 +16,6 @@ export function PublicLayout({ children, showHeader = true }: PublicLayoutProps)
     <div className={`min-h-screen ${backgroundClass}`}>
       {showHeader && <SiteHeader />}
       {children}
-      <PrivacyToast />
       <Footer />
     </div>
   );
