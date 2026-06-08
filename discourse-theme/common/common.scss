@@ -1,0 +1,154 @@
+/*
+ * Tea Time Cari Discourse theme styles.
+ *
+ * Color-mode note: Discourse core provides the light/dark/auto UI via the
+ * `interface_color_selector` site setting. Keep this CSS palette-aware by
+ * deriving surfaces, text, borders, shadows, and brand accents from Discourse
+ * theme variables rather than fixed light-mode hex/rgb values.
+ */
+
+:root {
+  --ttc-brand-primary: var(--tertiary);
+  --ttc-brand-warm: var(--danger);
+  --ttc-brand-blend: color-mix(in srgb, var(--tertiary) 58%, var(--danger) 42%);
+  --ttc-page-surface: var(--secondary);
+  --ttc-panel-surface: color-mix(in srgb, var(--secondary) 94%, var(--tertiary) 6%);
+  --ttc-panel-surface-hover: color-mix(in srgb, var(--secondary) 88%, var(--tertiary) 12%);
+  --ttc-text: var(--primary);
+  --ttc-text-muted: var(--primary-medium);
+  --ttc-border: var(--primary-low);
+  --ttc-border-strong: var(--primary-low-mid);
+  --ttc-focus-ring: color-mix(in srgb, var(--tertiary) 72%, transparent);
+  --ttc-shadow: 0 1rem 2.5rem color-mix(in srgb, var(--primary) 16%, transparent);
+  --ttc-soft-highlight: color-mix(in srgb, var(--tertiary) 14%, var(--secondary));
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ttc-brand-primary) 14%, transparent), transparent 26rem),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--ttc-brand-warm) 12%, transparent), transparent 24rem),
+    var(--ttc-page-surface);
+  color: var(--ttc-text);
+}
+
+.d-header {
+  background: color-mix(in srgb, var(--header_background) 92%, var(--ttc-brand-primary) 8%);
+  border-bottom: 1px solid var(--ttc-border);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.d-header .title a,
+.d-header-icons .d-icon,
+.header-sidebar-toggle button .d-icon {
+  color: var(--header_primary);
+}
+
+#main-outlet-wrapper,
+.sidebar-wrapper {
+  background: transparent;
+}
+
+.topic-list,
+.category-list,
+.latest-topic-list,
+.user-main .about,
+.admin-main-nav,
+.admin-detail,
+.group-details-container,
+.user-content,
+.reviewable-item,
+.modal-inner-container {
+  background: var(--ttc-panel-surface);
+  border: 1px solid var(--ttc-border);
+  border-radius: var(--d-border-radius-large);
+  box-shadow: var(--ttc-shadow);
+}
+
+.topic-list tbody tr,
+.category-list tbody tr,
+.latest-topic-list-item,
+.sidebar-section-link-wrapper .sidebar-section-link {
+  border-color: var(--ttc-border);
+}
+
+.topic-list tbody tr:hover,
+.category-list tbody tr:hover,
+.latest-topic-list-item:hover,
+.sidebar-section-link-wrapper .sidebar-section-link:hover,
+.menu-panel .widget-link:hover,
+.select-kit .select-kit-row.is-highlighted {
+  background: var(--ttc-panel-surface-hover);
+}
+
+a,
+.topic-list .title a,
+.category-list .category-name,
+.nav-pills > li a.active,
+.nav-pills > li button.active {
+  color: var(--ttc-brand-primary);
+}
+
+a:hover,
+.topic-list .title a:hover,
+.category-list .category-name:hover {
+  color: var(--ttc-brand-blend);
+}
+
+.btn-primary,
+.btn.btn-primary,
+.create-topic,
+.topic-footer-main-buttons .btn-primary {
+  background: linear-gradient(135deg, var(--ttc-brand-primary), var(--ttc-brand-blend));
+  border-color: transparent;
+  color: var(--secondary);
+}
+
+.btn-primary:hover,
+.btn.btn-primary:hover,
+.create-topic:hover,
+.topic-footer-main-buttons .btn-primary:hover {
+  background: linear-gradient(135deg, var(--ttc-brand-blend), var(--ttc-brand-warm));
+  color: var(--secondary);
+}
+
+.badge-category__wrapper,
+.badge-wrapper.bullet span.badge-category,
+.discourse-tag.box {
+  background: var(--ttc-soft-highlight);
+  border-color: var(--ttc-border-strong);
+  color: var(--ttc-text);
+}
+
+.alert.alert-info,
+.alert.alert-success,
+.alert.alert-warning {
+  background: var(--ttc-soft-highlight);
+  border-color: var(--ttc-border-strong);
+  color: var(--ttc-text);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+textarea,
+.select-kit.combo-box .select-kit-header {
+  background: var(--secondary);
+  border-color: var(--ttc-border-strong);
+  color: var(--ttc-text);
+}
+
+input:focus,
+textarea:focus,
+.select-kit.combo-box .select-kit-header:focus {
+  border-color: var(--ttc-brand-primary);
+  box-shadow: 0 0 0 0.2rem var(--ttc-focus-ring);
+}
+
+.placeholder-text,
+.topic-meta-data,
+.topic-list .posters,
+.category-description,
+.sidebar-section-header-text {
+  color: var(--ttc-text-muted);
+}

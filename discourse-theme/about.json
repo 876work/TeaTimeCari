@@ -1,0 +1,8 @@
+{
+  "name": "Tea Time Cari Discourse Theme",
+  "about_url": "https://teatimecari.app",
+  "component": false,
+  "authors": "Tea Time Cari",
+  "theme_version": "1.0.0",
+  "minimum_discourse_version": "3.4.0"
+}
