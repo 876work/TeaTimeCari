@@ -234,7 +234,7 @@ export default function Login() {
           </h1>
 
           <p className="text-gray-600">
-            Sign in to your Tea Time Cari account
+            Log in to your Tea Time Cari account
           </p>
         </div>
 
@@ -340,12 +340,12 @@ export default function Login() {
             {loading ? (
               <div className="flex items-center justify-center">
                 <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Signing in...
+                Logging in...
               </div>
             ) : (
               <div className="flex items-center justify-center">
                 <LogIn className="w-5 h-5 mr-2" />
-                Sign In
+                Log In
               </div>
             )}
           </button>

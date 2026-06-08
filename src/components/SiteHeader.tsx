@@ -88,7 +88,7 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
             ) : (
               <>
                 <Link to="/login" className={`${glassButtonClass} px-4 py-2`}>
-                  Sign In
+                  Log In
                 </Link>
                 <Link to="/signup" className={`${joinNowClass} px-4 py-2 text-sm font-bold lg:px-5`}>
                   Join Now
@@ -149,7 +149,7 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
                 ) : (
                   <>
                     <Link to="/login" onClick={closeMenu} className={`${glassButtonClass} px-4 py-3 text-center`}>
-                      Sign In
+                      Log In
                     </Link>
                     <Link
                       to="/signup"

@@ -1,6 +1,13 @@
 // src/lib/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js';
 
+declare global {
+  interface Window {
+    __sb?: ReturnType<typeof createClient>;
+    __SB_INSTANTIATIONS?: number;
+  }
+}
+
 export const supabase = (() => {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -25,15 +32,13 @@ export const supabase = (() => {
 
   // Singleton across reloads/HMR
   if (typeof window !== 'undefined') {
-    // @ts-ignore
-   if (!window.__sb) {
+    if (!window.__sb) {
       window.__sb = createClient(
         hasMissingConfig ? 'https://invalid.localhost' : url,
         hasMissingConfig ? 'missing-anon-key' : anon,
         options
       );
     }
-    // @ts-ignore
     return window.__sb;
   }
   // SSR/build-time usage (doesn't run in the browser)
@@ -44,8 +49,6 @@ export const supabase = (() => {
   );
 })();
 if (typeof window !== 'undefined') {
-  // @ts-ignore
   window.__SB_INSTANTIATIONS = (window.__SB_INSTANTIATIONS || 0) + 1;
-  // @ts-ignore
   console.log('[supabase] instances:', window.__SB_INSTANTIATIONS);
 }

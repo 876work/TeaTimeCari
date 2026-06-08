@@ -368,11 +368,35 @@
     animation: home-start-particle-float 3s infinite ease-out;
   }
 
-  .home-start-particle:nth-child(1) { top: 70%; left: 30%; animation-delay: 0.2s; }
-  .home-start-particle:nth-child(2) { top: 60%; left: 60%; animation-delay: 0.6s; }
-  .home-start-particle:nth-child(3) { top: 50%; left: 40%; animation-delay: 1s; }
-  .home-start-particle:nth-child(4) { top: 40%; left: 70%; animation-delay: 1.4s; }
-  .home-start-particle:nth-child(5) { top: 80%; left: 50%; animation-delay: 1.8s; }
+  .home-start-particle:nth-child(1) {
+    top: 70%;
+    left: 30%;
+    animation-delay: 0.2s;
+  }
+
+  .home-start-particle:nth-child(2) {
+    top: 60%;
+    left: 60%;
+    animation-delay: 0.6s;
+  }
+
+  .home-start-particle:nth-child(3) {
+    top: 50%;
+    left: 40%;
+    animation-delay: 1s;
+  }
+
+  .home-start-particle:nth-child(4) {
+    top: 40%;
+    left: 70%;
+    animation-delay: 1.4s;
+  }
+
+  .home-start-particle:nth-child(5) {
+    top: 80%;
+    left: 50%;
+    animation-delay: 1.8s;
+  }
 
   .home-start-data {
     position: absolute;
@@ -513,12 +537,47 @@
     transition: background 0.35s ease;
   }
 
-  .home-start-interface-line:nth-child(1) { bottom: -5px; left: 26px; width: 16px; height: 1px; }
-  .home-start-interface-line:nth-child(2) { bottom: -12px; left: 42px; width: 1px; height: 8px; }
-  .home-start-interface-line:nth-child(3) { bottom: -12px; left: 42px; width: 28px; height: 1px; }
-  .home-start-interface-line:nth-child(4) { right: 26px; bottom: -5px; width: 16px; height: 1px; }
-  .home-start-interface-line:nth-child(5) { right: 42px; bottom: -12px; width: 1px; height: 8px; }
-  .home-start-interface-line:nth-child(6) { right: 13px; bottom: -12px; width: 29px; height: 1px; }
+  .home-start-interface-line:nth-child(1) {
+    bottom: -5px;
+    left: 26px;
+    width: 16px;
+    height: 1px;
+  }
+
+  .home-start-interface-line:nth-child(2) {
+    bottom: -12px;
+    left: 42px;
+    width: 1px;
+    height: 8px;
+  }
+
+  .home-start-interface-line:nth-child(3) {
+    bottom: -12px;
+    left: 42px;
+    width: 28px;
+    height: 1px;
+  }
+
+  .home-start-interface-line:nth-child(4) {
+    right: 26px;
+    bottom: -5px;
+    width: 16px;
+    height: 1px;
+  }
+
+  .home-start-interface-line:nth-child(5) {
+    right: 42px;
+    bottom: -12px;
+    width: 1px;
+    height: 8px;
+  }
+
+  .home-start-interface-line:nth-child(6) {
+    right: 13px;
+    bottom: -12px;
+    width: 29px;
+    height: 1px;
+  }
 
   .home-start-reflection,
   .home-start-glow {

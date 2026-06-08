@@ -116,7 +116,7 @@ export function HomePage() {
         </div>
 
         {/* Trust indicators */}
-        <div className="mt-16 flex items-center justify-center space-x-8 text-white/80">
+        <div className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-white/80">
           <div className="flex items-center space-x-2">
             <Star className="w-4 h-4" />
             <span className="text-sm font-medium">Secure Platform</span>

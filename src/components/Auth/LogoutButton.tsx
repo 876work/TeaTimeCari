@@ -71,10 +71,10 @@ export function LogoutButton({
       // Redirect to home page (which will show the registration flow)
       window.location.href = '/';
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logout failed:', error);
       
-      const errorMessage = error.message || 'Failed to logout. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to logout. Please try again.';
       
       // Call optional error callback
       if (onLogoutError) {
