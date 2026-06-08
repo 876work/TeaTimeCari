@@ -1,6 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Check, CheckCircle2, EyeOff, Flag, Lock, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  EyeOff,
+  Flag,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { GradientPageShell } from '@/components/GradientPageShell';
 
 type Step = {
@@ -106,31 +117,44 @@ const heroBadges = ['Private by design', 'Account review required', 'Anonymous p
 export default function HowItWorks() {
   const [activeStep, setActiveStep] = React.useState(0);
   const [activeTab, setActiveTab] = React.useState<ContentTab>('allowed');
+
   const selectedStep = steps[activeStep];
   const selectedTab = contentTabs[activeTab];
 
   return (
     <GradientPageShell maxWidth="max-w-6xl" cardClassName="relative overflow-hidden">
-      <div className="pointer-events-none absolute left-1/2 top-10 h-48 w-48 -translate-x-1/2 rounded-full bg-[#D96F7F]/10 blur-3xl" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute left-1/2 top-10 h-48 w-48 -translate-x-1/2 rounded-full bg-[#D96F7F]/10 blur-3xl"
+        aria-hidden="true"
+      />
 
       <section className="relative text-center" aria-labelledby="how-it-works-title">
         <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-[#F8E8EE] px-4 py-2 text-sm font-bold text-[#9B3F61] ring-1 ring-[#D96F7F]/20">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Privacy-first community
         </div>
-        <h1 id="how-it-works-title" className="mt-5 text-4xl font-black tracking-tight text-[#11263F] sm:text-5xl lg:text-6xl">
+
+        <h1
+          id="how-it-works-title"
+          className="mt-5 text-4xl font-black tracking-tight text-[#11263F] sm:text-5xl lg:text-6xl"
+        >
           How Tea Time Cari Works
         </h1>
+
         <p className="mx-auto mt-4 max-w-3xl text-2xl font-bold leading-tight text-[#11263F] sm:text-3xl">
           Share carefully. Compare privately. Stay informed.
         </p>
+
         <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
           Tea Time Cari is designed to help approved users share experiences, compare notes, and stay informed with privacy at the center of every step.
         </p>
 
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           {heroBadges.map((badge) => (
-            <span key={badge} className="inline-flex items-center gap-2 rounded-full border border-[#4B9EC8]/15 bg-[#F4FAFD] px-4 py-2 text-sm font-bold text-[#11263F] shadow-sm">
+            <span
+              key={badge}
+              className="inline-flex items-center gap-2 rounded-full border border-[#4B9EC8]/15 bg-[#F4FAFD] px-4 py-2 text-sm font-bold text-[#11263F] shadow-sm"
+            >
               <ShieldCheck className="h-4 w-4 text-[#3382AA]" aria-hidden="true" />
               {badge}
             </span>
@@ -142,9 +166,10 @@ export default function HowItWorks() {
             to="/signup"
             className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96F7F] via-[#B78DB5] to-[#5CA4C8] px-6 py-3 text-sm font-black text-white shadow-lg shadow-[#2E6F91]/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
           >
-            Join the Waitlist or Join Now
+            Join Now
             <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
           </Link>
+
           <Link
             to="/community-guidelines"
             className="inline-flex items-center justify-center rounded-full border border-[#4B9EC8]/20 bg-white px-6 py-3 text-sm font-black text-[#11263F] shadow-sm transition hover:-translate-y-0.5 hover:border-[#9B6BAE]/30 hover:text-[#9B6BAE] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
@@ -156,8 +181,14 @@ export default function HowItWorks() {
 
       <section className="relative mt-14" aria-labelledby="steps-title">
         <div className="mb-6 text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">Five simple steps</p>
-          <h2 id="steps-title" className="mt-2 text-3xl font-black tracking-tight text-[#11263F] sm:text-4xl">
+          <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">
+            Five simple steps
+          </p>
+
+          <h2
+            id="steps-title"
+            className="mt-2 text-3xl font-black tracking-tight text-[#11263F] sm:text-4xl"
+          >
             From application to safer sharing
           </h2>
         </div>
@@ -190,9 +221,14 @@ export default function HowItWorks() {
                       >
                         {index + 1}
                       </span>
+
                       <span className="min-w-0">
-                        <span className="block text-base font-black text-[#11263F]">{step.title}</span>
-                        <span className="mt-1 block text-sm leading-5 text-slate-600">{step.headline}</span>
+                        <span className="block text-base font-black text-[#11263F]">
+                          {step.title}
+                        </span>
+                        <span className="mt-1 block text-sm leading-5 text-slate-600">
+                          {step.headline}
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -201,21 +237,41 @@ export default function HowItWorks() {
             </ol>
           </div>
 
-          <article className="relative overflow-hidden rounded-[2rem] border border-[#4B9EC8]/10 bg-white p-6 shadow-xl shadow-[#11263F]/10 sm:p-8" aria-live="polite">
-            <div className="absolute right-0 top-0 h-32 w-32 rounded-bl-full bg-gradient-to-br from-[#4B9EC8]/15 to-[#D96F7F]/15" aria-hidden="true" />
+          <article
+            className="relative overflow-hidden rounded-[2rem] border border-[#4B9EC8]/10 bg-white p-6 shadow-xl shadow-[#11263F]/10 sm:p-8"
+            aria-live="polite"
+          >
+            <div
+              className="absolute right-0 top-0 h-32 w-32 rounded-bl-full bg-gradient-to-br from-[#4B9EC8]/15 to-[#D96F7F]/15"
+              aria-hidden="true"
+            />
+
             <div className="relative">
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F8E8EE] text-[#9B3F61] shadow-sm">
                 <Lock className="h-7 w-7" aria-hidden="true" />
               </div>
-              <p className="mt-6 text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">Step {activeStep + 1}</p>
-              <h3 className="mt-2 text-3xl font-black tracking-tight text-[#11263F]">{selectedStep.headline}</h3>
-              <p className="mt-4 text-base leading-8 text-slate-600">{selectedStep.body}</p>
+
+              <p className="mt-6 text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">
+                Step {activeStep + 1}
+              </p>
+
+              <h3 className="mt-2 text-3xl font-black tracking-tight text-[#11263F]">
+                {selectedStep.headline}
+              </h3>
+
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                {selectedStep.body}
+              </p>
+
               <div className="mt-6 rounded-2xl border border-[#4B9EC8]/15 bg-[#F4FAFD] p-4">
                 <p className="flex items-start gap-3 text-sm font-semibold leading-6 text-[#11263F]">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#3382AA]" aria-hidden="true" />
-                  <span><span className="font-black">Privacy note:</span> {selectedStep.privacyNote}</span>
+                  <span>
+                    <span className="font-black">Privacy note:</span> {selectedStep.privacyNote}
+                  </span>
                 </p>
               </div>
+
               <div className="mt-6 flex items-center justify-between gap-3">
                 <button
                   type="button"
@@ -225,6 +281,7 @@ export default function HowItWorks() {
                 >
                   Previous
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setActiveStep((step) => Math.min(step + 1, steps.length - 1))}
@@ -242,14 +299,24 @@ export default function HowItWorks() {
       <section className="mt-14" aria-labelledby="privacy-foundation-title">
         <div className="rounded-[2rem] bg-[#11263F] p-6 text-white shadow-xl shadow-[#11263F]/20 sm:p-8">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#9BD3EA]">Privacy first</p>
-            <h2 id="privacy-foundation-title" className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#9BD3EA]">
+              Privacy first
+            </p>
+
+            <h2
+              id="privacy-foundation-title"
+              className="mt-2 text-3xl font-black tracking-tight sm:text-4xl"
+            >
               Privacy is not an add on. It is the foundation.
             </h2>
           </div>
+
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {privacyCards.map(({ title, body, Icon }) => (
-              <article key={title} className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+              <article
+                key={title}
+                className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur"
+              >
                 <Icon className="h-7 w-7 text-[#F5A3AD]" aria-hidden="true" />
                 <h3 className="mt-4 text-lg font-black">{title}</h3>
                 <p className="mt-3 text-sm leading-6 text-white/78">{body}</p>
@@ -259,7 +326,10 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      <section className="mt-14 grid gap-6 lg:grid-cols-[1fr_0.9fr]" aria-label="Posting safety guidance">
+      <section
+        className="mt-14 grid gap-6 lg:grid-cols-[1fr_0.9fr]"
+        aria-label="Posting safety guidance"
+      >
         <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-xl shadow-[#11263F]/10 sm:p-8">
           <div className="flex flex-wrap gap-2" role="tablist" aria-label="Allowed and not allowed content">
             {(Object.keys(contentTabs) as ContentTab[]).map((tab) => (
@@ -283,17 +353,27 @@ export default function HowItWorks() {
               </button>
             ))}
           </div>
+
           <div
             role="tabpanel"
             id={`content-panel-${activeTab}`}
             aria-labelledby={`content-tab-${activeTab}`}
             className="mt-6"
           >
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">{selectedTab.eyebrow}</p>
-            <h2 className="mt-2 text-3xl font-black tracking-tight text-[#11263F]">{selectedTab.label}</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">
+              {selectedTab.eyebrow}
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-[#11263F]">
+              {selectedTab.label}
+            </h2>
+
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {selectedTab.items.map((item) => (
-                <li key={item} className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                <li
+                  key={item}
+                  className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-700"
+                >
                   {activeTab === 'allowed' ? (
                     <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#249457]" aria-hidden="true" />
                   ) : (
@@ -308,14 +388,24 @@ export default function HowItWorks() {
 
         <div className="rounded-[2rem] bg-gradient-to-br from-[#F4FAFD] to-[#FDF1F3] p-6 shadow-xl shadow-[#11263F]/10 sm:p-8">
           <Users className="h-9 w-9 text-[#3382AA]" aria-hidden="true" />
-          <h2 className="mt-4 text-3xl font-black tracking-tight text-[#11263F]">Built with private community spaces</h2>
+
+          <h2 className="mt-4 text-3xl font-black tracking-tight text-[#11263F]">
+            Built with private community spaces
+          </h2>
+
           <p className="mt-4 text-base leading-8 text-slate-600">
             Tea Time Cari may organize access by gender group so users can participate in spaces designed for their community. Some features or cross group access may require approval or subscription access.
           </p>
+
           <div className="mt-6 grid gap-3" aria-label="Community space flow">
             {['Your group', 'Your community space', 'Privacy rules apply'].map((item, index) => (
-              <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/80 p-4 font-black text-[#11263F] shadow-sm">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#11263F] text-sm text-white">{index + 1}</span>
+              <div
+                key={item}
+                className="flex items-center gap-3 rounded-2xl bg-white/80 p-4 font-black text-[#11263F] shadow-sm"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#11263F] text-sm text-white">
+                  {index + 1}
+                </span>
                 {item}
               </div>
             ))}
@@ -323,15 +413,30 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      <section className="mt-14 rounded-[2rem] border border-[#4B9EC8]/10 bg-white p-6 shadow-xl shadow-[#11263F]/10 sm:p-8" aria-labelledby="checklist-title">
+      <section
+        className="mt-14 rounded-[2rem] border border-[#4B9EC8]/10 bg-white p-6 shadow-xl shadow-[#11263F]/10 sm:p-8"
+        aria-labelledby="checklist-title"
+      >
         <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr] lg:items-center">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">Before you post</p>
-            <h2 id="checklist-title" className="mt-2 text-3xl font-black tracking-tight text-[#11263F]">Before you post, check this first</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#3382AA]">
+              Before you post
+            </p>
+
+            <h2
+              id="checklist-title"
+              className="mt-2 text-3xl font-black tracking-tight text-[#11263F]"
+            >
+              Before you post, check this first
+            </h2>
           </div>
+
           <ul className="grid gap-3 sm:grid-cols-2">
             {checklistItems.map((item) => (
-              <li key={item} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-bold text-slate-700">
+              <li
+                key={item}
+                className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-bold text-slate-700"
+              >
                 <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#3382AA]" aria-hidden="true" />
                 {item}
               </li>
@@ -340,12 +445,22 @@ export default function HowItWorks() {
         </div>
       </section>
 
-      <section className="mt-14 rounded-[2rem] bg-gradient-to-r from-[#D96F7F] via-[#B78DB5] to-[#5CA4C8] p-1 shadow-xl shadow-[#2E6F91]/15" aria-labelledby="final-cta-title">
+      <section
+        className="mt-14 rounded-[2rem] bg-gradient-to-r from-[#D96F7F] via-[#B78DB5] to-[#5CA4C8] p-1 shadow-xl shadow-[#2E6F91]/15"
+        aria-labelledby="final-cta-title"
+      >
         <div className="rounded-[1.8rem] bg-white/92 p-6 text-center sm:p-10">
-          <h2 id="final-cta-title" className="text-3xl font-black tracking-tight text-[#11263F] sm:text-4xl">Ready to join the community?</h2>
+          <h2
+            id="final-cta-title"
+            className="text-3xl font-black tracking-tight text-[#11263F] sm:text-4xl"
+          >
+            Ready to join the community?
+          </h2>
+
           <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-600">
             Tea Time Cari is being built for privacy, real conversations, and safer sharing. Join the waitlist and be first to know when we launch.
           </p>
+
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               to="/signup"
@@ -353,6 +468,7 @@ export default function HowItWorks() {
             >
               Join Now
             </Link>
+
             <Link
               to="/community-guidelines"
               className="inline-flex items-center justify-center rounded-full border border-[#4B9EC8]/20 bg-white px-6 py-3 text-sm font-black text-[#11263F] shadow-sm transition hover:-translate-y-0.5 hover:text-[#9B6BAE] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
