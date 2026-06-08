@@ -27,6 +27,7 @@ const PostThread = React.lazy(() => import('./components/Post/PostThread').then(
 const AdminLoginPage = React.lazy(() => import('./components/Admin/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
 const AdminDashboard = React.lazy(() => import('./components/Admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
 const ContactUs = React.lazy(() => import('./pages/ContactUs'));
+const ContactUsSuccess = React.lazy(() => import('./pages/ContactUs').then((module) => ({ default: module.ContactUsSuccess })));
 const KycPending = React.lazy(() => import('./pages/KycPending'));
 const Sso = React.lazy(() => import('./pages/Sso'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -249,6 +250,7 @@ function App() {
             <React.Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
+              <Route path="/contact-us/success" element={<PublicLayout><ContactUsSuccess /></PublicLayout>} />
               <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
               <Route path="/sso" element={<Sso />} />
               <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />

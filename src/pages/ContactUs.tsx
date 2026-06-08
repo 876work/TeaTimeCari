@@ -10,6 +10,42 @@ interface ContactFormData {
   message: string;
 }
 
+export function ContactUsSuccess() {
+  const navigate = useNavigate();
+
+  return (
+    <AuthLayout>
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Message Sent Successfully!</h1>
+          <p className="text-gray-600 mb-6">
+            Thank you for contacting us. We'll get back to you within 24 hours.
+          </p>
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white rounded-lg font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
+            >
+              Go to Homepage
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/contact-us')}
+              className="w-full px-6 py-3 border border-[#4B9EC8]/40 text-[#2E6F91] rounded-lg font-medium hover:bg-[#D6EBF5] hover:border-[#4B9EC8] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
+            >
+              Send Another Message
+            </button>
+          </div>
+        </div>
+      </div>
+    </AuthLayout>
+  );
+}
+
 export default function ContactUs() {
   const navigate = useNavigate();
   
@@ -23,7 +59,6 @@ export default function ContactUs() {
   const [errors, setErrors] = useState<Partial<Record<keyof ContactFormData, string>>>({});
   const [touched, setTouched] = useState<Partial<Record<keyof ContactFormData, boolean>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Handle input changes
@@ -133,7 +168,7 @@ export default function ContactUs() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       console.log('Contact form submitted:', formData);
-      setIsSubmitted(true);
+      navigate('/contact-us/success', { replace: true });
       
     } catch (err: unknown) {
       console.error('Error submitting contact form:', err);
@@ -146,48 +181,6 @@ export default function ContactUs() {
   const handleGoBack = () => {
     navigate(-1);
   };
-
-  const handleGoHome = () => {
-    navigate('/');
-  };
-
-  // Success state
-  if (isSubmitted) {
-    return (
-      <AuthLayout>
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Message Sent Successfully!</h1>
-            <p className="text-gray-600 mb-6">
-              Thank you for contacting us. We'll get back to you within 24 hours.
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={handleGoHome}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Go to Homepage
-              </button>
-              <button
-                onClick={() => {
-                  setIsSubmitted(false);
-                  setFormData({ name: '', email: '', phone: '', message: '' });
-                  setTouched({});
-                  setErrors({});
-                }}
-                className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Send Another Message
-              </button>
-            </div>
-          </div>
-        </div>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout>
