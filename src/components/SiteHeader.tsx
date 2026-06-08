@@ -10,6 +10,7 @@ interface SiteHeaderProps {
 
 const navigationLinks = [
   { label: 'Home', to: '/', end: true },
+  { label: 'How It Works', to: '/how-it-works' },
   { label: 'Community', to: '/community' },
   { label: 'FAQ', to: '/faq' },
   { label: 'Contact Us', to: '/contact-us' },
