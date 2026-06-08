@@ -1,7 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Phone, User, MessageSquare, Send, Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
-import { AuthLayout } from '../components/AuthLayout';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Mail,
+  Phone,
+  User,
+  MessageSquare,
+  Send,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft,
+} from "lucide-react";
+import { AuthLayout } from "../components/AuthLayout";
 
 interface ContactFormData {
   name: string;
@@ -10,117 +20,145 @@ interface ContactFormData {
   message: string;
 }
 
+const CONTACT_FORM_NAME = "contact";
+
+const getFieldError = (
+  field: keyof ContactFormData,
+  value: string,
+): string | null => {
+  switch (field) {
+    case "name":
+      return value.trim() ? null : "Name is required";
+    case "email":
+      if (!value.trim()) {
+        return "Email address is required";
+      }
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+        ? null
+        : "Please enter a valid email address";
+    case "phone":
+      return value.trim() && !/^758\d{7}$/.test(value.replace(/\D/g, ""))
+        ? "Phone number must be in format: 758xxxxxxx"
+        : null;
+    case "message":
+      if (!value.trim()) {
+        return "Message is required";
+      }
+      return value.trim().length >= 10
+        ? null
+        : "Message must be at least 10 characters";
+  }
+};
+
+const encodeContactFormData = (data: ContactFormData) => {
+  return new URLSearchParams({
+    "form-name": CONTACT_FORM_NAME,
+    name: data.name.trim(),
+    email: data.email.trim(),
+    phone: data.phone.trim(),
+    message: data.message.trim(),
+  }).toString();
+};
+
 export default function ContactUs() {
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState<ContactFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
   });
-  
-  const [errors, setErrors] = useState<Partial<Record<keyof ContactFormData, string>>>({});
-  const [touched, setTouched] = useState<Partial<Record<keyof ContactFormData, boolean>>>({});
+
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ContactFormData, string>>
+  >({});
+  const [touched, setTouched] = useState<
+    Partial<Record<keyof ContactFormData, boolean>>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Handle input changes
-  const handleInputChange = (field: keyof ContactFormData) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear previous errors when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-    
-    // Clear submit error
-    if (submitError) {
-      setSubmitError(null);
-    }
-  };
+  const handleInputChange =
+    (field: keyof ContactFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setFormData((prev) => ({ ...prev, [field]: value }));
+
+      // Clear previous errors when user starts typing
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+      }
+
+      // Clear submit error
+      if (submitError) {
+        setSubmitError(null);
+      }
+    };
 
   // Handle field blur
   const handleBlur = (field: keyof ContactFormData) => () => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({ ...prev, [field]: true }));
     validateField(field, formData[field]);
   };
 
   // Validate individual fields
   const validateField = (field: keyof ContactFormData, value: string) => {
-    let error: string | null = null;
-    
-    switch (field) {
-      case 'name':
-        if (!value.trim()) {
-          error = 'Name is required';
-        }
-        break;
-      case 'email':
-        if (!value.trim()) {
-          error = 'Email address is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          error = 'Please enter a valid email address';
-        }
-        break;
-      case 'phone':
-        // Phone is optional, but if provided, validate format
-        if (value.trim() && !/^758\d{7}$/.test(value.replace(/\D/g, ''))) {
-          error = 'Phone number must be in format: 758xxxxxxx';
-        }
-        break;
-      case 'message':
-        if (!value.trim()) {
-          error = 'Message is required';
-        } else if (value.trim().length < 10) {
-          error = 'Message must be at least 10 characters';
-        }
-        break;
-    }
-    
-    setErrors(prev => ({
+    const error = getFieldError(field, value);
+
+    setErrors((prev) => ({
       ...prev,
-      [field]: error
+      [field]: error,
     }));
+
+    return error;
+  };
+
+  const getFormErrors = () => {
+    const allFields: (keyof ContactFormData)[] = [
+      "name",
+      "email",
+      "phone",
+      "message",
+    ];
+
+    return allFields.reduce<
+      Partial<Record<keyof ContactFormData, string | null>>
+    >((acc, field) => {
+      acc[field] = getFieldError(field, formData[field]);
+      return acc;
+    }, {});
   };
 
   // Validate entire form
   const isFormValid = () => {
-    const requiredFields: (keyof ContactFormData)[] = ['name', 'email', 'message'];
-    
-    // Check if all required fields have values
-    const hasAllRequiredValues = requiredFields.every(field => formData[field].trim());
-    
-    // Check if no errors exist
-    const hasNoErrors = Object.values(errors).every(error => !error);
-    
-    // Validate email format
-    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
-    
-    // Validate message length
-    const isMessageValid = formData.message.trim().length >= 10;
-    
-    return hasAllRequiredValues && hasNoErrors && isEmailValid && isMessageValid;
+    return Object.values(getFormErrors()).every((error) => !error);
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Mark all fields as touched
-    const allFields: (keyof ContactFormData)[] = ['name', 'email', 'phone', 'message'];
-    const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
+    const allFields: (keyof ContactFormData)[] = [
+      "name",
+      "email",
+      "phone",
+      "message",
+    ];
+    const newTouched = allFields.reduce(
+      (acc, field) => ({ ...acc, [field]: true }),
+      {},
+    );
     setTouched(newTouched);
-    
-    // Validate all fields
-    allFields.forEach(field => validateField(field, formData[field]));
-    
-    if (!isFormValid()) {
-      setSubmitError('Please fix the errors above before submitting.');
+
+    const formErrors = getFormErrors();
+    setErrors(formErrors);
+
+    if (Object.values(formErrors).some((error) => error)) {
+      setSubmitError("Please fix the errors above before submitting.");
       return;
     }
 
@@ -128,16 +166,25 @@ export default function ContactUs() {
     setSubmitError(null);
 
     try {
-      // Simulate form submission - in production, you would send this to your backend
-      // For now, we'll just simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Contact form submitted:', formData);
+      const response = await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: encodeContactFormData(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Netlify form submission failed with status ${response.status}`,
+        );
+      }
+
       setIsSubmitted(true);
-      
+      setFormData({ name: "", email: "", phone: "", message: "" });
+      setTouched({});
+      setErrors({});
     } catch (err: unknown) {
-      console.error('Error submitting contact form:', err);
-      setSubmitError('Failed to submit your message. Please try again.');
+      console.error("Error submitting contact form:", err);
+      setSubmitError("Failed to submit your message. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -148,7 +195,7 @@ export default function ContactUs() {
   };
 
   const handleGoHome = () => {
-    navigate('/');
+    navigate("/");
   };
 
   // Success state
@@ -160,9 +207,12 @@ export default function ContactUs() {
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Message Sent Successfully!</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Message Sent Successfully!
+            </h1>
             <p className="text-gray-600 mb-6">
-              Thank you for contacting us. We'll get back to you within 24 hours.
+              Thank you for contacting us. We'll get back to you within 24
+              hours.
             </p>
             <div className="space-y-3">
               <button
@@ -174,7 +224,7 @@ export default function ContactUs() {
               <button
                 onClick={() => {
                   setIsSubmitted(false);
-                  setFormData({ name: '', email: '', phone: '', message: '' });
+                  setFormData({ name: "", email: "", phone: "", message: "" });
                   setTouched({});
                   setErrors({});
                 }}
@@ -196,7 +246,9 @@ export default function ContactUs() {
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <Mail className="w-8 h-8 text-[#4B9EC8]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Contact Support</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Contact Support
+          </h1>
           <p className="text-gray-600">
             Need help? Send us a message and we'll get back to you soon.
           </p>
@@ -204,7 +256,10 @@ export default function ContactUs() {
 
         {/* Submit Error Message */}
         {submitError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+          <div
+            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
+            role="alert"
+          >
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700 text-sm">{submitError}</span>
@@ -212,11 +267,25 @@ export default function ContactUs() {
           </div>
         )}
 
-        <form name="contact" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
-          <input type="hidden" name="form-name" value="contact" readOnly />
+        <form
+          name={CONTACT_FORM_NAME}
+          method="POST"
+          data-netlify="true"
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
+          <input
+            type="hidden"
+            name="form-name"
+            value={CONTACT_FORM_NAME}
+            readOnly
+          />
           {/* Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Full Name *
             </label>
             <div className="relative">
@@ -228,12 +297,12 @@ export default function ContactUs() {
                 id="name"
                 name="name"
                 value={formData.name}
-                onChange={handleInputChange('name')}
-                onBlur={handleBlur('name')}
+                onChange={handleInputChange("name")}
+                onBlur={handleBlur("name")}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.name && touched.name
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
+                    ? "border-[#D96E6E] bg-red-50"
+                    : "border-gray-300 bg-white hover:border-[#4B9EC8]"
                 }`}
                 placeholder="Enter your full name"
                 required
@@ -249,7 +318,10 @@ export default function ContactUs() {
 
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Email Address *
             </label>
             <div className="relative">
@@ -261,12 +333,12 @@ export default function ContactUs() {
                 id="email"
                 name="email"
                 value={formData.email}
-                onChange={handleInputChange('email')}
-                onBlur={handleBlur('email')}
+                onChange={handleInputChange("email")}
+                onBlur={handleBlur("email")}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.email && touched.email
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
+                    ? "border-[#D96E6E] bg-red-50"
+                    : "border-gray-300 bg-white hover:border-[#4B9EC8]"
                 }`}
                 placeholder="Enter your email address"
                 required
@@ -283,7 +355,10 @@ export default function ContactUs() {
 
           {/* Phone */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="phone"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Phone Number <span className="text-gray-500">(optional)</span>
             </label>
             <div className="relative">
@@ -295,12 +370,12 @@ export default function ContactUs() {
                 id="phone"
                 name="phone"
                 value={formData.phone}
-                onChange={handleInputChange('phone')}
-                onBlur={handleBlur('phone')}
+                onChange={handleInputChange("phone")}
+                onBlur={handleBlur("phone")}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.phone && touched.phone
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
+                    ? "border-[#D96E6E] bg-red-50"
+                    : "border-gray-300 bg-white hover:border-[#4B9EC8]"
                 }`}
                 placeholder="758xxxxxxx"
                 disabled={isSubmitting}
@@ -316,7 +391,10 @@ export default function ContactUs() {
 
           {/* Message */}
           <div>
-            <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="message"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Message *
             </label>
             <div className="relative">
@@ -327,13 +405,13 @@ export default function ContactUs() {
                 id="message"
                 name="message"
                 value={formData.message}
-                onChange={handleInputChange('message')}
-                onBlur={handleBlur('message')}
+                onChange={handleInputChange("message")}
+                onBlur={handleBlur("message")}
                 rows={5}
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
                   errors.message && touched.message
-                    ? 'border-[#D96E6E] bg-red-50'
-                    : 'border-gray-300 bg-white hover:border-[#4B9EC8]'
+                    ? "border-[#D96E6E] bg-red-50"
+                    : "border-gray-300 bg-white hover:border-[#4B9EC8]"
                 }`}
                 placeholder="Please describe how we can help you..."
                 required
@@ -349,9 +427,13 @@ export default function ContactUs() {
               ) : (
                 <div></div>
               )}
-              <span className={`text-xs ${
-                formData.message.length > 1000 ? 'text-red-600' : 'text-gray-500'
-              }`}>
+              <span
+                className={`text-xs ${
+                  formData.message.length > 1000
+                    ? "text-red-600"
+                    : "text-gray-500"
+                }`}
+              >
                 {formData.message.length}/1000 characters
               </span>
             </div>
@@ -363,8 +445,8 @@ export default function ContactUs() {
             disabled={!isFormValid() || isSubmitting}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               isFormValid() && !isSubmitting
-                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? "bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
             {isSubmitting ? (
@@ -397,14 +479,16 @@ export default function ContactUs() {
           {/* Contact Information */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800 text-center">
-              <strong>Response Time:</strong> We typically respond within 24 hours during business days.
+              <strong>Response Time:</strong> We typically respond within 24
+              hours during business days.
             </p>
           </div>
 
           {/* Alternative Contact */}
           <div className="text-center">
             <p className="text-xs text-gray-500">
-              For urgent matters, you can also reach us directly via email or phone if provided during registration.
+              For urgent matters, you can also reach us directly via email or
+              phone if provided during registration.
             </p>
           </div>
         </div>
