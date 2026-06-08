@@ -130,6 +130,8 @@ SEND_DISCOURSE_ACTIVATION=true
 
 For deployed Supabase Edge Functions, set the server-side values above as Supabase secrets, not only as frontend hosting variables. `DISCOURSE_SSO_SECRET` is required for Discourse SSO login. `DISCOURSE_ADMIN_API_KEY` is only required for the optional approval-time pre-sync that makes approved users appear in Discourse immediately.
 
+DiscourseConnect identity depends on a stable `external_id`; this app uses the Supabase registration/user ID for that value. Never regenerate the Supabase ID for the same user. See [`docs/discourse-sso-identity.md`](docs/discourse-sso-identity.md) for the internal permanence requirement.
+
 ```bash
 supabase secrets set \
   DISCOURSE_BASE_URL=https://community.teatimecari.app \
