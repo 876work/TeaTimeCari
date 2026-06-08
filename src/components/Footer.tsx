@@ -16,6 +16,7 @@ const footerLinkGroups: FooterLinkGroup[] = [
     title: 'Platform',
     links: [
       { label: 'Home', to: '/' },
+      { label: 'How It Works', to: '/how-it-works' },
       { label: 'Community', to: '/community' },
       { label: 'FAQ', to: '/faq' },
       { label: 'Contact Us', to: '/contact-us' },
