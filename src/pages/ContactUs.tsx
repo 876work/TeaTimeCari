@@ -29,24 +29,32 @@ const getFieldError = (
   switch (field) {
     case "name":
       return value.trim() ? null : "Name is required";
+
     case "email":
       if (!value.trim()) {
         return "Email address is required";
       }
+
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
         ? null
         : "Please enter a valid email address";
+
     case "phone":
       return value.trim() && !/^758\d{7}$/.test(value.replace(/\D/g, ""))
         ? "Phone number must be in format: 758xxxxxxx"
         : null;
+
     case "message":
       if (!value.trim()) {
         return "Message is required";
       }
+
       return value.trim().length >= 10
         ? null
         : "Message must be at least 10 characters";
+
+    default:
+      return null;
   }
 };
 
@@ -71,40 +79,48 @@ export default function ContactUs() {
   });
 
   const [errors, setErrors] = useState<
-    Partial<Record<keyof ContactFormData, string>>
+    Partial<Record<keyof ContactFormData, string | null>>
   >({});
+
   const [touched, setTouched] = useState<
     Partial<Record<keyof ContactFormData, boolean>>
   >({});
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Handle input changes
   const handleInputChange =
     (field: keyof ContactFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const value = e.target.value;
-      setFormData((prev) => ({ ...prev, [field]: value }));
 
-      // Clear previous errors when user starts typing
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+
       if (errors[field]) {
-        setErrors((prev) => ({ ...prev, [field]: undefined }));
+        setErrors((prev) => ({
+          ...prev,
+          [field]: undefined,
+        }));
       }
 
-      // Clear submit error
       if (submitError) {
         setSubmitError(null);
       }
     };
 
-  // Handle field blur
   const handleBlur = (field: keyof ContactFormData) => () => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
+    setTouched((prev) => ({
+      ...prev,
+      [field]: true,
+    }));
+
     validateField(field, formData[field]);
   };
 
-  // Validate individual fields
   const validateField = (field: keyof ContactFormData, value: string) => {
     const error = getFieldError(field, value);
 
@@ -132,26 +148,39 @@ export default function ContactUs() {
     }, {});
   };
 
-  // Validate entire form
   const isFormValid = () => {
     return Object.values(getFormErrors()).every((error) => !error);
   };
 
-  // Handle form submission
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      message: "",
+    });
+    setTouched({});
+    setErrors({});
+    setSubmitError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Mark all fields as touched
     const allFields: (keyof ContactFormData)[] = [
       "name",
       "email",
       "phone",
       "message",
     ];
-    const newTouched = allFields.reduce(
-      (acc, field) => ({ ...acc, [field]: true }),
-      {},
-    );
+
+    const newTouched = allFields.reduce<
+      Partial<Record<keyof ContactFormData, boolean>>
+    >((acc, field) => {
+      acc[field] = true;
+      return acc;
+    }, {});
+
     setTouched(newTouched);
 
     const formErrors = getFormErrors();
@@ -168,7 +197,9 @@ export default function ContactUs() {
     try {
       const response = await fetch("/", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
         body: encodeContactFormData(formData),
       });
 
@@ -179,9 +210,7 @@ export default function ContactUs() {
       }
 
       setIsSubmitted(true);
-      setFormData({ name: "", email: "", phone: "", message: "" });
-      setTouched({});
-      setErrors({});
+      resetForm();
     } catch (err: unknown) {
       console.error("Error submitting contact form:", err);
       setSubmitError("Failed to submit your message. Please try again.");
@@ -198,7 +227,6 @@ export default function ContactUs() {
     navigate("/");
   };
 
-  // Success state
   if (isSubmitted) {
     return (
       <AuthLayout>
@@ -207,28 +235,32 @@ export default function ContactUs() {
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
+
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Message Sent Successfully!
             </h1>
+
             <p className="text-gray-600 mb-6">
               Thank you for contacting us. We'll get back to you within 24
               hours.
             </p>
+
             <div className="space-y-3">
               <button
+                type="button"
                 onClick={handleGoHome}
-                className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                className="w-full px-6 py-3 bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white rounded-lg font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
               >
                 Go to Homepage
               </button>
+
               <button
+                type="button"
                 onClick={() => {
                   setIsSubmitted(false);
-                  setFormData({ name: "", email: "", phone: "", message: "" });
-                  setTouched({});
-                  setErrors({});
+                  resetForm();
                 }}
-                className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="w-full px-6 py-3 border border-[#4B9EC8]/40 text-[#2E6F91] rounded-lg font-medium hover:bg-[#D6EBF5] hover:border-[#4B9EC8] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
               >
                 Send Another Message
               </button>
@@ -246,15 +278,16 @@ export default function ContactUs() {
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <Mail className="w-8 h-8 text-[#4B9EC8]" />
           </div>
+
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Contact Support
           </h1>
+
           <p className="text-gray-600">
             Need help? Send us a message and we'll get back to you soon.
           </p>
         </div>
 
-        {/* Submit Error Message */}
         {submitError && (
           <div
             className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
@@ -280,7 +313,7 @@ export default function ContactUs() {
             value={CONTACT_FORM_NAME}
             readOnly
           />
-          {/* Name */}
+
           <div>
             <label
               htmlFor="name"
@@ -288,10 +321,12 @@ export default function ContactUs() {
             >
               Full Name *
             </label>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-5 w-5 text-gray-400" />
               </div>
+
               <input
                 type="text"
                 id="name"
@@ -309,6 +344,7 @@ export default function ContactUs() {
                 disabled={isSubmitting}
               />
             </div>
+
             {errors.name && touched.name && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {errors.name}
@@ -316,7 +352,6 @@ export default function ContactUs() {
             )}
           </div>
 
-          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -324,10 +359,12 @@ export default function ContactUs() {
             >
               Email Address *
             </label>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
               </div>
+
               <input
                 type="email"
                 id="email"
@@ -346,6 +383,7 @@ export default function ContactUs() {
                 autoComplete="email"
               />
             </div>
+
             {errors.email && touched.email && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {errors.email}
@@ -353,7 +391,6 @@ export default function ContactUs() {
             )}
           </div>
 
-          {/* Phone */}
           <div>
             <label
               htmlFor="phone"
@@ -361,10 +398,12 @@ export default function ContactUs() {
             >
               Phone Number <span className="text-gray-500">(optional)</span>
             </label>
+
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Phone className="h-5 w-5 text-gray-400" />
               </div>
+
               <input
                 type="text"
                 id="phone"
@@ -382,6 +421,7 @@ export default function ContactUs() {
                 autoComplete="tel"
               />
             </div>
+
             {errors.phone && touched.phone && (
               <p className="mt-2 text-sm text-red-600" role="alert">
                 {errors.phone}
@@ -389,7 +429,6 @@ export default function ContactUs() {
             )}
           </div>
 
-          {/* Message */}
           <div>
             <label
               htmlFor="message"
@@ -397,10 +436,12 @@ export default function ContactUs() {
             >
               Message *
             </label>
+
             <div className="relative">
               <div className="absolute top-3 left-3 pointer-events-none">
                 <MessageSquare className="h-5 w-5 text-gray-400" />
               </div>
+
               <textarea
                 id="message"
                 name="message"
@@ -419,14 +460,16 @@ export default function ContactUs() {
                 maxLength={1000}
               />
             </div>
+
             <div className="flex items-center justify-between mt-2">
               {errors.message && touched.message ? (
                 <p className="text-sm text-red-600" role="alert">
                   {errors.message}
                 </p>
               ) : (
-                <div></div>
+                <div />
               )}
+
               <span
                 className={`text-xs ${
                   formData.message.length > 1000
@@ -439,7 +482,6 @@ export default function ContactUs() {
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={!isFormValid() || isSubmitting}
@@ -463,11 +505,10 @@ export default function ContactUs() {
           </button>
         </form>
 
-        {/* Help Section */}
         <div className="mt-8 space-y-4">
-          {/* Back Button */}
           <div className="text-center">
             <button
+              type="button"
               onClick={handleGoBack}
               className="flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors mx-auto"
             >
@@ -476,7 +517,6 @@ export default function ContactUs() {
             </button>
           </div>
 
-          {/* Contact Information */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800 text-center">
               <strong>Response Time:</strong> We typically respond within 24
@@ -484,7 +524,6 @@ export default function ContactUs() {
             </p>
           </div>
 
-          {/* Alternative Contact */}
           <div className="text-center">
             <p className="text-xs text-gray-500">
               For urgent matters, you can also reach us directly via email or
