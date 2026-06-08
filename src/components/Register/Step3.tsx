@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
@@ -471,6 +472,25 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
               </div>
             </dl>
           </div>
+        )}
+
+        {isReadyToContinue && (
+          <p className="mt-6 text-center text-xs leading-5 text-slate-600">
+            By submitting this form, you agree to our{' '}
+            <Link
+              to="/terms-of-service"
+              className="font-semibold text-[#4B9EC8] underline underline-offset-2 transition-colors hover:text-[#3382AA]"
+            >
+              Terms of Service
+            </Link>{' '}
+            and our{' '}
+            <Link
+              to="/privacy-policy"
+              className="font-semibold text-[#4B9EC8] underline underline-offset-2 transition-colors hover:text-[#3382AA]"
+            >
+              Privacy Policy
+            </Link>.
+          </p>
         )}
 
         {/* Navigation Buttons */}
