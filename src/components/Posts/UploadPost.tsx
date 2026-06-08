@@ -64,7 +64,7 @@ export function UploadPost() {
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -117,7 +117,7 @@ export function UploadPost() {
       console.log('Original file size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
       console.log('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error processing image:', err);
       setError('Failed to process image. Please try a different file.');
     } finally {
@@ -153,7 +153,7 @@ export function UploadPost() {
       const filePath = `posts/${currentUser.id}/${fileName}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
@@ -201,9 +201,9 @@ export function UploadPost() {
         URL.revokeObjectURL(previewUrl);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading post:', err);
-      setError(err.message || 'Failed to upload post. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to upload post. Please try again.');
     } finally {
       setIsUploading(false);
     }

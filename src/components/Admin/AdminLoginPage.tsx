@@ -132,7 +132,7 @@ export function AdminLoginPage() {
                 </p>
 
                 <p className="mt-2 text-sm text-white/65">
-                  Sign in with an authorized administrator account.
+                  Log in with an authorized administrator account.
                 </p>
               </div>
 
@@ -217,7 +217,7 @@ export function AdminLoginPage() {
                 ) : (
                   <Lock className="h-4 w-4" />
                 )}
-                {checkingSession ? 'Checking session…' : isLoading ? 'Signing in…' : 'Login'}
+                {checkingSession ? 'Checking session…' : isLoading ? 'Logging in…' : 'Log In'}
               </button>
             </form>
           </div>

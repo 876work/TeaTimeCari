@@ -5,36 +5,49 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
 import { StripeProvider } from './components/Payment/StripeProvider';
 import { supabase } from '@/lib/supabaseClient';
-import { getAdminSession, AdminSession } from '@/lib/adminAuth';
+import { getAdminSession } from '@/lib/adminAuth';
+import type { AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
-import { HomePage } from './components/HomePage';
-import { AppLayout } from './components/AppLayout';
-import { PublicLayout } from './components/PublicLayout';
-import { RegisterStep1, RegisterStep1Data } from './components/RegisterStep1';
-import { RegisterStep2, RegisterStep2Data } from './components/Register/Step2';
-import { RegisterStep3, RegisterStep3Data } from './components/Register/Step3';
-import PendingApproval from './components/Register/PendingApproval';
-import { GenderFeed } from './components/Feed/GenderFeed';
-import { UploadPost } from './components/Posts/UploadPost';
-import { OppositeGenderFeed } from './components/Feed/OppositeGenderFeed';
-import { UserProfile } from './components/User/UserProfile';
-import { PostThread } from './components/Post/PostThread';
-import { AdminLoginPage } from './components/Admin/AdminLoginPage';
-import { AdminDashboard } from './components/Admin/AdminDashboard';
-import ContactUs from './pages/ContactUs';
-import KycPending from './pages/KycPending';
-import Sso from './pages/Sso';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import Signup from './pages/Signup';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsOfService from './pages/TermsOfService';
-import CommunityGuidelines from './pages/CommunityGuidelines';
-import Faq from './pages/Faq';
-import ResetPassword from './pages/ResetPassword';
-import Logout from './pages/Logout';
-import CommunityRedirect from './pages/CommunityRedirect';
-import { UserTypeSelection } from './components/UserTypeSelection';
+import type { RegisterStep1Data } from './components/RegisterStep1';
+import type { RegisterStep2Data } from './components/Register/Step2';
+import type { RegisterStep3Data } from './components/Register/Step3';
+
+const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
+const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
+const PublicLayout = React.lazy(() => import('./components/PublicLayout').then((module) => ({ default: module.PublicLayout })));
+const RegisterStep1 = React.lazy(() => import('./components/RegisterStep1').then((module) => ({ default: module.RegisterStep1 })));
+const RegisterStep2 = React.lazy(() => import('./components/Register/Step2').then((module) => ({ default: module.RegisterStep2 })));
+const RegisterStep3 = React.lazy(() => import('./components/Register/Step3').then((module) => ({ default: module.RegisterStep3 })));
+const PendingApproval = React.lazy(() => import('./components/Register/PendingApproval'));
+const GenderFeed = React.lazy(() => import('./components/Feed/GenderFeed').then((module) => ({ default: module.GenderFeed })));
+const UploadPost = React.lazy(() => import('./components/Posts/UploadPost').then((module) => ({ default: module.UploadPost })));
+const OppositeGenderFeed = React.lazy(() => import('./components/Feed/OppositeGenderFeed').then((module) => ({ default: module.OppositeGenderFeed })));
+const UserProfile = React.lazy(() => import('./components/User/UserProfile').then((module) => ({ default: module.UserProfile })));
+const PostThread = React.lazy(() => import('./components/Post/PostThread').then((module) => ({ default: module.PostThread })));
+const AdminLoginPage = React.lazy(() => import('./components/Admin/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
+const AdminDashboard = React.lazy(() => import('./components/Admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
+const ContactUs = React.lazy(() => import('./pages/ContactUs'));
+const KycPending = React.lazy(() => import('./pages/KycPending'));
+const Sso = React.lazy(() => import('./pages/Sso'));
+const Login = React.lazy(() => import('./pages/Login'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const Signup = React.lazy(() => import('./pages/Signup'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
+const CommunityGuidelines = React.lazy(() => import('./pages/CommunityGuidelines'));
+const Faq = React.lazy(() => import('./pages/Faq'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const Logout = React.lazy(() => import('./pages/Logout'));
+const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
+const UserTypeSelection = React.lazy(() => import('./components/UserTypeSelection').then((module) => ({ default: module.UserTypeSelection })));
+
+function PageLoading() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <p className="text-sm text-slate-500">Loading…</p>
+    </div>
+  );
+}
 
 type AdminPage =
   | 'dashboard'
@@ -233,6 +246,7 @@ function App() {
       <StripeProvider>
         <NotificationProvider>
           <Router>
+            <React.Suspense fallback={<PageLoading />}>
             <Routes>
               <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
               <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
@@ -342,6 +356,7 @@ function App() {
                 }
               />
             </Routes>
+            </React.Suspense>
           </Router>
         </NotificationProvider>
       </StripeProvider>

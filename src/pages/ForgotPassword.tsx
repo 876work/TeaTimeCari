@@ -40,7 +40,7 @@ export default function ForgotPassword() {
 
       // Always show success message regardless of whether email exists
       setSubmitted(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Password reset error:', err);
       // Even on error, show the generic message to prevent enumeration
       setSubmitted(true);

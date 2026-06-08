@@ -76,7 +76,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const unread = (data || []).filter(notification => !notification.is_read).length;
       setUnreadCount(unread);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching notifications:', err);
       setError('Failed to load notifications');
       // Fallback to mock data
@@ -159,7 +159,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Update unread count
       setUnreadCount(prev => Math.max(0, prev - 1));
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error marking notification as read:', err);
       // For mock data, just update local state
       setNotifications(prev =>
@@ -194,7 +194,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       );
       setUnreadCount(0);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error marking all notifications as read:', err);
       // For mock data, just update local state
       setNotifications(prev =>

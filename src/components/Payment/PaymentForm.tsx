@@ -88,9 +88,9 @@ export function PaymentForm({ amount, currency, feedAccess, onSuccess, onError }
         throw new Error('Payment was not completed successfully');
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Payment error:', err);
-      onError(err.message || 'Payment failed. Please try again.');
+      onError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }

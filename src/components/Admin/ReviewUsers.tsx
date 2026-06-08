@@ -20,6 +20,7 @@ import {
   Ban,
   ExternalLink,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
@@ -65,6 +66,13 @@ interface UserRow {
 
 type PresenceFilter = 'all' | 'online' | 'offline';
 type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'last_login_asc';
+type ConfirmationAction = 'reject' | 'suspend' | 'unsuspend';
+
+interface PendingConfirmation {
+  action: ConfirmationAction;
+  user: UserRow;
+  reason: string;
+}
 type StatusFilter = 'all' | UserRow['status'];
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -268,6 +276,8 @@ export function AdminUserReview({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [imageModal, setImageModal] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
 
   const [discourseBaseUrl] = useState(() => import.meta.env.VITE_DISCOURSE_BASE_URL || '');
 
@@ -306,6 +316,7 @@ export function AdminUserReview({
         fullName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
       }));
       setUsers(mapped);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setUsers([]);
@@ -392,11 +403,16 @@ export function AdminUserReview({
     }
   };
 
-  const handleReject = async (user: UserRow) => {
-    const name = user.username ?? safeDisplayName(user);
-    if (!confirm(`Reject ${name}? This will mark the registration as rejected and send a rejection email.`)) return;
-    const reason = prompt(`Rejection reason for ${name} (optional):`);
-    if (reason === null) return;
+  const requestConfirmation = (action: ConfirmationAction, user: UserRow) => {
+    setPendingConfirmation({ action, user, reason: '' });
+  };
+
+  const closeConfirmation = () => {
+    if (processingId) return;
+    setPendingConfirmation(null);
+  };
+
+  const executeReject = async (user: UserRow, reason: string) => {
     setProcessingId(user.id);
     setError(null);
     try {
@@ -430,9 +446,7 @@ export function AdminUserReview({
     }
   };
 
-  const updateSuspension = async (user: UserRow, action: 'suspend' | 'unsuspend') => {
-    const verb = action === 'suspend' ? 'Suspend' : 'Remove suspension for';
-    if (!confirm(`${verb} ${user.username ?? safeDisplayName(user)}?`)) return;
+  const executeSuspension = async (user: UserRow, action: 'suspend' | 'unsuspend') => {
     setProcessingId(user.id);
     setError(null);
     try {
@@ -454,6 +468,20 @@ export function AdminUserReview({
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingConfirmation) return;
+
+    const { action, user, reason } = pendingConfirmation;
+
+    if (action === 'reject') {
+      await executeReject(user, reason);
+    } else {
+      await executeSuspension(user, action);
+    }
+
+    setPendingConfirmation(null);
   };
 
   // ── Derived data ───────────────────────────────────────────────────────────
@@ -508,7 +536,11 @@ export function AdminUserReview({
             <h2 className="text-xl font-bold text-slate-900">User Management</h2>
             <p className="text-sm text-slate-500 mt-0.5">View and manage all user registrations</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <p className="text-xs font-medium text-slate-500">
+              Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
+            </p>
+            <div className="flex items-center gap-2">
             {discourseBaseUrl && (
               <button
                 onClick={() => window.open(discourseBaseUrl, '_blank')}
@@ -526,6 +558,7 @@ export function AdminUserReview({
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
+            </div>
           </div>
         </div>
 
@@ -545,6 +578,13 @@ export function AdminUserReview({
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Discourse sync note</p>
+          <p className="mt-1 text-sm text-amber-800">
+            If approval succeeded but Discourse access failed, retry sync after checking Discourse settings.
+          </p>
+        </div>
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -599,10 +639,16 @@ export function AdminUserReview({
             </div>
           </div>
 
+          <div className="mt-3 space-y-1 text-xs text-slate-500">
+            <p>Search by name, username, email, or phone.</p>
+            <p>Online means active within the last 15 minutes.</p>
+          </div>
+
           {/* Result count */}
           <p className="text-xs text-slate-400 mt-3">
             Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{' '}
             <span className="font-medium text-slate-600">{users.length}</span> users
+            {lastUpdated && <span className="ml-2">• Last refreshed at {lastUpdated.toLocaleTimeString()}</span>}
           </p>
         </div>
 
@@ -740,6 +786,7 @@ export function AdminUserReview({
                               <button
                                 onClick={() => setExpandedId(isExpanded ? null : user.id)}
                                 title={isExpanded ? 'Hide details' : 'View details'}
+                                aria-label={`${isExpanded ? 'Hide' : 'View'} details for ${user.username || user.email}`}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                               >
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -750,6 +797,7 @@ export function AdminUserReview({
                                 <button
                                   onClick={() => setImageModal(user.imageData!)}
                                   title="View photo"
+                                  aria-label={`View registration photo for ${user.username || user.email}`}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
                                   <Camera className="w-4 h-4" />
@@ -763,15 +811,17 @@ export function AdminUserReview({
                                     onClick={() => handleApprove(user)}
                                     disabled={isProcessing}
                                     title="Approve user"
+                                    aria-label={`Approve ${user.username || user.email}`}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                   >
                                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                                     <span>Approve</span>
                                   </button>
                                   <button
-                                    onClick={() => handleReject(user)}
+                                    onClick={() => requestConfirmation('reject', user)}
                                     disabled={isProcessing}
                                     title="Reject user"
+                                    aria-label={`Reject ${user.username || user.email}`}
                                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
                                   >
                                     <XCircle className="w-4 h-4" />
@@ -785,6 +835,7 @@ export function AdminUserReview({
                                   onClick={() => handleRetryDiscourseSync(user)}
                                   disabled={isProcessing}
                                   title="Retry Discourse sync"
+                                  aria-label={`Retry Discourse sync for ${user.username || user.email}`}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -795,24 +846,28 @@ export function AdminUserReview({
                               {/* Suspend (approved/verified) */}
                               {(user.status === 'approved' || user.status === 'verified') && (
                                 <button
-                                  onClick={() => updateSuspension(user, 'suspend')}
+                                  onClick={() => requestConfirmation('suspend', user)}
                                   disabled={isProcessing}
                                   title="Suspend user"
-                                  className="p-1.5 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                                  aria-label={`Suspend ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-50 text-xs font-medium text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                                  <span>Suspend</span>
                                 </button>
                               )}
 
                               {/* Remove suspension */}
                               {user.status === 'suspended' && (
                                 <button
-                                  onClick={() => updateSuspension(user, 'unsuspend')}
+                                  onClick={() => requestConfirmation('unsuspend', user)}
                                   disabled={isProcessing}
                                   title="Remove suspension"
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                  aria-label={`Remove suspension for ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                 >
                                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                  <span>Unsuspend</span>
                                 </button>
                               )}
                             </div>
@@ -838,6 +893,86 @@ export function AdminUserReview({
           )}
         </div>
       </div>
+
+
+      {pendingConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-confirmation-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <h2 id="admin-confirmation-title" className="text-lg font-bold text-slate-900">
+                  {pendingConfirmation.action === 'reject'
+                    ? 'Reject this application?'
+                    : pendingConfirmation.action === 'suspend'
+                      ? 'Suspend this user?'
+                      : 'Remove suspension?'}
+                </h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  {safeDisplayName(pendingConfirmation.user)}
+                  {pendingConfirmation.user.username && ` (@${pendingConfirmation.user.username})`}
+                  {pendingConfirmation.user.email && ` • ${pendingConfirmation.user.email}`}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {pendingConfirmation.action === 'reject'
+                    ? 'This marks the registration as rejected and sends a rejection email.'
+                    : pendingConfirmation.action === 'suspend'
+                      ? 'This prevents the user from logging in or using Tea Time Cari.'
+                      : 'This restores the user status so access can resume according to their account state.'}
+                </p>
+              </div>
+            </div>
+
+            {pendingConfirmation.action === 'reject' && (
+              <div className="mt-5">
+                <label htmlFor="rejection-reason" className="block text-sm font-semibold text-slate-700">
+                  Rejection reason (optional)
+                </label>
+                <textarea
+                  id="rejection-reason"
+                  value={pendingConfirmation.reason}
+                  onChange={(event) => setPendingConfirmation((current) => current ? { ...current, reason: event.target.value } : current)}
+                  rows={3}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Add a short reason for the rejection email"
+                />
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeConfirmation}
+                disabled={Boolean(processingId)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmPendingAction}
+                disabled={Boolean(processingId)}
+                className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
+                  pendingConfirmation.action === 'reject'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : pendingConfirmation.action === 'suspend'
+                      ? 'bg-orange-600 hover:bg-orange-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {processingId === pendingConfirmation.user.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                {pendingConfirmation.action === 'reject'
+                  ? 'Reject application'
+                  : pendingConfirmation.action === 'suspend'
+                    ? 'Suspend user'
+                    : 'Remove suspension'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image modal */}
       {imageModal && (

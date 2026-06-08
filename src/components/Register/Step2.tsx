@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, UserCheck } from 'lucide-react';
+import { RegistrationProgress } from './RegistrationProgress';
 
 export interface RegisterStep2Data {
   gender: 'Male' | 'Female';
@@ -27,12 +28,15 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
   return (
     <div className="max-w-md mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
+        <RegistrationProgress currentStep={2} className="mb-6" />
+
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Select Your Gender</h1>
           <p className="text-gray-600">Step 2 of 3: Personal Details</p>
+          <p className="mt-2 text-sm text-slate-500">This assigns you to the correct private community space and Discourse group.</p>
         </div>
 
         <div className="flex justify-center space-x-4 mb-8">
@@ -81,7 +85,7 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-amber-800 text-center">
-            ⚠️ Gender selection is permanent and cannot be changed later.
+            ⚠️ Gender selection controls private category access and cannot be changed automatically later. Contact support if you select the wrong option.
           </p>
         </div>
 

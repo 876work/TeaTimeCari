@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 import { supabase } from '@/lib/supabaseClient';
+import { AuthLayout } from "@/components/AuthLayout";
 
 function useQuery() {
   const { search } = useLocation();
@@ -10,7 +12,8 @@ function useQuery() {
 export default function Sso() {
   const q = useQuery();
   const navigate = useNavigate();
-  const [msg, setMsg] = useState("Preparing SSO…");
+  const [msg, setMsg] = useState("Preparing secure community connection…");
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -18,14 +21,13 @@ export default function Sso() {
       const sig = q.get("sig") || "";
 
       if (!sso || !sig) {
-        setMsg("Missing SSO parameters.");
+        setHasError(true);
+        setMsg("Missing community sign-in parameters. Please start from the community link again.");
         return;
       }
 
-      // Are we logged in?
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) {
-        // send to login and preserve where to return
         const params = new URLSearchParams({
           next: "/sso",
           sso,
@@ -35,17 +37,16 @@ export default function Sso() {
         return;
       }
 
-      setMsg("Finishing SSO…");
+      setMsg("Finishing secure sign-in with the Tea Time Cari community…");
 
-      // Call the Edge Function. The Supabase client will attach the
-      // user's Authorization Bearer automatically.
       const { data, error } = await supabase.functions.invoke("sso-complete", {
         body: { sso, sig },
       });
 
       if (error) {
         console.error("sso-complete error:", error);
-        setMsg("Could not complete SSO. Please try again.");
+        setHasError(true);
+        setMsg("Could not complete community sign-in. Please try again or contact support.");
         return;
       }
 
@@ -53,15 +54,41 @@ export default function Sso() {
       if (redirectUrl) {
         window.location.href = redirectUrl;
       } else {
-        setMsg("Unexpected response from SSO.");
+        setHasError(true);
+        setMsg("Unexpected response from community sign-in. Please try again.");
       }
     })();
   }, [navigate, q]);
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Connecting…</h1>
-      <p>{msg}</p>
-    </div>
+    <AuthLayout>
+      <div className="rounded-2xl bg-white p-8 text-center shadow-xl">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
+          {hasError ? (
+            <AlertCircle className="h-8 w-8 text-red-500" aria-hidden="true" />
+          ) : (
+            <ShieldCheck className="h-8 w-8 text-[#4B9EC8]" aria-hidden="true" />
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {hasError ? 'Community sign-in needs attention' : 'Connecting you to the community'}
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-gray-600">{msg}</p>
+        {!hasError && (
+          <div className="mt-6 flex items-center justify-center text-sm font-medium text-[#4B9EC8]">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
+            This may take a few seconds.
+          </div>
+        )}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link to="/login" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            Return to login
+          </Link>
+          <Link to="/contact-us" className="rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]">
+            Contact support
+          </Link>
+        </div>
+      </div>
+    </AuthLayout>
   );
 }

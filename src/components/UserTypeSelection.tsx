@@ -11,8 +11,12 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
   const discourseBaseUrl = import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
 
   const handleReturningUserClick = () => {
-    // Redirect to Discourse login
-    window.location.href = `${discourseBaseUrl}/login`;
+    if (discourseBaseUrl) {
+      window.location.href = `${discourseBaseUrl}/login`;
+      return;
+    }
+
+    onReturningUser();
   };
 
   return (

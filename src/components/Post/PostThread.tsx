@@ -12,8 +12,6 @@ import {
   Loader2, 
   AlertCircle,
   RefreshCw,
-  Flag,
-  Heart,
   User,
   Clock
 } from 'lucide-react';
@@ -107,7 +105,7 @@ export function PostThread({ postId }: PostThreadProps) {
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -162,7 +160,7 @@ export function PostThread({ postId }: PostThreadProps) {
         }
 
         setPost(postData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching post:', err);
         setError('Failed to load post data.');
         // Fallback to mock data for demonstration
@@ -200,7 +198,7 @@ export function PostThread({ postId }: PostThreadProps) {
         }
 
         setComments(commentsData || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching comments:', err);
         // Fallback to mock data for demonstration
         setMockComments();
@@ -327,9 +325,9 @@ export function PostThread({ postId }: PostThreadProps) {
         [columnName]: newCount
       } : null);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating flag count:', err);
-      setError(`Failed to update flag: ${err.message}`);
+      setError(err instanceof Error ? `Failed to update flag: ${err.message}` : 'Failed to update flag.');
     } finally {
       setFlaggingPost(false);
     }
@@ -379,9 +377,9 @@ export function PostThread({ postId }: PostThreadProps) {
         commentInputRef.current.focus();
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting comment:', err);
-      setError(`Failed to submit comment: ${err.message}`);
+      setError(err instanceof Error ? `Failed to submit comment: ${err.message}` : 'Failed to submit comment.');
     } finally {
       setSubmittingComment(false);
     }

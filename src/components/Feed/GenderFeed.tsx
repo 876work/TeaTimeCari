@@ -10,8 +10,7 @@ import {
   X,
   Send,
   Users,
-  Heart,
-  Flag
+  Heart
 } from 'lucide-react';
 
 // Type definitions
@@ -96,7 +95,7 @@ export function GenderFeed() {
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -151,9 +150,9 @@ export function GenderFeed() {
         );
 
         setPosts(postsWithComments);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching posts:', err);
-        setError(`Failed to load posts: ${err.message}`);
+        setError(err instanceof Error ? `Failed to load posts: ${err.message}` : 'Failed to load posts.');
         // Fallback to mock data for demonstration
         setMockPosts();
       } finally {
@@ -245,9 +244,9 @@ export function GenderFeed() {
         )
       );
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating flag count:', err);
-      setError(`Failed to update flag: ${err.message}`);
+      setError(err instanceof Error ? `Failed to update flag: ${err.message}` : 'Failed to update flag.');
     } finally {
       setFlaggingPostId(null);
     }
@@ -303,9 +302,9 @@ export function GenderFeed() {
       setSelectedPostId(null);
       setCommentText('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting comment:', err);
-      setError(`Failed to submit comment: ${err.message}`);
+      setError(err instanceof Error ? `Failed to submit comment: ${err.message}` : 'Failed to submit comment.');
     } finally {
       setSubmittingComment(false);
     }

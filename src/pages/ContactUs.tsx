@@ -135,7 +135,7 @@ export default function ContactUs() {
       console.log('Contact form submitted:', formData);
       setIsSubmitted(true);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting contact form:', err);
       setSubmitError('Failed to submit your message. Please try again.');
     } finally {

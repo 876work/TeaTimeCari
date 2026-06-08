@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { AppLayout } from '../AppLayout';
 import { 
   CheckCircle, 
   XCircle, 
@@ -116,7 +115,7 @@ export function OppositeGenderFeed() {
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -160,7 +159,7 @@ export function OppositeGenderFeed() {
           setHasAccess(false);
           setPaymentRecord(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error checking payment access:', err);
         setHasAccess(false);
       }
@@ -216,9 +215,9 @@ export function OppositeGenderFeed() {
         );
 
         setPosts(postsWithComments);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching posts:', err);
-        setError(`Failed to load posts: ${err.message}`);
+        setError(err instanceof Error ? `Failed to load posts: ${err.message}` : 'Failed to load posts.');
         // Fallback to mock data for demonstration
         if (currentUser) {
           const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
@@ -326,9 +325,9 @@ export function OppositeGenderFeed() {
         )
       );
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating flag count:', err);
-      setError(`Failed to update flag: ${err.message}`);
+      setError(err instanceof Error ? `Failed to update flag: ${err.message}` : 'Failed to update flag.');
     } finally {
       setFlaggingPostId(null);
     }
@@ -384,9 +383,9 @@ export function OppositeGenderFeed() {
       setSelectedPostId(null);
       setCommentText('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting comment:', err);
-      setError(`Failed to submit comment: ${err.message}`);
+      setError(err instanceof Error ? `Failed to submit comment: ${err.message}` : 'Failed to submit comment.');
     } finally {
       setSubmittingComment(false);
     }

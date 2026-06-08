@@ -302,6 +302,14 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     );
   }
 
+  const quickLinks = [
+    { label: 'Review users', page: 'user-reviews', path: '/admin/users', icon: <Users className="w-4 h-4" /> },
+    { label: 'Flagged posts', page: 'flagged-posts', path: '/admin/flagged-posts', icon: <Flag className="w-4 h-4" /> },
+    { label: 'Discourse admins', page: 'discourse-admins', path: '/admin/discourse-admins', icon: <Shield className="w-4 h-4" /> },
+    { label: 'Logs', page: 'logs', path: '/admin/logs', icon: <Database className="w-4 h-4" /> },
+    { label: 'Health', page: 'function-ping', path: '/admin/health', icon: <HardDrive className="w-4 h-4" /> },
+  ];
+
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
@@ -309,18 +317,19 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900">Overview</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Last refreshed {lastUpdated.toLocaleTimeString()}
-            </p>
+            <p className="text-sm text-slate-500 mt-0.5">System health, registrations, and moderation shortcuts</p>
           </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <p className="text-xs font-medium text-slate-500">Last refreshed at {lastUpdated.toLocaleTimeString()}</p>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Error */}
@@ -330,6 +339,30 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
+
+        {/* Quick links */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-4">
+            <h2 className="text-sm font-semibold text-slate-900">Quick Links</h2>
+            <p className="mt-1 text-xs text-slate-500">Jump to common admin routes without leaving the dashboard. Route docs: <code className="rounded bg-slate-100 px-1 py-0.5">docs/url-paths.md</code>; smoke checklist: <code className="rounded bg-slate-100 px-1 py-0.5">docs/smoke-test-checklist.md</code>.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {quickLinks.map((link) => (
+              <button
+                key={link.page}
+                type="button"
+                onClick={() => onNavigate?.(link.page)}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <span className="text-slate-400">{link.icon}</span>
+                <span>
+                  <span className="block">{link.label}</span>
+                  <span className="block text-xs font-normal text-slate-400">{link.path}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Primary stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
