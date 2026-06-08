@@ -104,6 +104,7 @@ Deno.serve(async (req: Request) => {
       [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
       derivedUsername;
 
+    // Keep external_id stable forever: DiscourseConnect associates users by this value.
     const payload = {
       nonce,
       external_id: profile.id,

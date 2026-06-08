@@ -119,7 +119,8 @@ Deno.serve(async (req) => {
         false // xaccess - you can modify this based on your business logic
       );
 
-      // Build SSO response payload for app-initiated SSO
+      // Build SSO response payload for app-initiated SSO. Keep external_id
+      // stable forever: DiscourseConnect associates users by this value.
       const responsePayload: Record<string, string> = {
         nonce: nonce,
         external_id: profile.id,
@@ -229,7 +230,8 @@ Deno.serve(async (req) => {
         false // xaccess - modify based on your business logic
       );
 
-      // Build SSO response payload
+      // Build SSO response payload. Keep external_id stable forever:
+      // DiscourseConnect associates users by this value.
       const responsePayload: Record<string, string> = {
         nonce: nonce,
         external_id: profile.id,
