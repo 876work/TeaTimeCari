@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LogIn,
-  Mail,
+  User,
   Lock,
   Loader2,
   AlertCircle,
@@ -24,7 +24,7 @@ export default function Login() {
   const q = useQuery();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,29 +152,37 @@ export default function Login() {
   }, [navigate, q]);
 
   const signInWithFallback = async () => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedIdentifier = loginIdentifier.trim().toLowerCase();
+    const isEmailLogin = normalizedIdentifier.includes("@");
 
-    const firstAttempt = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    if (isEmailLogin) {
+      const firstAttempt = await supabase.auth.signInWithPassword({
+        email: normalizedIdentifier,
+        password,
+      });
 
-    if (!firstAttempt.error) {
-      return firstAttempt;
+      if (!firstAttempt.error) {
+        return firstAttempt;
+      }
     }
 
     const { data: bootstrapResult, error: bootstrapError } = await supabase.functions.invoke(
       "bootstrap-login",
-      { body: { email: normalizedEmail, password } },
+      { body: { identifier: normalizedIdentifier, password } },
     );
 
-    if (bootstrapError || !bootstrapResult?.ok) {
-      return firstAttempt;
+    if (bootstrapError || !bootstrapResult?.ok || !bootstrapResult.session) {
+      return {
+        data: { user: null, session: null },
+        error: isEmailLogin
+          ? { message: "Invalid login credentials" }
+          : { message: "Invalid username or password" },
+      };
     }
 
-    return supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
+    return supabase.auth.setSession({
+      access_token: bootstrapResult.session.access_token,
+      refresh_token: bootstrapResult.session.refresh_token,
     });
   };
 
@@ -260,28 +268,28 @@ export default function Login() {
           <input type="hidden" name="form-name" value="login" readOnly />
           <div>
             <label
-              htmlFor="email"
+              htmlFor="loginIdentifier"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Email Address
+              Email Address or Username
             </label>
 
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
+                <User className="h-5 w-5 text-gray-400" />
               </div>
 
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                id="loginIdentifier"
+                name="loginIdentifier"
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"
-                placeholder="Enter your email address"
+                placeholder="Enter your email address or username"
                 required
                 disabled={loading}
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
           </div>
@@ -330,9 +338,9 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={loading || !loginIdentifier || !password}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !loading && email && password
+              !loading && loginIdentifier && password
                 ? "bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
