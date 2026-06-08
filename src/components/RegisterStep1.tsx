@@ -611,7 +611,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               onChange={handleInputChange('phone')}
               onBlur={handleBlur('phone')}
               className={fieldInputClass}
-              placeholder="758-123-4567 or 7581234567"
+              placeholder="Enter your phone number"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
             />
             {errors.phone && touched.phone && (
