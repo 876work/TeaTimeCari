@@ -138,6 +138,7 @@ function RegistrationChart({
               const dayLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
                 weekday: 'short',
               });
+
               return (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5 group">
                   <div className="w-full flex flex-col justify-end" style={{ height: '112px' }}>
@@ -186,6 +187,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     approved: 0,
     verified: 0,
   });
+
   const [dailyRegs, setDailyRegs] = useState<DailyRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -201,12 +203,19 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
-      if (!currentSession?.access_token) throw new Error('You must be logged in as an admin.');
+
+      if (!currentSession?.access_token) {
+        throw new Error('You must be logged in as an admin.');
+      }
 
       const { data, error: fnError } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
-      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+
+      if (fnError) {
+        throw new Error(await getFunctionErrorMessage(fnError));
+      }
+
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]
@@ -221,6 +230,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         created_at: user.created_at || null,
         last_seen_at: user.last_seen_at || null,
       }));
+
       const now = Date.now();
 
       const todayStart = new Date();
@@ -246,13 +256,14 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         verified: users.filter((u) => u.status === 'verified').length,
       });
 
-      // Build 7-day registration trend
       const days: DailyRegistration[] = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
         d.setHours(0, 0, 0, 0);
+
         const next = new Date(d);
         next.setDate(d.getDate() + 1);
+
         return {
           date: d.toISOString().split('T')[0],
           count: users.filter((u) => {
@@ -278,20 +289,23 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       setLoading(false);
       return;
     }
+
     fetchData();
   }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
+
     const id = setInterval(fetchData, 30000);
+
     return () => clearInterval(id);
   }, [isAdmin]);
 
-  // Delegate to sub-pages
   if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'flagged-posts') return <ReviewFlaggedPosts activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   if (activePage === 'logs') return <AdminAuditLogs activePage={activePage} onNavigate={onNavigate} />;
+
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
@@ -344,8 +358,13 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-slate-900">Quick Links</h2>
-            <p className="mt-1 text-xs text-slate-500">Jump to common admin routes without leaving the dashboard. Route docs: <code className="rounded bg-slate-100 px-1 py-0.5">docs/url-paths.md</code>; smoke checklist: <code className="rounded bg-slate-100 px-1 py-0.5">docs/smoke-test-checklist.md</code>.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Jump to common admin routes without leaving the dashboard. Route docs:{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5">docs/url-paths.md</code>; smoke checklist:{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5">docs/smoke-test-checklist.md</code>.
+            </p>
           </div>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {quickLinks.map((link) => (
               <button
