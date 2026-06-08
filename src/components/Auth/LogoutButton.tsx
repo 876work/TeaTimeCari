@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { LogOut, Loader2 } from 'lucide-react';
+import { APP_LOGOUT_REDIRECT_PATH, signOutOfApp } from '@/lib/logout';
 
 interface LogoutButtonProps {
   className?: string;
@@ -31,7 +32,7 @@ export function LogoutButton({
     // If no session exists, redirect to login/home
     if (!session?.user) {
       console.log('No active session found, redirecting to home');
-      window.location.href = '/';
+      window.location.href = APP_LOGOUT_REDIRECT_PATH;
       return;
     }
 
@@ -45,12 +46,7 @@ export function LogoutButton({
     try {
       console.log('Initiating logout process...');
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
-      }
+      await signOutOfApp(supabase);
 
       console.log('Logout successful');
       
@@ -59,17 +55,8 @@ export function LogoutButton({
         onLogoutComplete();
       }
 
-      // Clear any additional session data from localStorage if needed
-      try {
-        localStorage.removeItem('supabase.auth.token');
-        sessionStorage.clear();
-      } catch (storageError) {
-        console.warn('Failed to clear storage:', storageError);
-        // Don't fail the logout process for storage issues
-      }
-
       // Redirect to home page (which will show the registration flow)
-      window.location.href = '/';
+      window.location.href = APP_LOGOUT_REDIRECT_PATH;
       
     } catch (error: unknown) {
       console.error('Logout failed:', error);
