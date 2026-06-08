@@ -6,6 +6,8 @@ import { signSsoPayload, buildDiscourseGroups, parseAndVerifyIncoming } from "..
 const SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const DISCOURSE_BASE_URL =
   Deno.env.get("DISCOURSE_BASE_URL") || "https://community.teatimecari.app";
+const SITE_BASE_URL =
+  Deno.env.get("SITE_BASE_URL") || "https://teatimecari.app";
 
 const baseHeaders = { ...corsHeaders, "Content-Type": "application/json", "Vary": "Origin" };
 
@@ -85,7 +87,8 @@ Deno.serve(async (req: Request) => {
     // Only real database/permission failures should return an error.
     if (pErr) return json(500, { error: "registration lookup failed" });
     if (!profile || !profile.status || profile.status !== "approved") {
-      return json(200, { redirectUrl: "https://teatimecari.app/kyc-pending" });
+      const pendingUrl = `${SITE_BASE_URL.replace(/\/+$/, "")}/kyc-pending`;
+      return json(200, { redirectUrl: pendingUrl });
     }
 
     const genderVal = (profile.gender || "").toString().toLowerCase();

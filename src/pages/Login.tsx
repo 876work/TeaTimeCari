@@ -14,6 +14,7 @@ import { AuthLayout } from "../components/AuthLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
+import { getApprovalStatus, isBlockedStatus, safeAppPath } from "@/lib/auth/approvalStatus";
 
 function useQuery() {
   const { search } = useLocation();
@@ -30,10 +31,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const getPostLoginDestination = () => {
+  const getPostLoginDestination = React.useCallback(() => {
     const next = q.get("next");
-    const redirectTo = q.get("redirectTo");
-    const returnTo = q.get("returnTo");
 
     if (next === "/sso") {
       const sso = q.get("sso");
@@ -44,41 +43,17 @@ export default function Login() {
       }
     }
 
-    return next || redirectTo || returnTo || "/community";
-  };
+    return safeAppPath(next || q.get("redirectTo") || q.get("returnTo"));
+  }, [q]);
 
-  const getApprovalStatus = async (
-    userId: string
-  ): Promise<"approved" | "pending" | "rejected" | "suspended" | "missing" | "not_approved"> => {
-    const { data, error: statusError } = await supabase
-      .from("registrations")
-      .select("status")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (statusError) {
-      throw statusError;
-    }
-
-    if (!data?.status) {
-      return "missing";
-    }
-
-    if (["approved", "pending", "rejected", "suspended"].includes(data.status)) {
-      return data.status as "approved" | "pending" | "rejected" | "suspended";
-    }
-
-    return "not_approved";
-  };
-
-  const suspendedMessage = "Your account has been suspended. You cannot log in or use TeaTime Cari at this time.";
+  const blockedMessage = "Your account is not currently eligible to log in or use Tea Time Cari. Please contact support if you believe this is a mistake.";
 
   const redirectAfterApprovalCheck = async (userId: string) => {
     const approvalStatus = await getApprovalStatus(userId);
 
-    if (approvalStatus === "suspended") {
+    if (isBlockedStatus(approvalStatus)) {
       await supabase.auth.signOut();
-      setError(suspendedMessage);
+      setError(blockedMessage);
       setLoading(false);
       return;
     }
@@ -123,9 +98,9 @@ export default function Login() {
           return;
         }
 
-        if (approvalStatus === "suspended") {
+        if (isBlockedStatus(approvalStatus)) {
           await supabase.auth.signOut();
-          setError(suspendedMessage);
+          setError(blockedMessage);
           return;
         }
 
@@ -149,7 +124,7 @@ export default function Login() {
     return () => {
       isMounted = false;
     };
-  }, [navigate, q]);
+  }, [navigate, getPostLoginDestination]);
 
   const signInWithFallback = async () => {
     const normalizedIdentifier = loginIdentifier.trim().toLowerCase();
@@ -208,9 +183,9 @@ export default function Login() {
       }
 
       const approvalStatus = await getApprovalStatus(userId);
-      if (approvalStatus === "suspended") {
+      if (isBlockedStatus(approvalStatus)) {
         await supabase.auth.signOut();
-        setError(suspendedMessage);
+        setError(blockedMessage);
         setLoading(false);
         return;
       }
