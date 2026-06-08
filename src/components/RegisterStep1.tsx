@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Check, X, AlertCircle, Loader2, User, Eye, EyeOff, Lock } from 'lucide-react';
+import { Check, X, AlertCircle, Loader2, User, Eye, EyeOff, Lock, HelpCircle } from 'lucide-react';
 import { RegistrationProgress } from './Register/RegistrationProgress';
 import { useDebounce } from '../hooks/useDebounce';
 import { validateEmail, validatePhoneNumber, validateUsername } from '../utils/usernameValidation';
@@ -445,8 +445,10 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     }
   };
   
-  const fieldLabelClass = "block text-sm font-medium text-gray-700 mb-2";
+  const fieldLabelClass = "mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700";
   const fieldDescriptionClass = "mb-3 text-xs leading-5 text-gray-500";
+  const fieldPrivacyNoteClass = "mt-1 block font-medium text-slate-600";
+  const fieldHelpIconClass = "h-4 w-4 text-[#4B9EC8]";
   const fieldInputClass = "w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]";
   const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
   const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
@@ -486,10 +488,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           {/* Full Name */}
           <div>
             <label htmlFor="fullName" className={fieldLabelClass}>
-              Full Name
+              <span>Full Name</span>
+              <HelpCircle className={fieldHelpIconClass} aria-label="Full name privacy note" />
             </label>
             <p className={fieldDescriptionClass}>
-              💡 Enter your first and last name as they appear on your ID
+              💡 Enter your first and last name as they appear on your ID.
+              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
             </p>
             <input
               type="text"
@@ -512,10 +516,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           {/* Email */}
           <div>
             <label htmlFor="email" className={fieldLabelClass}>
-              Email Address
+              <span>Email Address</span>
+              <HelpCircle className={fieldHelpIconClass} aria-label="Email address privacy note" />
             </label>
             <p className={fieldDescriptionClass}>
-              📧 We'll use this to send you important updates and verification codes
+              📧 We'll use this to send you important updates and verification codes.
+              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
             </p>
             <div className="relative">
               <input
@@ -566,10 +572,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           {/* Phone Number */}
           <div>
             <label htmlFor="phone" className={fieldLabelClass}>
-              Phone Number
+              <span>Phone Number</span>
+              <HelpCircle className={fieldHelpIconClass} aria-label="Phone number privacy note" />
             </label>
             <p className={fieldDescriptionClass}>
-              📱 Saint Lucia format required - we may send verification codes here
+              📱 Saint Lucia format required - we may send verification codes here.
+              <span className={fieldPrivacyNoteClass}>We’ll never share this on your profile.</span>
             </p>
             <input
               type="text"
@@ -592,10 +600,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           {/* Username */}
           <div>
             <label htmlFor="username" className={fieldLabelClass}>
-              Username
+              <span>Username</span>
+              <HelpCircle className={fieldHelpIconClass} aria-label="Username display note" />
             </label>
             <p className={fieldDescriptionClass}>
-              🏷️ Choose a unique name - letters, numbers, and underscores only (3-20 characters)
+              🏷️ Choose a unique name - letters, numbers, and underscores only (3-20 characters).
+              <span className={fieldPrivacyNoteClass}>This will be displayed on the Tea Time Cari App only.</span>
             </p>
             <div className="relative">
               <input
