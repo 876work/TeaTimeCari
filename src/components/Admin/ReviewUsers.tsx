@@ -21,10 +21,12 @@ import {
   ExternalLink,
   X,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { getAdminSession } from '@/lib/adminAuth';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -67,6 +69,7 @@ interface UserRow {
 type PresenceFilter = 'all' | 'online' | 'offline';
 type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'last_login_asc';
 type ConfirmationAction = 'reject' | 'suspend' | 'unsuspend';
+type EditableUser = Pick<UserRow, 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'gender'>;
 
 interface PendingConfirmation {
   action: ConfirmationAction;
@@ -278,6 +281,16 @@ export function AdminUserReview({
   const [imageModal, setImageModal] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState<EditableUser>({
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    phone: '',
+    gender: 'Male',
+  });
 
   const [discourseBaseUrl] = useState(() => import.meta.env.VITE_DISCOURSE_BASE_URL || '');
 
@@ -332,6 +345,10 @@ export function AdminUserReview({
       return;
     }
     fetchUsers();
+
+    getAdminSession()
+      .then((admin) => setIsOwner(admin?.role === 'owner'))
+      .catch(() => setIsOwner(false));
   }, [isAdmin]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -398,6 +415,82 @@ export function AdminUserReview({
       }
     } catch (err) {
       setError(`Failed to retry Discourse sync: ${getErrorMessage(err)}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+
+  const openEditUser = (user: UserRow) => {
+    setEditingUser(user);
+    setEditForm({
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      username: user.username ?? '',
+      email: user.email ?? '',
+      phone: user.phone ?? '',
+      gender: user.gender ?? 'Male',
+    });
+  };
+
+  const closeEditUser = () => {
+    if (processingId) return;
+    setEditingUser(null);
+  };
+
+  const handleEditFormChange = (field: keyof EditableUser, value: string) => {
+    setEditForm((current) => ({
+      ...current,
+      [field]: field === 'gender' ? (value as UserRow['gender']) : value,
+    }));
+  };
+
+  const handleSaveUserProfile = async () => {
+    if (!editingUser) return;
+
+    setProcessingId(editingUser.id);
+    setError(null);
+
+    try {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+      if (!s) throw new Error('Not authenticated.');
+
+      const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-profile', {
+        body: { registration_id: editingUser.id, ...editForm },
+        headers: { Authorization: `Bearer ${s.access_token}` },
+      });
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+      if (!data?.ok) throw new Error(data?.error || 'Failed to update user profile');
+
+      const updatedUser = data.user as Partial<UserRow>;
+      setUsers((prev) => prev.map((u) => (
+        u.id === editingUser.id
+          ? {
+              ...u,
+              ...updatedUser,
+              fullName: [updatedUser.firstName ?? editForm.firstName, updatedUser.lastName ?? editForm.lastName]
+                .filter(Boolean)
+                .join(' ')
+                .trim() || updatedUser.username || editForm.username || null,
+            }
+          : u
+      )));
+
+      const discourseWarning = data.discourse?.success === false
+        ? `Profile saved, but Discourse sync needs attention: ${data.discourse?.error || data.discourse?.message || 'Sync failed.'}`
+        : '';
+      setActionMessages((prev) => ({
+        ...prev,
+        [editingUser.id]: {
+          type: discourseWarning ? 'warning' : 'success',
+          message: discourseWarning || 'Profile updated and synced across the app.',
+        },
+      }));
+      setEditingUser(null);
+    } catch (err) {
+      setError(`Failed to update user profile: ${getErrorMessage(err)}`);
     } finally {
       setProcessingId(null);
     }
@@ -692,6 +785,7 @@ export function AdminUserReview({
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Gender</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">Last Login</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">IP / Browser</th>
@@ -738,6 +832,13 @@ export function AdminUserReview({
                               <StatusBadge status={user.status} />
                               <PresenceBadge online={online} />
                             </div>
+                          </td>
+
+                          {/* Gender */}
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${user.gender === 'Male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>
+                              {user.gender ?? '—'}
+                            </span>
                           </td>
 
                           {/* Registered */}
@@ -801,6 +902,19 @@ export function AdminUserReview({
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
                                   <Camera className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {isOwner && (
+                                <button
+                                  onClick={() => openEditUser(user)}
+                                  disabled={isProcessing}
+                                  title="Edit user profile"
+                                  aria-label={`Edit ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                  <span>Edit</span>
                                 </button>
                               )}
 
@@ -877,7 +991,7 @@ export function AdminUserReview({
                         {/* Expanded detail panel */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="transition-all duration-200 animate-in slide-in-from-top-1">
                                 <DetailPanel user={user} />
                               </div>
@@ -894,6 +1008,112 @@ export function AdminUserReview({
         </div>
       </div>
 
+
+
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-edit-user-title">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="admin-edit-user-title" className="text-lg font-bold text-slate-900">Edit user profile</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Owner-only changes update registrations, profiles, posts, comments, Auth email, and Discourse group sync.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditUser}
+                disabled={Boolean(processingId)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                aria-label="Close edit user dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                First name
+                <input
+                  value={editForm.firstName ?? ''}
+                  onChange={(event) => handleEditFormChange('firstName', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Last name
+                <input
+                  value={editForm.lastName ?? ''}
+                  onChange={(event) => handleEditFormChange('lastName', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Username
+                <input
+                  value={editForm.username ?? ''}
+                  onChange={(event) => handleEditFormChange('username', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Email
+                <input
+                  type="email"
+                  value={editForm.email ?? ''}
+                  onChange={(event) => handleEditFormChange('email', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Phone
+                <input
+                  value={editForm.phone ?? ''}
+                  onChange={(event) => handleEditFormChange('phone', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-slate-700">
+                Gender category
+                <select
+                  value={editForm.gender ?? 'Male'}
+                  onChange={(event) => handleEditFormChange('gender', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Male">Male / men category</option>
+                  <option value="Female">Female / women category</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+              Changing gender moves the user into the selected feed/category, removes the old Discourse gender group, and updates their existing posts/comments to the new category label.
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeEditUser}
+                disabled={Boolean(processingId)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUserProfile}
+                disabled={Boolean(processingId) || !editForm.email?.trim() || !editForm.username?.trim()}
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {processingId === editingUser.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                Save and sync
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-confirmation-title">
