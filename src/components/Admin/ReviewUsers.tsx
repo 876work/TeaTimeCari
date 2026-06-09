@@ -84,32 +84,39 @@ const safeDisplayName = (u: UserRow) => {
   const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(
     (s) => (s ?? '').trim(),
   );
+
   return (full ?? '').trim() || u.username || u.email || 'Unknown user';
 };
 
 const getErrorMessage = (err: unknown) => {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
+
   if (err && typeof err === 'object') {
     const maybeError = err as { message?: unknown; error?: unknown; detail?: unknown; details?: unknown };
     const parts = [maybeError.message, maybeError.error, maybeError.detail, maybeError.details]
       .filter(Boolean)
       .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)));
+
     if (parts.length > 0) return parts.join(': ');
     return JSON.stringify(err);
   }
+
   return String(err);
 };
 
 const fmt = (value?: string | null) => {
   if (!value) return null;
   const d = new Date(value);
+
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
 const formatDateTime = (value?: string | null) => {
   const d = fmt(value);
+
   if (!d) return null;
+
   return d.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -130,6 +137,13 @@ function Field({ label, value }: { label: string; value?: string | null }) {
       </dd>
     </div>
   );
+}
+
+function genderAccessGroupLabel(gender?: UserRow['gender']) {
+  if (gender === 'Male') return 'Men private category / men Discourse group';
+  if (gender === 'Female') return 'Women private category / women Discourse group';
+
+  return null;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -201,11 +215,29 @@ function DetailPanel({ user }: { user: UserRow }) {
   return (
     <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-sky-200 p-5 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="w-4 h-4 text-sky-500" />
+            <h4 className="text-sm font-semibold text-slate-900">Gender Access Review</h4>
+          </div>
+
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Self-selected gender" value={user.gender} />
+            <Field label="Access controlled" value={genderAccessGroupLabel(user.gender)} />
+          </dl>
+
+          <p className="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900">
+            This selection controls the user's default private category, community feed visibility, and Discourse group sync.
+            If the applicant reports a wrong selection, update access through the approved support/admin process without asking them to start over.
+          </p>
+        </div>
+
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-4 h-4 text-slate-400" />
             <h4 className="text-sm font-semibold text-slate-900">Registration Tracking</h4>
           </div>
+
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Timestamp" value={formatDateTime(user.created_at)} />
             <Field label="IP Address" value={na(user.registration_ip_address)} />
@@ -221,6 +253,7 @@ function DetailPanel({ user }: { user: UserRow }) {
             <Clock className="w-4 h-4 text-slate-400" />
             <h4 className="text-sm font-semibold text-slate-900">Login & Activity</h4>
           </div>
+
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Last Login" value={formatDateTime(user.last_login_at)} />
             <Field label="Last Seen" value={formatDateTime(user.last_seen_at)} />
@@ -291,6 +324,7 @@ export function AdminUserReview({
   const isOnline = (u: UserRow) => {
     if (!u.last_seen_at) return false;
     const t = new Date(u.last_seen_at).getTime();
+
     return Number.isFinite(t) && Date.now() - t <= ONLINE_THRESHOLD_MS;
   };
 
@@ -773,6 +807,7 @@ export function AdminUserReview({
               <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center">
                 <Users className="w-7 h-7 text-slate-400" />
               </div>
+
               <div className="text-center">
                 <p className="text-sm font-medium text-slate-700">
                   {users.length === 0 ? 'No users found' : 'No users match your filters'}
@@ -783,6 +818,7 @@ export function AdminUserReview({
                     : 'Try adjusting your search or filter criteria.'}
                 </p>
               </div>
+
               {users.length === 0 && (
                 <button
                   onClick={fetchUsers}
@@ -824,6 +860,7 @@ export function AdminUserReview({
                               <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
                                 <User className="w-4 h-4 text-blue-500" />
                               </div>
+
                               <div>
                                 <p className="text-sm font-medium text-slate-900">{safeDisplayName(user)}</p>
                                 <p className="text-xs text-slate-400">@{user.username ?? '—'}</p>
@@ -878,6 +915,7 @@ export function AdminUserReview({
                             {user.registration_ip_address && (
                               <p className="text-xs text-slate-600 font-mono">{user.registration_ip_address}</p>
                             )}
+
                             {(user.registration_browser || user.registration_operating_system) && (
                               <p className="text-xs text-slate-400 mt-0.5">
                                 {[user.registration_browser, user.registration_operating_system]
@@ -885,6 +923,7 @@ export function AdminUserReview({
                                   .join(' · ')}
                               </p>
                             )}
+
                             {!user.registration_ip_address && !user.registration_browser && (
                               <span className="text-xs text-slate-300">—</span>
                             )}
@@ -1162,6 +1201,7 @@ export function AdminUserReview({
                 <label htmlFor="rejection-reason" className="block text-sm font-semibold text-slate-700">
                   Rejection reason (optional)
                 </label>
+
                 <textarea
                   id="rejection-reason"
                   value={pendingConfirmation.reason}
