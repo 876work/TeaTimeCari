@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { SessionContextProvider, useSession, useSessionContext } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
@@ -8,17 +8,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { getAdminSession } from '@/lib/adminAuth';
 import type { AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
-import type { RegisterStep1Data } from './components/RegisterStep1';
-import type { RegisterStep2Data } from './components/Register/Step2';
-import type { RegisterStep3Data } from './components/Register/Step3';
 
 const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
 const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
 const PublicLayout = React.lazy(() => import('./components/PublicLayout').then((module) => ({ default: module.PublicLayout })));
-const RegisterStep1 = React.lazy(() => import('./components/RegisterStep1').then((module) => ({ default: module.RegisterStep1 })));
-const RegisterStep2 = React.lazy(() => import('./components/Register/Step2').then((module) => ({ default: module.RegisterStep2 })));
-const RegisterStep3 = React.lazy(() => import('./components/Register/Step3').then((module) => ({ default: module.RegisterStep3 })));
-const PendingApproval = React.lazy(() => import('./components/Register/PendingApproval'));
 const GenderFeed = React.lazy(() => import('./components/Feed/GenderFeed').then((module) => ({ default: module.GenderFeed })));
 const UploadPost = React.lazy(() => import('./components/Posts/UploadPost').then((module) => ({ default: module.UploadPost })));
 const OppositeGenderFeed = React.lazy(() => import('./components/Feed/OppositeGenderFeed').then((module) => ({ default: module.OppositeGenderFeed })));
@@ -42,7 +35,6 @@ const Faq = React.lazy(() => import('./pages/Faq'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const Logout = React.lazy(() => import('./pages/Logout'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
-const UserTypeSelection = React.lazy(() => import('./components/UserTypeSelection').then((module) => ({ default: module.UserTypeSelection })));
 
 function PageLoading() {
   return (
@@ -77,6 +69,26 @@ function OwnProfileRoute() {
   }
 
   return <UserProfile userId={session.user.id} />;
+}
+
+function UserProfileRoute() {
+  const { userId } = useParams<{ userId: string }>();
+
+  if (!userId) {
+    return <Navigate to="/profile" replace />;
+  }
+
+  return <UserProfile userId={userId} />;
+}
+
+function PostThreadRoute() {
+  const { postId } = useParams<{ postId: string }>();
+
+  if (!postId) {
+    return <Navigate to="/feed" replace />;
+  }
+
+  return <PostThread postId={postId} />;
 }
 
 function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
@@ -156,93 +168,6 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
 function App() {
   useAuthActivityTracking();
 
-  const [showWelcomePage, setShowWelcomePage] = React.useState(true);
-  const [currentStep, setCurrentStep] = React.useState(1);
-  const [currentPage, setCurrentPage] = React.useState<
-    | 'user-type-selection'
-    | 'register'
-    | 'feed'
-    | 'upload'
-    | 'opposite-feed'
-    | 'admin'
-    | 'user-profile'
-    | 'post-thread'
-  >('user-type-selection');
-
-  const [adminActivePage, setAdminActivePage] = React.useState<
-    | 'dashboard'
-    | 'user-reviews'
-    | 'flagged-posts'
-    | 'invite-codes'
-    | 'logs'
-    | 'function-ping'
-    | 'discourse-admins'
-  >('dashboard');
-
-  const [selectedUserId] = React.useState<string>('mock-user-1');
-  const [selectedPostId] = React.useState<string | null>(null);
-
-  const [registrationData, setRegistrationData] = React.useState<{
-    step1?: RegisterStep1Data;
-    step2?: RegisterStep2Data;
-    step3?: RegisterStep3Data;
-  }>({});
-
-  const handleStep1Complete = (data: RegisterStep1Data) => {
-    console.log('Registration Step 1 completed:', data);
-    setRegistrationData(prev => ({ ...prev, step1: data }));
-    setCurrentStep(2);
-  };
-
-  const handleStep2Complete = (data: RegisterStep2Data) => {
-    console.log('Registration Step 2 completed:', data);
-    setRegistrationData(prev => ({ ...prev, step2: data }));
-    setCurrentStep(3);
-  };
-
-  const handleStep3Complete = (data: RegisterStep3Data) => {
-    console.log('Registration Step 3 completed:', data);
-    setRegistrationData(prev => ({ ...prev, step3: data }));
-    setCurrentStep(4);
-  };
-
-  const handleGoHome = () => {
-    setCurrentPage('user-type-selection');
-    setCurrentStep(1);
-    setShowWelcomePage(true);
-    setRegistrationData({});
-  };
-
-  const handleAdminNavigate = (page: string) => {
-    setAdminActivePage(
-      page as
-        | 'dashboard'
-        | 'user-reviews'
-        | 'flagged-posts'
-        | 'invite-codes'
-        | 'logs'
-        | 'function-ping'
-        | 'discourse-admins',
-    );
-  };
-
-  const handleBackToStep1 = () => {
-    setCurrentStep(1);
-  };
-
-  const handleBackToStep2 = () => {
-    setCurrentStep(2);
-  };
-
-  const handleNewUser = () => {
-    setCurrentPage('register');
-    setCurrentStep(1);
-  };
-
-  const handleReturningUser = () => {
-    window.location.href = '/login';
-  };
-
   return (
     <SessionContextProvider supabaseClient={supabase}>
       <SsoAutoFinisher />
@@ -269,6 +194,11 @@ function App() {
               <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
               <Route path="/logout" element={<Logout />} />
               <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
+              <Route path="/users/:userId" element={<AppLayout><UserProfileRoute /></AppLayout>} />
+              <Route path="/posts/:postId" element={<AppLayout><PostThreadRoute /></AppLayout>} />
+              <Route path="/feed" element={<AppLayout><GenderFeed /></AppLayout>} />
+              <Route path="/upload" element={<AppLayout><UploadPost /></AppLayout>} />
+              <Route path="/opposite-feed" element={<AppLayout><OppositeGenderFeed /></AppLayout>} />
 
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -285,82 +215,14 @@ function App() {
 
               {/* Main App Route */}
               <Route
-                path="/*"
+                path="/"
                 element={
-                  showWelcomePage ? (
-                    <PublicLayout showHeader={false}>
-                      <HomePage />
-                    </PublicLayout>
-                  ) : (
-                    <AppLayout>
-                      {currentPage === 'user-type-selection' && (
-                        <UserTypeSelection
-                          onNewUser={handleNewUser}
-                          onReturningUser={handleReturningUser}
-                        />
-                      )}
-
-                      {currentPage === 'register' && (
-                        <>
-                          {currentStep === 1 && (
-                            <RegisterStep1
-                              onNext={handleStep1Complete}
-                              onBack={() => setCurrentPage('user-type-selection')}
-                              initialData={registrationData.step1}
-                            />
-                          )}
-
-                          {currentStep === 2 && (
-                            <RegisterStep2
-                              onNext={handleStep2Complete}
-                              onBack={handleBackToStep1}
-                              initialData={registrationData.step2}
-                            />
-                          )}
-
-                          {currentStep === 3 && (
-                            <RegisterStep3
-                              onNext={handleStep3Complete}
-                              onBack={handleBackToStep2}
-                              initialData={registrationData.step3}
-                              registrationData={registrationData}
-                            />
-                          )}
-
-                          {currentStep === 4 && (
-                            <PendingApproval
-                              registrationData={registrationData}
-                              onGoHome={handleGoHome}
-                              onGoBackToStep1={() => {
-                                setCurrentStep(1);
-                                setRegistrationData({});
-                              }}
-                            />
-                          )}
-                        </>
-                      )}
-
-                      {currentPage === 'feed' && <GenderFeed />}
-
-                      {currentPage === 'upload' && <UploadPost />}
-
-                      {currentPage === 'opposite-feed' && <OppositeGenderFeed />}
-
-                      {currentPage === 'admin' && (
-                        <AdminDashboard activePage={adminActivePage} onNavigate={handleAdminNavigate} />
-                      )}
-
-                      {currentPage === 'user-profile' && (
-                        <UserProfile userId={selectedUserId} />
-                      )}
-
-                      {currentPage === 'post-thread' && (
-                        <PostThread postId={selectedPostId} />
-                      )}
-                    </AppLayout>
-                  )
+                  <PublicLayout showHeader={false}>
+                    <HomePage />
+                  </PublicLayout>
                 }
               />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </React.Suspense>
           </Router>
