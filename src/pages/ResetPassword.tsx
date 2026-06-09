@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { supabase } from '@/lib/supabaseClient';
+import { Link } from "react-router-dom";
+import { Lock } from "lucide-react";
+import { AuthLayout } from "../components/AuthLayout";
+import { FormField, PageSection, PrimaryButton, StatusAlert } from "../components/Form";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -38,41 +42,59 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="mx-auto max-w-sm p-6">
-      <h1 className="text-xl font-semibold mb-4">Set a new password</h1>
-      <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-4">
-        <input type="hidden" name="form-name" value="reset-password" readOnly />
-        <input
-          type="password"
-          name="password"
-          required
-          placeholder="New password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        <input
-          type="password"
-          name="confirm"
-          required
-          placeholder="Confirm new password"
-          value={confirm}
-          onChange={e => setConfirm(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-black text-white py-2"
-        >
-          {loading ? "Updating…" : "Update password"}
-        </button>
-      </form>
-      {status && (
-        <p className={`mt-4 text-sm ${status.ok ? "text-green-700" : "text-red-700"}`}>
-          {status.msg}
+    <AuthLayout>
+      <PageSection>
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
+            <Lock className="h-8 w-8 text-[#4B9EC8]" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">Set a new password</h1>
+          <p className="text-gray-600">Choose a secure password for your Tea Time Cari account.</p>
+        </div>
+
+        {status && (
+          <StatusAlert variant={status.ok ? "success" : "error"} className="mb-6">
+            {status.msg}
+          </StatusAlert>
+        )}
+
+        <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="reset-password" readOnly />
+          <FormField id="password" label="New password" required>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              required
+              placeholder="New password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoComplete="new-password"
+            />
+          </FormField>
+          <FormField id="confirm" label="Confirm new password" required>
+            <input
+              id="confirm"
+              type="password"
+              name="confirm"
+              required
+              placeholder="Confirm new password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoComplete="new-password"
+            />
+          </FormField>
+          <PrimaryButton type="submit" isLoading={loading} loadingLabel="Updating password...">
+            Update password
+          </PrimaryButton>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Need a new link? <Link to="/forgot-password" className="font-medium text-[#4B9EC8] hover:text-[#3382AA]">Request another reset email</Link>.
         </p>
-      )}
-    </div>
+      </PageSection>
+    </AuthLayout>
   );
 }

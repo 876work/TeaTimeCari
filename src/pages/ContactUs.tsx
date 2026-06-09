@@ -6,12 +6,11 @@ import {
   User,
   MessageSquare,
   Send,
-  Loader2,
   CheckCircle,
-  AlertCircle,
   ArrowLeft,
 } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
+import { FormField, PageSection, PrimaryButton, PrivacyNote, StatusAlert } from "../components/Form";
 
 interface ContactFormData {
   name: string;
@@ -252,7 +251,7 @@ export default function ContactUs() {
   if (isSubmitted) {
     return (
       <AuthLayout>
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <PageSection>
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
@@ -268,34 +267,30 @@ export default function ContactUs() {
             </p>
 
             <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleGoHome}
-                className="w-full px-6 py-3 bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white rounded-lg font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
-              >
+              <PrimaryButton type="button" onClick={handleGoHome}>
                 Go to Homepage
-              </button>
+              </PrimaryButton>
 
-              <button
+              <PrimaryButton
                 type="button"
                 onClick={() => {
                   setIsSubmitted(false);
                   resetForm();
                 }}
-                className="w-full px-6 py-3 border border-[#4B9EC8]/40 text-[#2E6F91] rounded-lg font-medium hover:bg-[#D6EBF5] hover:border-[#4B9EC8] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
+                variant="secondary"
               >
                 Send Another Message
-              </button>
+              </PrimaryButton>
             </div>
           </div>
-        </div>
+        </PageSection>
       </AuthLayout>
     );
   }
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <PageSection>
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <Mail className="w-8 h-8 text-[#4B9EC8]" />
@@ -311,27 +306,16 @@ export default function ContactUs() {
         </div>
 
         {isAccountStatusHelp && (
-          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <div className="flex items-start">
-              <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-blue-800">
-                Tell us the email you used to apply and what you expected to happen.
-                For your privacy, please do not include passwords, ID numbers, or payment details.
-              </p>
-            </div>
-          </div>
+          <PrivacyNote className="mb-6" title="Account status help">
+            Tell us the email you used to apply and what you expected to happen.
+            For your privacy, please do not include passwords, ID numbers, or payment details.
+          </PrivacyNote>
         )}
 
         {submitError && (
-          <div
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-            role="alert"
-          >
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{submitError}</span>
-            </div>
-          </div>
+          <StatusAlert variant="error" className="mb-6">
+            {submitError}
+          </StatusAlert>
         )}
 
         <form
@@ -348,14 +332,7 @@ export default function ContactUs() {
             readOnly
           />
 
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Full Name *
-            </label>
-
+          <FormField id="name" label="Full Name" required error={errors.name && touched.name ? errors.name : null}>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-5 w-5 text-gray-400" />
@@ -378,22 +355,9 @@ export default function ContactUs() {
                 disabled={isSubmitting}
               />
             </div>
+          </FormField>
 
-            {errors.name && touched.name && (
-              <p className="mt-2 text-sm text-red-600" role="alert">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Email Address *
-            </label>
-
+          <FormField id="email" label="Email Address" required error={errors.email && touched.email ? errors.email : null}>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
@@ -417,22 +381,9 @@ export default function ContactUs() {
                 autoComplete="email"
               />
             </div>
+          </FormField>
 
-            {errors.email && touched.email && (
-              <p className="mt-2 text-sm text-red-600" role="alert">
-                {errors.email}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="phone"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Phone Number <span className="text-gray-500">(optional)</span>
-            </label>
-
+          <FormField id="phone" label="Phone Number" helpText={<span>(optional)</span>} error={errors.phone && touched.phone ? errors.phone : null}>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Phone className="h-5 w-5 text-gray-400" />
@@ -455,22 +406,9 @@ export default function ContactUs() {
                 autoComplete="tel"
               />
             </div>
+          </FormField>
 
-            {errors.phone && touched.phone && (
-              <p className="mt-2 text-sm text-red-600" role="alert">
-                {errors.phone}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="message"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Message *
-            </label>
-
+          <FormField id="message" label="Message" required>
             <div className="relative">
               <div className="absolute top-3 left-3 pointer-events-none">
                 <MessageSquare className="h-5 w-5 text-gray-400" />
@@ -514,29 +452,17 @@ export default function ContactUs() {
                 {formData.message.length}/1000 characters
               </span>
             </div>
-          </div>
+          </FormField>
 
-          <button
+          <PrimaryButton
             type="submit"
             disabled={!isFormValid() || isSubmitting}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              isFormValid() && !isSubmitting
-                ? "bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            isLoading={isSubmitting}
+            loadingLabel="Sending Message..."
+            icon={<Send className="h-5 w-5" />}
           >
-            {isSubmitting ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Sending Message...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <Send className="w-5 h-5 mr-2" />
-                Send Message
-              </div>
-            )}
-          </button>
+            Send Message
+          </PrimaryButton>
         </form>
 
         <div className="mt-8 space-y-4">
@@ -551,12 +477,9 @@ export default function ContactUs() {
             </button>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 text-center">
-              <strong>Response Time:</strong> We typically respond within 24
-              hours during business days.
-            </p>
-          </div>
+          <StatusAlert variant="info" title="Response Time">
+            We typically respond within 24 hours during business days.
+          </StatusAlert>
 
           <div className="text-center">
             <p className="text-xs text-gray-500">
@@ -565,7 +488,7 @@ export default function ContactUs() {
             </p>
           </div>
         </div>
-      </div>
+      </PageSection>
     </AuthLayout>
   );
 }
