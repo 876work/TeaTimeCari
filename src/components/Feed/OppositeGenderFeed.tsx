@@ -16,6 +16,7 @@ import {
   Star,
   Clock
 } from 'lucide-react';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
 import { StripeProvider } from '../Payment/StripeProvider';
 import { PaymentForm } from '../Payment/PaymentForm';
 
@@ -108,8 +109,8 @@ export function OppositeGenderFeed() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to access the feed.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to access the feed.');
           setUserLoading(false);
           return;
         }

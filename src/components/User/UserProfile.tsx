@@ -23,6 +23,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { isValidUUID } from '../../utils/validationUtils';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
 
 // Type definitions
 interface UserProfileData {
@@ -71,7 +72,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 function canViewProfiles(status?: string | null): boolean {
-  return ['approved', 'verified'].includes((status || '').toLowerCase());
+  return isApprovedRegistrationStatus(status);
 }
 
 export function UserProfile({ userId }: UserProfileProps) {
@@ -113,7 +114,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         fullName: 'Demo User',
         username: 'demo_user',
         gender: 'Male',
-        status: 'verified',
+        status: 'approved',
         created_at: new Date().toISOString()
       };
       setProfileUser(mockProfileUser);
@@ -347,7 +348,7 @@ export function UserProfile({ userId }: UserProfileProps) {
     setError(null);
 
     try {
-      const newStatus = isBanned ? 'verified' : 'banned';
+      const newStatus = isBanned ? 'approved' : 'banned';
 
       const { error: updateError } = await supabase
         .from('registrations')

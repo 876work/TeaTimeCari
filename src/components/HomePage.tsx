@@ -93,9 +93,9 @@ export function HomePage() {
 
           <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 text-white border border-white/25 shadow-lg">
             <Shield className="w-8 h-8 mx-auto mb-3 text-white drop-shadow" />
-            <h3 className="font-semibold mb-2">Verified Users</h3>
+            <h3 className="font-semibold mb-2">Reviewed Members</h3>
             <p className="text-sm text-white/90">
-              All members go through a verification process for your safety
+              All members go through account review for your safety
             </p>
           </div>
 
@@ -111,7 +111,7 @@ export function HomePage() {
         {/* Call to Action */}
         <div className="space-y-6">
           <p className="text-white/80 text-sm font-medium">
-            Join our growing community of verified members
+            Join our growing community of approved members
           </p>
         </div>
 
