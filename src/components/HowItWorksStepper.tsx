@@ -107,11 +107,6 @@ export function HowItWorksStepper() {
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="block text-base font-bold text-white">Step {index + 1}: {step.label}</span>
-                        {isActive && (
-                          <span className="rounded-full bg-white/20 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-white">
-                            Current
-                          </span>
-                        )}
                       </span>
                       <span className="mt-1 block text-sm leading-5 text-white/80">{step.description}</span>
                     </span>
