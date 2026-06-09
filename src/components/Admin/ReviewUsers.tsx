@@ -130,6 +130,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+function genderAccessGroupLabel(gender?: UserRow['gender']) {
+  if (gender === 'Male') return 'Men private category / men Discourse group';
+  if (gender === 'Female') return 'Women private category / women Discourse group';
+  return null;
+}
+
 // ─── Status badge ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -205,6 +211,22 @@ function DetailPanel({ user }: { user: UserRow }) {
   return (
     <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Access Group Review */}
+        <div className="bg-white rounded-xl border border-sky-200 p-5 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="w-4 h-4 text-sky-500" />
+            <h4 className="text-sm font-semibold text-slate-900">Gender Access Review</h4>
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Self-selected gender" value={user.gender} />
+            <Field label="Access controlled" value={genderAccessGroupLabel(user.gender)} />
+          </dl>
+          <p className="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900">
+            This selection controls the user's default private category, community feed visibility, and Discourse group sync.
+            If the applicant reports a wrong selection, update access through the approved support/admin process without asking them to start over.
+          </p>
+        </div>
+
         {/* Registration Tracking */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
