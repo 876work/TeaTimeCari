@@ -15,6 +15,7 @@ import {
   User,
   Clock
 } from 'lucide-react';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
 
 // Type definitions
 interface PostData {
@@ -98,8 +99,8 @@ export function PostThread({ postId }: PostThreadProps) {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to view post threads.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to view post threads.');
           setUserLoading(false);
           return;
         }

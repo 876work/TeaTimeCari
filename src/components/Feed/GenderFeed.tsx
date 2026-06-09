@@ -12,6 +12,7 @@ import {
   Users,
   Heart
 } from 'lucide-react';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
 
 // Type definitions
 interface Post {
@@ -88,8 +89,8 @@ export function GenderFeed() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to access the feed.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to access the feed.');
           setUserLoading(false);
           return;
         }

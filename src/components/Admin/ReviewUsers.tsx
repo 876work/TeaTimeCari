@@ -25,6 +25,7 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -39,7 +40,7 @@ interface UserRow {
   gender?: 'Male' | 'Female' | null;
   captureType?: 'selfie' | 'id' | null;
   imageData?: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'verified' | 'banned' | 'suspended';
+  status: string;
   created_at?: string | null;
   password_temp?: string | null;
   rejection_reason?: string | null;
@@ -73,7 +74,7 @@ interface PendingConfirmation {
   user: UserRow;
   reason: string;
 }
-type StatusFilter = 'all' | UserRow['status'];
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -134,16 +135,16 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    approved: 'bg-blue-50 text-blue-700 border-blue-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     rejected: 'bg-slate-100 text-slate-600 border-slate-200',
     banned: 'bg-red-50 text-red-700 border-red-200',
     suspended: 'bg-orange-50 text-orange-700 border-orange-200',
   };
-  const cls = map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+  const displayStatus = normalizeApprovalStatus(status);
+  const cls = map[displayStatus] ?? 'bg-slate-100 text-slate-600 border-slate-200';
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace('_', ' ')}
     </span>
   );
 }
@@ -491,10 +492,9 @@ export function AdminUserReview({
 
   const summaryStats = {
     total: users.length,
-    pending: users.filter((u) => u.status === 'pending').length,
-    approved: users.filter((u) => u.status === 'approved').length,
-    verified: users.filter((u) => u.status === 'verified').length,
-    suspended: users.filter((u) => u.status === 'suspended').length,
+    pending: users.filter((u) => normalizeApprovalStatus(u.status) === 'pending').length,
+    approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
+    suspended: users.filter((u) => normalizeApprovalStatus(u.status) === 'suspended').length,
     online: users.filter(isOnline).length,
     offline: users.filter((u) => !isOnline(u)).length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
@@ -508,7 +508,7 @@ export function AdminUserReview({
       );
       return (
         (!needle || hay.some((h) => h.includes(needle))) &&
-        (filterStatus === 'all' || u.status === filterStatus) &&
+        (filterStatus === 'all' || normalizeApprovalStatus(u.status) === filterStatus) &&
         (presenceFilter === 'all' ||
           (presenceFilter === 'online' && isOnline(u)) ||
           (presenceFilter === 'offline' && !isOnline(u)))
@@ -610,8 +610,7 @@ export function AdminUserReview({
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
-                <option value="verified">Verified</option>
-                <option value="rejected">Rejected</option>
+                  <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
                 <option value="suspended">Suspended</option>
               </select>
@@ -704,6 +703,7 @@ export function AdminUserReview({
                     const online = isOnline(user);
                     const isExpanded = expandedId === user.id;
                     const isProcessing = processingId === user.id;
+                    const normalizedStatus = normalizeApprovalStatus(user.status);
 
                     return (
                       <React.Fragment key={user.id}>
@@ -805,7 +805,7 @@ export function AdminUserReview({
                               )}
 
                               {/* Approve / Reject (pending) */}
-                              {user.status === 'pending' && (
+                              {normalizedStatus === 'pending' && (
                                 <>
                                   <button
                                     onClick={() => handleApprove(user)}
@@ -843,8 +843,8 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Suspend (approved/verified) */}
-                              {(user.status === 'approved' || user.status === 'verified') && (
+                              {/* Suspend approved users */}
+                              {normalizedStatus === 'approved' && (
                                 <button
                                   onClick={() => requestConfirmation('suspend', user)}
                                   disabled={isProcessing}
@@ -858,7 +858,7 @@ export function AdminUserReview({
                               )}
 
                               {/* Remove suspension */}
-                              {user.status === 'suspended' && (
+                              {normalizedStatus === 'suspended' && (
                                 <button
                                   onClick={() => requestConfirmation('unsuspend', user)}
                                   disabled={isProcessing}
