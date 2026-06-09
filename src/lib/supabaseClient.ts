@@ -1,5 +1,6 @@
 // src/lib/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 declare global {
   interface Window {
@@ -14,7 +15,7 @@ export const supabase = (() => {
   const hasMissingConfig = !url || !anon;
 
   if (hasMissingConfig && typeof window !== 'undefined') {
-    console.error(
+    debugError(
       '[supabase] Missing required Vite environment variables: VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY. ' +
       'Set these in your frontend environment (for Netlify, add them in Site settings → Environment variables).'
     );
@@ -50,5 +51,5 @@ export const supabase = (() => {
 })();
 if (typeof window !== 'undefined') {
   window.__SB_INSTANTIATIONS = (window.__SB_INSTANTIATIONS || 0) + 1;
-  console.log('[supabase] instances:', window.__SB_INSTANTIATIONS);
+  debugLog('[supabase] instances:', window.__SB_INSTANTIATIONS);
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { LogOut, Loader2 } from 'lucide-react';
 import { APP_LOGOUT_REDIRECT_PATH, signOutOfApp } from '@/lib/logout';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 interface LogoutButtonProps {
   className?: string;
@@ -31,7 +32,7 @@ export function LogoutButton({
   const handleLogout = async () => {
     // If no session exists, redirect to login/home
     if (!session?.user) {
-      console.log('No active session found, redirecting to home');
+      debugLog('No active session found, redirecting to home');
       window.location.href = APP_LOGOUT_REDIRECT_PATH;
       return;
     }
@@ -44,11 +45,11 @@ export function LogoutButton({
     }
 
     try {
-      console.log('Initiating logout process...');
+      debugLog('Initiating logout process...');
       
       await signOutOfApp(supabase);
 
-      console.log('Logout successful');
+      debugLog('Logout successful');
       
       // Call optional callback
       if (onLogoutComplete) {
@@ -59,7 +60,7 @@ export function LogoutButton({
       window.location.href = APP_LOGOUT_REDIRECT_PATH;
       
     } catch (error: unknown) {
-      console.error('Logout failed:', error);
+      debugError('Logout failed:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to logout. Please try again.';
       

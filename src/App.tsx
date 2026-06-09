@@ -11,6 +11,7 @@ import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import type { RegisterStep1Data } from './components/RegisterStep1';
 import type { RegisterStep2Data } from './components/Register/Step2';
 import type { RegisterStep3Data } from './components/Register/Step3';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
 const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
@@ -112,7 +113,7 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
           setAdminSession(nextAdminSession);
         }
       } catch (error) {
-        console.error('Admin access check failed:', error);
+        debugError('Admin access check failed:', error);
 
         if (!cancelled) {
           setAdminSession(null);
@@ -189,19 +190,19 @@ function App() {
   }>({});
 
   const handleStep1Complete = (data: RegisterStep1Data) => {
-    console.log('Registration Step 1 completed:', data);
+    debugLog('Registration Step 1 completed:', data);
     setRegistrationData(prev => ({ ...prev, step1: data }));
     setCurrentStep(2);
   };
 
   const handleStep2Complete = (data: RegisterStep2Data) => {
-    console.log('Registration Step 2 completed:', data);
+    debugLog('Registration Step 2 completed:', data);
     setRegistrationData(prev => ({ ...prev, step2: data }));
     setCurrentStep(3);
   };
 
   const handleStep3Complete = (data: RegisterStep3Data) => {
-    console.log('Registration Step 3 completed:', data);
+    debugLog('Registration Step 3 completed:', data);
     setRegistrationData(prev => ({ ...prev, step3: data }));
     setCurrentStep(4);
   };

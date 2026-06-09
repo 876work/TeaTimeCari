@@ -4,6 +4,7 @@ import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard, ShieldCheck 
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
+import { debugError } from '@/lib/debugLogger';
 
 export interface RegisterStep3Data {
   captureType: 'selfie' | 'id';
@@ -79,7 +80,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
       setCameraState('active');
       
     } catch (err) {
-      console.error('Camera access error:', err);
+      debugError('Camera access error:', err);
       let errorMessage = 'Unable to access camera. ';
       
       if (err instanceof Error) {
@@ -204,7 +205,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
         
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Please try again.';
-        console.error('Error submitting registration:', err);
+        debugError('Error submitting registration:', err);
         setError(`Failed to submit registration: ${message}`);
       } finally {
         setIsSubmitting(false);

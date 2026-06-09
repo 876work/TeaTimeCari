@@ -7,6 +7,7 @@ import { submitRegistration, RegistrationPayload } from '../../lib/registrations
 import { RegisterStep1Data } from '../RegisterStep1';
 import { RegisterStep2Data } from './Step2';
 import { RegisterStep3Data } from './Step3';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 interface PendingApprovalProps {
   registrationData: {
@@ -63,7 +64,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       }, 'image/png', 0.95);
 
     } catch (err: unknown) {
-      console.error('Error downloading receipt:', err);
+      debugError('Error downloading receipt:', err);
       alert('Failed to download receipt. Please try again.');
     } finally {
       setIsDownloading(false);
@@ -106,7 +107,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           status: 'pending'
         };
         
-        console.log('Submitting registration data...');
+        debugLog('Submitting registration data...');
         const result = await submitRegistration(registrationPayload);
         
         // Set success state and message based on whether record already existed
@@ -120,14 +121,14 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue and this browser is now signed in to your new account.");
         }
         
-        console.log('Registration submission completed:', {
+        debugLog('Registration submission completed:', {
           alreadyExists: result.alreadyExists,
           isNewSubmission: result.isNewSubmission
         });
         
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Please try again.';
-        console.error('Error submitting registration:', err);
+        debugError('Error submitting registration:', err);
         setError(`Failed to submit registration: ${message}`);
       } finally {
         setIsSubmitting(false);
