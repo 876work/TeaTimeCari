@@ -126,6 +126,8 @@ const guidelinesSections: GuidelinesSection[] = [
     title: "7. Anonymous Posting Rules",
     body: [
       "Tea Time Cari may allow anonymous posting.",
+      "Other members won’t see your profile name, but admins may review abuse reports.",
+      "Anonymous does not mean invisible to Tea Time Cari systems or authorized administrators.",
       "Anonymous posting is meant to protect users, not to give people permission to behave badly.",
       "You may not use anonymity to:",
     ],
@@ -141,7 +143,8 @@ const guidelinesSections: GuidelinesSection[] = [
       "Avoid consequences for harmful behaviour",
     ],
     closing: [
-      "Anonymous posts may hide your identity from other users, but Tea Time Cari may still review internal records for moderation, safety, security, legal compliance, and enforcement.",
+      "Anonymous posts may hide your identity from other users, but Tea Time Cari may still review internal records for moderation, safety, security, legal compliance, abuse prevention, and enforcement.",
+      "Read the Anonymous mode explained page before relying on anonymous features.",
     ],
   },
   {

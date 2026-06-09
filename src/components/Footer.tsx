@@ -19,6 +19,7 @@ const footerLinkGroups: FooterLinkGroup[] = [
       { label: 'How It Works', to: '/how-it-works' },
       { label: 'Community', to: '/community' },
       { label: 'FAQ', to: '/faq' },
+      { label: 'Anonymous Mode', to: '/anonymous-mode' },
       { label: 'Contact Us', to: '/contact-us' },
     ],
   },
@@ -38,6 +39,7 @@ const footerLinkGroups: FooterLinkGroup[] = [
       { label: 'Privacy Policy', to: '/privacy-policy' },
       { label: 'Terms of Service', to: '/terms-of-service' },
       { label: 'Community Guidelines', to: '/community-guidelines' },
+      { label: 'Anonymous Mode Explained', to: '/anonymous-mode' },
     ],
   },
 ];

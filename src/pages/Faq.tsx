@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { GradientPageShell } from '@/components/GradientPageShell';
+import { anonymousModePlainLanguage } from '@/content/anonymousMode';
 
 type FaqCategory = {
   id: string;
@@ -97,8 +98,10 @@ const faqCategories: FaqCategory[] = [
         answer: (
           <>
             <p>Anonymous Mode helps protect your public identity when you post.</p>
+            <p>Other members won’t see your profile name, but admins may review abuse reports and internal records for safety, moderation, security, legal compliance, abuse prevention, and enforcement.</p>
             <p>Depending on how the platform is configured, the system may create a temporary anonymous identity for added privacy. This makes it harder for other users to connect multiple anonymous posts to the same profile.</p>
-            <p>Tea Time Cari may still keep internal records for safety, moderation, security, and legal compliance.</p>
+            <p>Anonymous posting is for safer participation, not for harassment, false claims, threats, exposing private information, or breaking community rules.</p>
+            <p>Read the <Link to="/anonymous-mode" className="font-medium text-blue-500 dark:text-blue-400 hover:underline">Anonymous mode explained</Link> page before relying on it.</p>
           </>
         ),
       },
@@ -461,7 +464,23 @@ export default function Faq() {
           </div>
 
           <div className="flex-1 mt-8 lg:mx-12 lg:mt-0">
-            <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-100/70 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none md:p-8">
+            <div className="mt-8 rounded-3xl border border-[#4B9EC8]/20 bg-[#F4FBFF] p-6 shadow-sm dark:border-[#4B9EC8]/40 dark:bg-[#102231]">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#3382AA] dark:text-[#8BC8E5]">Privacy reminder</p>
+              <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Anonymous mode explained</h2>
+              <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {anonymousModePlainLanguage.slice(0, 3).map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+              <Link
+                to="/anonymous-mode"
+                className="mt-5 inline-flex rounded-full bg-[#11263F] px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              >
+                Read before posting anonymously
+              </Link>
+            </div>
+
+            <div className="mt-8 rounded-3xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-100/70 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none md:p-8">
               {faqCategories.map((category) => (
                 <div key={category.id} id={category.id} className="scroll-mt-8">
                   <div className="mb-8">

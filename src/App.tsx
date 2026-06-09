@@ -36,6 +36,7 @@ const Signup = React.lazy(() => import('./pages/Signup'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
 const CommunityGuidelines = React.lazy(() => import('./pages/CommunityGuidelines'));
+const AnonymousModeExplained = React.lazy(() => import('./pages/AnonymousModeExplained'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Faq = React.lazy(() => import('./pages/Faq'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
@@ -263,6 +264,7 @@ function App() {
               <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
               <Route path="/Community-Guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
               <Route path="/community-guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
+              <Route path="/anonymous-mode" element={<PublicLayout><AnonymousModeExplained /></PublicLayout>} />
               <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
               <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
               <Route path="/logout" element={<Logout />} />
