@@ -268,6 +268,7 @@ Stripe payment records:
 
 ### Data Protection
 - **Image Processing:** Automatic EXIF metadata removal from uploaded photos
+- **Verification Photo Handling:** See [`docs/verification-photo-storage.md`](docs/verification-photo-storage.md) for restricted selfie/ID review, retention, visibility, and deletion expectations
 - **Password Security:** Secure password hashing via Supabase Auth
 - **Payment Security:** PCI-compliant payment processing through Stripe
 - **CORS Protection:** Proper Cross-Origin Resource Sharing configuration
