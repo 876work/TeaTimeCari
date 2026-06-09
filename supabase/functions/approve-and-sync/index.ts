@@ -330,14 +330,15 @@ Deno.serve(async (req) => {
     }
 
     // 2) Sync to Discourse via SSO. This is non-fatal for approval.
-    const displayName = nameFrom(reg) || username;
+    // Do not sync legal/full names into Discourse display fields; the public
+    // community identity is the member-selected username.
 
     // Keep external_id stable forever: DiscourseConnect associates users by this value.
     const discourse = await discourseSyncSSO({
       external_id: reg.id,
       email,
       username,
-      name: displayName,
+      name: username,
       add_groups: groups,
     }).catch((err) => ({
       success: false,
