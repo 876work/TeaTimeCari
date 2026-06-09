@@ -153,6 +153,66 @@ async function discourseSyncSSO(payload: Record<string, string>) {
   };
 }
 
+
+async function sendDiscourseWelcomePM(targetUsername: string) {
+  const missingConfig = missingDiscourseAdminSyncConfig();
+
+  if (missingConfig.length > 0) {
+    return {
+      success: false,
+      skipped: true,
+      reason: "missing_config",
+      missing_config: missingConfig,
+      message: `Discourse welcome PM skipped; missing ${missingConfig.join(", ")}.`,
+    };
+  }
+
+  const username = targetUsername.trim();
+
+  if (!username) {
+    return { success: false, skipped: true, reason: "missing_username" };
+  }
+
+  const form = new URLSearchParams();
+  form.set("title", "Welcome to Tea Time Cari");
+  form.set("target_usernames", username);
+  form.set("archetype", "private_message");
+  form.set("raw", [
+    "Welcome to Tea Time Cari — your account has been approved.",
+    "",
+    "Before you post or reply, please keep these safety basics in mind:",
+    "",
+    "1. Share only what you personally know or can reasonably support.",
+    "2. Protect privacy. Do not expose addresses, workplaces, IDs, private messages, or unnecessary personal details.",
+    "3. Keep the tone respectful and safety-focused. No harassment, threats, pile-ons, or revenge posting.",
+    "",
+    "Use your assigned private category first. If something feels unsafe, use the flag/report option and include a clear reason so moderators can review it.",
+  ].join("\n"));
+
+  const res = await fetch(`${DISCOURSE_BASE}/posts.json`, {
+    method: "POST",
+    headers: {
+      "Api-Key": DISCOURSE_KEY,
+      "Api-Username": DISCOURSE_USER,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json",
+    },
+    body: form.toString(),
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Discourse welcome PM failed: ${res.status} ${text}`);
+  }
+
+  return {
+    success: true,
+    skipped: false,
+    result: safeJson(text),
+  };
+}
+
 async function approveRegistrationRecord(supa: any, reg: any, genderNorm: "men" | "women") {
   const approvedAt = new Date().toISOString();
 
@@ -236,7 +296,7 @@ Deno.serve(async (req) => {
     // Load registration
     const { data: reg, error: regErr } = await supa
       .from("registrations")
-      .select("id, email, username, firstName, lastName, gender, status, email_code, email_code_expiry")
+      .select("id, email, username, firstName, lastName, gender, status, email_code, email_code_expiry, discourse_welcome_pm_sent_at")
       .eq("id", registrationId)
       .single();
 
@@ -296,6 +356,31 @@ Deno.serve(async (req) => {
         }))
       : { success: true, skipped: true, reason: "retry_discourse_sync" };
 
+    const welcomePm = action === "approve" && discourse.success && !reg.discourse_welcome_pm_sent_at
+      ? await sendDiscourseWelcomePM(username)
+        .catch((err) => ({
+          success: false,
+          skipped: false,
+          reason: "pm_error",
+          error: String(err?.message ?? err),
+        }))
+      : {
+        success: true,
+        skipped: true,
+        reason: action === "approve" ? "already_sent_or_sync_failed" : "retry_discourse_sync",
+      };
+
+    if (action === "approve" && welcomePm.success && !welcomePm.skipped) {
+      const { error: welcomePmUpdateErr } = await supa
+        .from("registrations")
+        .update({ discourse_welcome_pm_sent_at: new Date().toISOString() })
+        .eq("id", reg.id);
+
+      if (welcomePmUpdateErr) {
+        console.warn("failed to record Discourse welcome PM timestamp", welcomePmUpdateErr);
+      }
+    }
+
     const discourseOk = Boolean(discourse.success);
     const emailOk = Boolean(emailApproved.success);
     const resultStatus = action === "retry_discourse_sync"
@@ -315,7 +400,7 @@ Deno.serve(async (req) => {
       targetEmail: email,
       previousStatus: String(reg.status || "pending"),
       nextStatus: action === "approve" ? "approved" : String(reg.status || "approved"),
-      metadata: { discourse, email: emailApproved, groups, resultStatus },
+      metadata: { discourse, email: emailApproved, welcome_pm: welcomePm, groups, resultStatus },
       success: action === "retry_discourse_sync" ? discourseOk : true,
       errorMessage: discourseOk ? null : String((discourse as { error?: unknown }).error ?? "Discourse sync failed"),
     });
@@ -332,6 +417,7 @@ Deno.serve(async (req) => {
       emails: {
         approved: emailApproved,
       },
+      welcome_pm: welcomePm,
     });
   } catch (e: unknown) {
     const err = e as { message?: string; stack?: string };
