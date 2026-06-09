@@ -45,7 +45,8 @@ const policySections: PolicySection[] = [
       {
         title: 'Identity, Safety, and Verification Information',
         body: [
-          'To help protect the community, we may collect information needed for account review, identity checks, approval decisions, fraud prevention, or safety moderation. This may include information submitted during registration or verification.',
+          'To help protect the community, we may collect information needed for account review, identity checks, approval decisions, fraud prevention, or safety moderation. This may include a live selfie or government ID photo submitted during registration or verification.',
+          'Verification photos are used for account review and safety checks. They are not displayed on public profiles, posts, anonymous activity, or public community areas.',
           'Where possible, we limit access to this information to authorized administrators only.',
         ],
       },
@@ -211,7 +212,11 @@ const policySections: PolicySection[] = [
   },
   {
     title: '11. Data Retention',
-    body: ['We keep personal information only for as long as reasonably necessary for the purposes described in this Privacy Policy.', 'Retention periods may depend on:'],
+    body: [
+      'We keep personal information only for as long as reasonably necessary for the purposes described in this Privacy Policy.',
+      'Verification photos are retained only as long as reasonably needed for registration review, fraud prevention, safety, legal, audit, dispute, or enforcement needs, unless a shorter retention period is required by law or operational policy.',
+      'Retention periods may depend on:',
+    ],
     items: ['Whether your account is active', 'Whether the information is needed to provide the service', 'Legal or regulatory requirements', 'Security and fraud prevention needs', 'Moderation history', 'Dispute resolution', 'Backup and audit requirements'],
   },
   {
@@ -227,7 +232,7 @@ const policySections: PolicySection[] = [
       'Unsubscribe from non essential emails',
       'Request access to certain personal information',
       'Request correction of inaccurate information',
-      'Request deletion of certain information, subject to legal and safety exceptions',
+      'Request deletion of certain information, including verification photos where applicable, subject to legal and safety exceptions',
     ],
   },
   {

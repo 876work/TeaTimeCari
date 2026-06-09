@@ -239,6 +239,7 @@ function DetailPanel({ user }: { user: UserRow }) {
                     : null
               }
             />
+            <Field label="Verification Visibility" value={user.imageData ? 'Restricted to authorized admin review; never public' : null} />
           </dl>
         </div>
       </div>
@@ -904,7 +905,7 @@ export function AdminUserReview({
                               {user.imageData && (
                                 <button
                                   onClick={() => setImageModal(user.imageData!)}
-                                  title="View photo"
+                                  title="View restricted verification photo"
                                   aria-label={`View registration photo for ${user.username || user.email}`}
                                   className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                                 >
@@ -1223,6 +1224,11 @@ export function AdminUserReview({
             >
               <X className="w-4 h-4 text-slate-700" />
             </button>
+
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 shadow-lg">
+              <p className="font-semibold">Restricted verification photo</p>
+              <p className="mt-1">Use only for registration review, safety, fraud prevention, legal, audit, or dispute needs. Do not copy, download, or share publicly.</p>
+            </div>
 
             <img
               src={imageModal}

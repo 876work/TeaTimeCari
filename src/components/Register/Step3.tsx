@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard, ShieldCheck } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
@@ -34,6 +34,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
   const [capturedImage, setCapturedImage] = useState<string | null>(initialData?.imageData || null);
   const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasConfirmedPhotoNotice, setHasConfirmedPhotoNotice] = useState(Boolean(initialData?.imageData));
   
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -110,7 +111,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
 
   // Effect to handle camera initialization when mode changes
   useEffect(() => {
-    if (captureMode && captureState === 'none') {
+    if (captureMode && hasConfirmedPhotoNotice && captureState === 'none') {
       // Small delay to ensure video element is rendered
       const timer = setTimeout(() => {
         startVideoStream(captureMode);
@@ -121,7 +122,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
       stopCamera();
       setCameraState('idle');
     }
-  }, [captureMode, captureState, startVideoStream, stopCamera]);
+  }, [captureMode, captureState, hasConfirmedPhotoNotice, startVideoStream, stopCamera]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -137,6 +138,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
     setCapturedImage(null);
     setImageBlob(null);
     setError(null);
+    setHasConfirmedPhotoNotice(false);
   };
 
   // Capture photo
@@ -279,8 +281,60 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
           </div>
         )}
 
+
+        {captureMode && !hasConfirmedPhotoNotice && captureState !== 'captured' && (
+          <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white text-[#4B9EC8] shadow-sm">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Before we turn on your camera</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  We use this {captureMode === 'selfie' ? 'selfie' : 'ID photo'} only to check that new accounts are real and eligible before community access is granted.
+                </p>
+              </div>
+            </div>
+
+            <dl className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700">
+              <div className="rounded-xl bg-white/80 p-3">
+                <dt className="font-semibold text-slate-900">Who can see it?</dt>
+                <dd>Only authorized Tea Time Cari administrators reviewing registrations and safety issues.</dd>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3">
+                <dt className="font-semibold text-slate-900">Will it appear publicly?</dt>
+                <dd>No. Verification photos are not shown on your profile, posts, or public community areas.</dd>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3">
+                <dt className="font-semibold text-slate-900">How long is it kept?</dt>
+                <dd>We keep it only as long as reasonably needed for account review, fraud prevention, safety, legal, audit, or dispute needs.</dd>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3">
+                <dt className="font-semibold text-slate-900">How do I request deletion?</dt>
+                <dd>Contact support after submission; deletion requests are handled subject to legal and safety exceptions.</dd>
+              </div>
+            </dl>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setHasConfirmedPhotoNotice(true)}
+                className="flex-1 rounded-lg bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#3382AA]"
+              >
+                I understand, start camera
+              </button>
+              <Link
+                to="/privacy-policy"
+                className="flex-1 rounded-lg border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:bg-blue-50"
+              >
+                Read Privacy Policy
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Camera Interface */}
-        {captureMode && (
+        {captureMode && hasConfirmedPhotoNotice && (
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -430,6 +484,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                   setCapturedImage(null);
                   setImageBlob(null);
                   setError(null);
+                  setHasConfirmedPhotoNotice(false);
                   setCameraState('idle');
                 }}
                 className="text-sm text-gray-600 hover:text-gray-800 underline"
