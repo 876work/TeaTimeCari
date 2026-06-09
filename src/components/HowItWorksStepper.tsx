@@ -12,25 +12,25 @@ interface Step {
 
 const steps: Step[] = [
   {
-    label: 'Private Profile',
-    description: 'Start with privacy first.',
-    title: 'Create Your Private Profile',
-    body: 'Create your Tea Time Cari account and choose how you want to show up. Your profile is built with privacy and community safety in mind.',
-    pills: ['Username based', 'Privacy settings', 'Account review', 'Community access'],
+    label: 'Apply privately',
+    description: 'Start with a reviewed account.',
+    title: 'Apply With Privacy in Mind',
+    body: 'Create your Tea Time Cari account and share only what is needed for review. The first step is designed to protect community access, not to push you into a public profile.',
+    pills: ['Reviewed accounts', 'Username based', 'Privacy settings', 'Community access'],
   },
   {
-    label: 'Safe Sharing',
-    description: 'Share, browse, and compare notes.',
-    title: 'Share or Browse Safely',
-    body: 'Once approved, you can read posts, share your own experience, comment, and compare notes with others in your community. Tea Time Cari is built for factual sharing, privacy, and respectful conversations.',
-    pills: ['Read community posts', 'Share responsibly', 'Anonymous posting', 'Report unsafe content'],
+    label: 'Join safer spaces',
+    description: 'Enter areas built around trust.',
+    title: 'Join Private Community Spaces',
+    body: 'Once approved, you can read posts, share experiences, comment, and compare notes in spaces that prioritize privacy, respectful moderation, and member safety.',
+    pills: ['Private spaces', 'Respectful sharing', 'Anonymous posting', 'Report unsafe content'],
   },
   {
-    label: 'Stay Informed',
-    description: 'Real stories. Better awareness.',
-    title: 'Stay Informed',
-    body: 'Tea Time Cari helps users stay informed through real experiences, community support, and privacy first tools. The goal is not drama. The goal is safer conversations, better awareness, and stronger community support.',
-    pills: ['Privacy first', 'Gender based spaces', 'Respectful moderation', 'Stronger together'],
+    label: 'Share responsibly',
+    description: 'Anonymous when needed, accountable always.',
+    title: 'Stay Anonymous With Accountability',
+    body: 'Tea Time Cari supports sensitive conversations without turning privacy into a free-for-all. Community rules, reporting, and review help keep posts factual, respectful, and safer for everyone.',
+    pills: ['Anonymous mode', 'Accountability rules', 'Report flow', 'Stronger together'],
   },
 ];
 
@@ -59,12 +59,12 @@ export function HowItWorksStepper() {
     <section className="mb-12 mt-2 text-left" aria-labelledby="how-it-works-heading">
       <div className="mx-auto max-w-5xl rounded-[2rem] border border-white/25 bg-white/15 p-5 shadow-2xl backdrop-blur-md md:p-8">
         <div className="mb-8 text-center">
-          <p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-white/70">Privacy-first community</p>
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-white/70">Simple, safety-led flow</p>
           <h2 id="how-it-works-heading" className="text-3xl font-black tracking-tight text-white drop-shadow-sm md:text-4xl">
-            How Tea Time Cari Works
+            How trust is built in
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-base font-light leading-relaxed text-white/90 md:text-lg">
-            A simple, private way to share, compare, and stay informed.
+            A calmer path from application to safer community participation.
           </p>
         </div>
 
@@ -127,16 +127,16 @@ export function HowItWorksStepper() {
                 <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#E89494] via-[#D96E6E] to-[#4B9EC8] text-white shadow-lg">
                   <Check className="h-7 w-7" aria-hidden="true" />
                 </div>
-                <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">You’re ready for Tea Time Cari</h3>
+                <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">You’re ready to apply</h3>
                 <p className="mt-4 text-base leading-7 text-gray-700">
-                  A private community is taking shape in Saint Lucia. Create your account, follow the rules, and help keep the space respectful, factual, and safe.
+                  Create your account, follow the community rules, and help keep Tea Time Cari respectful, factual, private, and safe.
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/signup"
-                    className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
+                    className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                   >
-                    <span className="mr-2">Get Started</span>
+                    <span className="mr-2">Apply to join</span>
                     <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                   </Link>
                   <button
@@ -187,7 +187,7 @@ export function HowItWorksStepper() {
                     <button
                       type="button"
                       onClick={handleFinish}
-                      className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
+                      className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                     >
                       Finish
                     </button>
@@ -195,7 +195,7 @@ export function HowItWorksStepper() {
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
+                      className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                     >
                       <span className="mr-2">Next</span>
                       <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />

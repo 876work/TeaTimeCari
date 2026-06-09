@@ -1,22 +1,44 @@
 import { Link } from 'react-router-dom';
-import { Users, Heart, Star, Shield, Clock } from 'lucide-react';
+import { ArrowRight, Flag, LockKeyhole, ShieldCheck, UserCheck } from 'lucide-react';
 import { HowItWorksStepper } from './HowItWorksStepper';
 import { SiteHeader } from './SiteHeader';
+
+const trustCards = [
+  {
+    title: 'Reviewed accounts',
+    description: 'Member applications are checked before community access opens.',
+    Icon: UserCheck,
+  },
+  {
+    title: 'Private spaces',
+    description: 'Community areas are designed around privacy-conscious sharing.',
+    Icon: LockKeyhole,
+  },
+  {
+    title: 'Anonymous with accountability',
+    description: 'Share sensitive experiences with privacy, while rules and review keep the space responsible.',
+    Icon: ShieldCheck,
+  },
+  {
+    title: 'Report unsafe content',
+    description: 'Clear reporting paths help members flag harmful posts for review.',
+    Icon: Flag,
+  },
+];
 
 export function HomePage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-4 sm:py-6">
       <SiteHeader />
 
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-white bg-opacity-15 rounded-full animate-pulse"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-white bg-opacity-10 rounded-full animate-bounce" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-white bg-opacity-10 rounded-full animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute bottom-20 right-1/3 w-20 h-20 bg-white bg-opacity-15 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }}></div>
+      {/* Calm background accents */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-16 top-24 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute right-0 top-44 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute bottom-16 left-1/3 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center py-12 text-center sm:py-16">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center py-12 text-center sm:py-16">
         {/* Main Logo */}
         <div className="mb-8">
           <div className="mx-auto w-32 h-32 mb-6 drop-shadow-2xl">
@@ -34,101 +56,60 @@ export function HomePage() {
         </h1>
 
         {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-white/95 mb-8 font-light leading-relaxed max-w-2xl mx-auto drop-shadow-sm">
-          Connect, share, and discover in a community built for authentic conversations
+        <p className="mx-auto mb-5 max-w-2xl text-xl font-light leading-relaxed text-white/95 drop-shadow-sm md:text-2xl">
+          A privacy-first community for safer sharing, honest context, and accountable conversations.
+        </p>
+        <p className="mx-auto mb-8 max-w-xl text-sm font-medium leading-6 text-white/85 md:text-base">
+          Tea Time Cari keeps the first step simple: apply, get reviewed, and join a space built to protect members before anything else.
         </p>
 
-        <div className="mb-12 flex justify-center">
-          <Link to="/signup" className="home-start-toggle" aria-label="Get Started with Tea Time Cari">
-            <span className="home-start-track-lines" aria-hidden="true">
-              <span className="home-start-track-line" />
-            </span>
-            <span className="home-start-thumb" aria-hidden="true">
-              <span className="home-start-thumb-core" />
-              <span className="home-start-thumb-inner" />
-              <span className="home-start-thumb-scan" />
-              <span className="home-start-particles">
-                <span className="home-start-particle" />
-                <span className="home-start-particle" />
-                <span className="home-start-particle" />
-                <span className="home-start-particle" />
-                <span className="home-start-particle" />
-              </span>
-            </span>
-            <span className="home-start-data">
-              <span className="home-start-text home-start-text-ready">Get Started</span>
-              <span className="home-start-text home-start-text-go">Let's Go</span>
-              <span className="home-start-status home-start-status-ready" aria-hidden="true" />
-              <span className="home-start-status home-start-status-go" aria-hidden="true" />
-            </span>
-            <span className="home-start-energy-rings" aria-hidden="true">
-              <span className="home-start-energy-ring" />
-              <span className="home-start-energy-ring" />
-              <span className="home-start-energy-ring" />
-            </span>
-            <span className="home-start-interface-lines" aria-hidden="true">
-              <span className="home-start-interface-line" />
-              <span className="home-start-interface-line" />
-              <span className="home-start-interface-line" />
-              <span className="home-start-interface-line" />
-              <span className="home-start-interface-line" />
-              <span className="home-start-interface-line" />
-            </span>
-            <span className="home-start-reflection" aria-hidden="true" />
-            <span className="home-start-glow" aria-hidden="true" />
+        <div className="mb-12 flex flex-col items-center justify-center gap-3">
+          <Link
+            to="/signup"
+            className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-base font-black text-[#263f50] shadow-xl shadow-[#263f50]/20 transition hover:-translate-y-0.5 hover:bg-[#F9E3E3] hover:shadow-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#9B6BAE]"
+            aria-label="Apply to join Tea Time Cari"
+          >
+            Apply to join
+            <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
           </Link>
+          <p className="text-sm font-medium text-white/80">Reviewed membership. Privacy-conscious by design.</p>
         </div>
+
+        {/* Trust-focused cards */}
+        <section id="about" className="mb-12 scroll-mt-32" aria-labelledby="trust-heading">
+          <div className="mx-auto mb-6 max-w-2xl text-center">
+            <p className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-white/70">Built for trust</p>
+            <h2 id="trust-heading" className="text-3xl font-black tracking-tight text-white drop-shadow-sm md:text-4xl">
+              Safety signals before sign-up
+            </h2>
+          </div>
+
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
+            {trustCards.map(({ title, description, Icon }) => (
+              <article key={title} className="rounded-2xl border border-white/30 bg-white/20 p-5 text-white shadow-lg backdrop-blur-sm">
+                <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#263f50] shadow-md">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <h3 className="mb-2 text-lg font-bold">{title}</h3>
+                <p className="text-sm leading-6 text-white/90">{description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <HowItWorksStepper />
 
-        {/* Feature highlights */}
-        <div id="about" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-3xl mx-auto scroll-mt-32">
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 text-white border border-white/25 shadow-lg">
-            <Users className="w-8 h-8 mx-auto mb-3 text-white drop-shadow" />
-            <h3 className="font-semibold mb-2">Community Driven</h3>
-            <p className="text-sm text-white/90">
-              Connect with like-minded individuals in a safe, moderated environment
-            </p>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 text-white border border-white/25 shadow-lg">
-            <Shield className="w-8 h-8 mx-auto mb-3 text-white drop-shadow" />
-            <h3 className="font-semibold mb-2">Reviewed Members</h3>
-            <p className="text-sm text-white/90">
-              All members go through account review for your safety
-            </p>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 text-white border border-white/25 shadow-lg">
-            <Heart className="w-8 h-8 mx-auto mb-3 text-white drop-shadow" />
-            <h3 className="font-semibold mb-2">Authentic Sharing</h3>
-            <p className="text-sm text-white/90">
-              Share photos and get genuine feedback from the community
-            </p>
-          </div>
-        </div>
-
         {/* Call to Action */}
-        <div className="space-y-6">
-          <p className="text-white/80 text-sm font-medium">
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-white/80">
             Join our growing community of approved members
           </p>
-        </div>
-
-        {/* Trust indicators */}
-        <div className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-white/80">
-          <div className="flex items-center space-x-2">
-            <Star className="w-4 h-4" />
-            <span className="text-sm font-medium">Secure Platform</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm font-medium">24/7 Moderation</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Shield className="w-4 h-4" />
-            <span className="text-sm font-medium">Privacy Protected</span>
-          </div>
+          <Link
+            to="/signup"
+            className="inline-flex items-center justify-center rounded-full border border-white/45 bg-white/15 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/25 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#9B6BAE]"
+          >
+            Start your application
+          </Link>
         </div>
 
       </div>

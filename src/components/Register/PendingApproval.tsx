@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Loader2, AlertCircle, Download, Calendar, Shield } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Shield, Loader2 } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import html2canvas from 'html2canvas';
 import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
@@ -8,6 +8,7 @@ import { RegisterStep1Data } from '../RegisterStep1';
 import { RegisterStep2Data } from './Step2';
 import { RegisterStep3Data } from './Step3';
 import { debugError, debugLog } from '@/lib/debugLogger';
+import { LoadingCard, PageSection, PrimaryButton, StatusAlert } from '../Form';
 
 interface PendingApprovalProps {
   registrationData: {
@@ -19,10 +20,10 @@ interface PendingApprovalProps {
   onGoBackToStep1: () => void;
 }
 
-const PendingApproval: React.FC<PendingApprovalProps> = ({ 
-  registrationData, 
-  onGoHome, 
-  onGoBackToStep1 
+const PendingApproval: React.FC<PendingApprovalProps> = ({
+  registrationData,
+  onGoHome,
+  onGoBackToStep1,
 }) => {
   const didRun = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,38 +32,40 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [alreadyExists, setAlreadyExists] = useState(false);
 
-  // Download a privacy-safe confirmation receipt as image
   const downloadReceiptAsImage = async () => {
     setIsDownloading(true);
+
     try {
       const element = document.getElementById('confirmation-receipt');
+
       if (!element) {
         throw new Error('Receipt element not found');
       }
 
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
-        scale: 2, // Higher quality
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         width: element.offsetWidth,
-        height: element.offsetHeight
+        height: element.offsetHeight,
       });
 
-      // Convert canvas to blob
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
+
           link.href = url;
           link.download = `tea-time-cari-confirmation-receipt-${new Date().toISOString().split('T')[0]}.png`;
+
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+
           URL.revokeObjectURL(url);
         }
       }, 'image/png', 0.95);
-
     } catch (err: unknown) {
       debugError('Error downloading receipt:', err);
       alert('Failed to download receipt. Please try again.');
@@ -71,16 +74,13 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
     }
   };
 
-  // Submit registration data when component mounts
   useEffect(() => {
-    // Prevent double execution in React StrictMode
     if (didRun.current) return;
     didRun.current = true;
 
     const handleSubmission = async () => {
-      // Prevent re-submission if already in progress
       if (isSubmitting) return;
-      
+
       if (!registrationData.step1 || !registrationData.step2 || !registrationData.step3) {
         setError('Incomplete registration data. Please start over.');
         return;
@@ -92,9 +92,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
       try {
         const { step1, step2, step3 } = registrationData;
-        
-        // Split fullName into firstName and lastName for database compatibility
-        
+
         const registrationPayload: RegistrationPayload = {
           fullName: step1.fullName,
           email: step1.email,
@@ -104,15 +102,15 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           gender: step2.gender,
           captureType: step3.captureType,
           imageData: step3.imageData,
-          status: 'pending'
+          status: 'pending',
         };
-        
+
         debugLog('Submitting registration data...');
+
         const result = await submitRegistration(registrationPayload);
-        
-        // Set success state and message based on whether record already existed
+
         setAlreadyExists(result.alreadyExists);
-        
+
         if (result.alreadyExists) {
           setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
         } else if (result.data.sessionSynced === false) {
@@ -120,14 +118,14 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
         } else {
           setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue and this browser is now signed in to your new account.");
         }
-        
+
         debugLog('Registration submission completed:', {
           alreadyExists: result.alreadyExists,
-          isNewSubmission: result.isNewSubmission
+          isNewSubmission: result.isNewSubmission,
         });
-        
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Please try again.';
+
         debugError('Error submitting registration:', err);
         setError(`Failed to submit registration: ${message}`);
       } finally {
@@ -138,67 +136,55 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
     handleSubmission();
   }, [registrationData, isSubmitting]);
 
-  // Loading state
   if (isSubmitting) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <RegistrationProgress currentStep={4} className="mb-6 text-left" />
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Submitting Your Application</h1>
-          <p className="text-sm text-gray-600">
-            Please wait while we process your registration...
-          </p>
-        </div>
+        <LoadingCard title="Submitting Your Application" message="Please wait while we process your registration...">
+          <RegistrationProgress currentStep={4} className="mt-6 text-left" />
+        </LoadingCard>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2 text-red-600">Registration Failed</h1>
-          <p className="text-sm text-gray-600 mb-4">
+        <PageSection className="text-center">
+          <StatusAlert variant="error" title="Registration Failed" className="mb-4 text-left">
             {error}
-          </p>
+          </StatusAlert>
+
           <Link to="/contact-us" className="mb-6 inline-flex text-sm font-semibold text-[#4B9EC8] underline">
             Contact support if you need help
           </Link>
+
           <div className="flex items-center gap-3">
-            <button
-              onClick={onGoBackToStep1}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
+            <PrimaryButton onClick={onGoBackToStep1} className="flex-1" fullWidth={false}>
               Try Again
-            </button>
-            <button
-              onClick={onGoHome}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border"
-            >
+            </PrimaryButton>
+
+            <PrimaryButton onClick={onGoHome} variant="ghost" className="flex-1" fullWidth={false}>
               Go Home
-            </button>
+            </PrimaryButton>
           </div>
-        </div>
+        </PageSection>
       </div>
     );
   }
 
-  // Success state
   return (
     <div className="max-w-md mx-auto p-6">
       <div className="space-y-6">
         <RegistrationProgress currentStep={4} className="mb-6" />
 
-        {/* Privacy-safe Confirmation Receipt */}
         <div id="confirmation-receipt" className="rounded-2xl border p-8 shadow-sm bg-white">
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
               <Shield className="w-8 h-8 text-[#4B9EC8]" />
             </div>
+
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirmation Receipt</h2>
+
             <p className="text-sm text-gray-600">
               Your registration application was received.
             </p>
@@ -210,6 +196,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                 <Calendar className="w-5 h-5 mr-2 text-amber-600" />
                 Application Status
               </h3>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Current Status:</span>
@@ -217,10 +204,12 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                     Pending Review
                   </span>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Submitted:</span>
                   <span className="text-sm text-gray-900">{new Date().toLocaleDateString()}</span>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Expected Review:</span>
                   <span className="text-sm text-gray-900">Within 24-48 hours</span>
@@ -233,6 +222,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                 <Shield className="w-5 h-5 mr-2 text-blue-600" />
                 Privacy Note
               </h3>
+
               <p className="text-sm text-gray-700">
                 This receipt intentionally excludes personal details such as your name, username,
                 contact information, gender, and verification method.
@@ -241,25 +231,24 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           </div>
         </div>
 
-        {/* Success Message and Actions */}
         <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {alreadyExists ? 'Application Already Submitted!' : 'Application Submitted!'}
           </h1>
+
           <p className="text-sm text-gray-600 mb-4 font-medium">
             {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with instructions to access the community forum."}
           </p>
 
           <div className="text-sm text-gray-600 mb-6">
-            {alreadyExists 
+            {alreadyExists
               ? "Your application is already in our system. No need to resubmit - we'll email you with forum access instructions once reviewed."
-              : "You can close this page. We'll email you with forum access instructions once your application is approved."
-            }
+              : "You can close this page. We'll email you with forum access instructions once your application is approved."}
           </div>
 
           <div className="space-y-3">
-            {/* Download Receipt Button */}
             <button
               onClick={downloadReceiptAsImage}
               disabled={isDownloading || isSubmitting}
@@ -282,7 +271,6 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               )}
             </button>
 
-            {/* Navigation Buttons */}
             <div className="flex items-center gap-3">
               <button
                 onClick={onGoHome}
@@ -291,6 +279,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               >
                 Go to Home
               </button>
+
               <Link
                 to="/contact-us"
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"

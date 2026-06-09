@@ -63,6 +63,44 @@ interface UserStats {
   totalRedFlags: number;
 }
 
+
+type VisibilityAudience = 'only-you' | 'admins' | 'community';
+
+interface VisibilityIndicatorProps {
+  audience: VisibilityAudience;
+  isOwnProfile?: boolean;
+  className?: string;
+}
+
+const visibilityStyles: Record<VisibilityAudience, string> = {
+  'only-you': 'border-slate-200 bg-slate-50 text-slate-700',
+  admins: 'border-amber-200 bg-amber-50 text-amber-800',
+  community: 'border-emerald-200 bg-emerald-50 text-emerald-800'
+};
+
+const visibilityIcons = {
+  'only-you': Lock,
+  admins: Shield,
+  community: Users
+};
+
+function getVisibilityLabel(audience: VisibilityAudience, isOwnProfile = true): string {
+  if (audience === 'only-you') return isOwnProfile ? 'Visible to: only you' : 'Visible to: this member only';
+  if (audience === 'admins') return isOwnProfile ? 'Visible to: you + admins' : 'Visible to: this member + admins';
+  return 'Visible to: community';
+}
+
+function VisibilityIndicator({ audience, isOwnProfile = true, className = '' }: VisibilityIndicatorProps) {
+  const Icon = visibilityIcons[audience];
+
+  return (
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${visibilityStyles[audience]} ${className}`}>
+      <Icon className="mr-1.5 h-3.5 w-3.5" />
+      {getVisibilityLabel(audience, isOwnProfile)}
+    </span>
+  );
+}
+
 interface UserProfileProps {
   userId: string;
 }
@@ -551,10 +589,11 @@ export function UserProfile({ userId }: UserProfileProps) {
                 }`} />
               </div>
               <div>
-                <div className="flex items-center">
-                  <h1 className="text-2xl font-bold text-gray-900 mr-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">
                     {profileUser.fullName}
                   </h1>
+                  <VisibilityIndicator audience="admins" isOwnProfile={isOwnProfile} />
                   {isBanned && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                       <ShieldOff className="w-3 h-3 mr-1" />
@@ -562,17 +601,26 @@ export function UserProfile({ userId }: UserProfileProps) {
                     </span>
                   )}
                   {isOwnProfile && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       You
                     </span>
                   )}
                 </div>
-                <p className="text-gray-600">@{profileUser.username}</p>
-                <div className="flex items-center text-sm text-gray-500 mt-1">
-                  <Users className="w-4 h-4 mr-1" />
-                  <span className="mr-3">{profileUser.gender}</span>
-                  <Calendar className="w-4 h-4 mr-1" />
-                  <span>Joined {new Date(profileUser.created_at).toLocaleDateString()}</span>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-gray-600">
+                  <span>@{profileUser.username}</span>
+                  <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                  <span className="inline-flex items-center">
+                    <Users className="w-4 h-4 mr-1" />
+                    {profileUser.gender}
+                  </span>
+                  <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
+                  <span className="inline-flex items-center">
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Joined {new Date(profileUser.created_at).toLocaleDateString()}
+                  </span>
+                  <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
                 </div>
               </div>
             </div>
@@ -609,6 +657,53 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
+        <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-sm">
+          <div className="border-b border-slate-100 px-6 py-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="flex items-center text-lg font-semibold text-gray-900">
+                  <Lock className="mr-2 h-5 w-5 text-slate-500" />
+                  Profile privacy at a glance
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                  Public profile pages are intentionally limited. Non-admin community members cannot open another member's full profile page in this app; community visibility means the field may still appear in shared community surfaces such as posts, comments, or member context.
+                </p>
+              </div>
+              <VisibilityIndicator audience="only-you" isOwnProfile={isOwnProfile} />
+            </div>
+          </div>
+          <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Full name</p>
+              <div className="mt-2">
+                <VisibilityIndicator audience="admins" isOwnProfile={isOwnProfile} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Used for account review and moderation, not community display.</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
+              <div className="mt-2">
+                <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Your community-facing identity.</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</p>
+              <div className="mt-2">
+                <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Used to place members in appropriate community spaces.</p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Joined date</p>
+              <div className="mt-2">
+                <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-600">Shows account tenure without exposing contact details.</p>
+            </div>
+          </div>
+        </div>
+
         {isOwnProfile && (
           <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-xl shadow-blue-900/10">
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#4B9EC8] px-6 py-6 text-white">
@@ -618,7 +713,10 @@ export function UserProfile({ userId }: UserProfileProps) {
                     <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                     Private account tools
                   </div>
-                  <h2 className="text-2xl font-bold">Security settings</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-2xl font-bold">Security settings</h2>
+                    <VisibilityIndicator audience="only-you" />
+                  </div>
                   <p className="mt-2 max-w-2xl text-sm text-blue-50/90">
                     Change your password with Supabase reauthentication. We email you a one-time code first so your account stays protected.
                   </p>

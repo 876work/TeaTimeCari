@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Lock, Loader2, AlertCircle, ArrowLeft, Send, Info } from 'lucide-react';
+import { Mail, Lock, ArrowLeft, Send } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
+import { FormField, PageSection, PrimaryButton, StatusAlert } from '../components/Form';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function ForgotPassword() {
@@ -53,7 +54,7 @@ export default function ForgotPassword() {
   if (submitted) {
     return (
       <AuthLayout>
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <PageSection>
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
               <Mail className="w-8 h-8 text-[#4B9EC8]" />
@@ -63,19 +64,13 @@ export default function ForgotPassword() {
               If your email address is in our database, a password reset link will be sent to it.
             </p>
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start">
-                <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-                <div className="text-left">
-                  <p className="text-sm text-blue-800 font-medium mb-1">What to do next:</p>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Check your email inbox (including spam folder)</li>
-                    <li>• Click the reset link if you receive an email</li>
-                    <li>• The link will expire in 1 hour for security</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <StatusAlert variant="info" title="What to do next:" className="mb-6 text-left">
+              <ul className="space-y-1">
+                <li>• Check your email inbox (including spam folder)</li>
+                <li>• Click the reset link if you receive an email</li>
+                <li>• The link will expire in 1 hour for security</li>
+              </ul>
+            </StatusAlert>
 
             <div className="space-y-3">
               <Link
@@ -86,26 +81,26 @@ export default function ForgotPassword() {
                 Back to Login
               </Link>
               
-              <button
+              <PrimaryButton
                 onClick={() => {
                   setSubmitted(false);
                   setEmail('');
                   setError(null);
                 }}
-                className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                variant="ghost"
               >
                 Try Different Email
-              </button>
+              </PrimaryButton>
             </div>
           </div>
-        </div>
+        </PageSection>
       </AuthLayout>
     );
   }
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <PageSection>
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <Lock className="w-8 h-8 text-[#4B9EC8]" />
@@ -118,21 +113,14 @@ export default function ForgotPassword() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
-            </div>
-          </div>
+          <StatusAlert variant="error" className="mb-6">
+            {error}
+          </StatusAlert>
         )}
 
         <form name="forgot-password" method="POST" data-netlify="true" onSubmit={handleSubmit} className="space-y-6">
           <input type="hidden" name="form-name" value="forgot-password" readOnly />
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
-            </label>
+          <FormField id="email" label="Email Address">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-gray-400" />
@@ -150,30 +138,17 @@ export default function ForgotPassword() {
                 autoComplete="email"
               />
             </div>
-          </div>
+          </FormField>
 
-          {/* Submit Button */}
-          <button
+          <PrimaryButton
             type="submit"
             disabled={loading || !email.trim()}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !loading && email.trim()
-                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            isLoading={loading}
+            loadingLabel="Sending Reset Link..."
+            icon={<Send className="h-5 w-5" />}
           >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Sending Reset Link...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <Send className="w-5 h-5 mr-2" />
-                Send Reset Link
-              </div>
-            )}
-          </button>
+            Send Reset Link
+          </PrimaryButton>
         </form>
 
         {/* Additional Links */}
@@ -191,11 +166,9 @@ export default function ForgotPassword() {
 
         {/* Help Section */}
         <div className="mt-8">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 text-center">
-              <strong>Security Notice:</strong> For your privacy, we don't reveal whether an email address is registered with us.
-            </p>
-          </div>
+          <StatusAlert variant="info" title="Security Notice">
+            For your privacy, we don't reveal whether an email address is registered with us.
+          </StatusAlert>
           
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500">
@@ -203,7 +176,7 @@ export default function ForgotPassword() {
             </p>
           </div>
         </div>
-      </div>
+      </PageSection>
     </AuthLayout>
   );
 }
