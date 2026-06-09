@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle, Home, Loader2, LogOut, Mail, RefreshCw, ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
 import { AuthLayout } from '../components/AuthLayout';
 import { supabase } from '@/lib/supabaseClient';
@@ -21,43 +21,43 @@ const statusContent: Record<Exclude<PageState['status'], 'checking'>, {
   signed_out: {
     icon: <Clock className="w-8 h-8 text-amber-600" />,
     title: 'Account Pending Approval',
-    body: "If you've submitted an application, please sign in to check the latest review status for your account.",
+    body: "Your secure status check needs an active login session. Please sign in with the same email used for your application to see the latest review result.",
     toneClass: 'bg-amber-100',
     detailTitle: 'What happens next?',
     details: [
-      'Our team reviews submitted registration information.',
-      "You'll receive an email with further instructions.",
-      "Once approved, you'll gain access to the community.",
+      'Use the login page to resume your account status check.',
+      'If you have not completed an application, please start signup again.',
+      'Contact support only if you applied and cannot access the same email.',
     ],
   },
   pending: {
     icon: <Clock className="w-8 h-8 text-amber-600" />,
     title: 'Account Pending Approval',
-    body: "Your account is currently under review by our team. You'll receive an email notification once your account has been approved.",
+    body: "Your application is still under review. You do not need to submit another application or retry login while this status is pending.",
     toneClass: 'bg-amber-100',
     detailTitle: 'What happens next?',
     details: [
-      'Our team will review your submitted information.',
-      "You'll receive an email with further instructions.",
-      "Once approved, you'll gain access to the community.",
+      'Watch your email for the approval decision or any follow-up requests.',
+      'Use Refresh Status if you were just notified that your account was approved.',
+      'Contact support if your application has been pending longer than expected.',
     ],
   },
   rejected: {
     icon: <ShieldAlert className="w-8 h-8 text-red-600" />,
     title: 'Account Not Approved',
-    body: 'After review, this account was not approved for community access. Please contact support if you have questions.',
+    body: 'This account was not approved for community access. To protect privacy and safety, we cannot show detailed review notes here.',
     toneClass: 'bg-red-100',
     detailTitle: 'Need help?',
     details: [
       'Review decisions are made to protect community privacy and safety.',
-      'Support can help if you believe there was a mistake.',
+      'Contact support if you believe there was a mistake or need help understanding next steps.',
       'Do not submit duplicate applications unless support asks you to.',
     ],
   },
   suspended: {
     icon: <ShieldAlert className="w-8 h-8 text-orange-600" />,
     title: 'Account Suspended',
-    body: 'This account is currently suspended and cannot access Tea Time Cari.',
+    body: 'This account is currently suspended, so access is paused. You have been signed out on this device for safety.',
     toneClass: 'bg-orange-100',
     detailTitle: 'What can you do?',
     details: [
@@ -69,7 +69,7 @@ const statusContent: Record<Exclude<PageState['status'], 'checking'>, {
   banned: {
     icon: <ShieldAlert className="w-8 h-8 text-red-600" />,
     title: 'Account Unavailable',
-    body: 'This account is not currently eligible to access Tea Time Cari.',
+    body: 'This account is not eligible to access Tea Time Cari. You have been signed out on this device for safety.',
     toneClass: 'bg-red-100',
     detailTitle: 'What can you do?',
     details: [
@@ -81,13 +81,13 @@ const statusContent: Record<Exclude<PageState['status'], 'checking'>, {
   missing: {
     icon: <AlertCircle className="w-8 h-8 text-blue-600" />,
     title: 'Application Not Found',
-    body: "We couldn't find a completed registration for this account. Please contact support or submit your application again.",
+    body: "We could not find a completed application for this account. This can happen if signup was not finished or you used a different login email.",
     toneClass: 'bg-blue-100',
     detailTitle: 'Recommended next steps',
     details: [
       'Make sure you signed in with the same email used during registration.',
-      'Contact support if you already submitted your application.',
-      'Start a new signup if you have not completed registration yet.',
+      'Contact support if you already submitted an application with this email.',
+      'Start signup again if you have not completed the application yet.',
     ],
   },
   not_approved: {
@@ -117,7 +117,25 @@ const statusContent: Record<Exclude<PageState['status'], 'checking'>, {
 
 export default function KycPending() {
   const navigate = useNavigate();
-  const [pageState, setPageState] = React.useState<PageState>({ status: 'checking', error: null });
+  const location = useLocation();
+  const initialStatus = React.useMemo(() => {
+    const status = new URLSearchParams(location.search).get('status');
+    const knownStatuses: PageState['status'][] = [
+      'approved',
+      'pending',
+      'rejected',
+      'suspended',
+      'banned',
+      'missing',
+      'not_approved',
+    ];
+
+    return knownStatuses.includes(status as PageState['status'])
+      ? (status as PageState['status'])
+      : 'checking';
+  }, [location.search]);
+
+  const [pageState, setPageState] = React.useState<PageState>({ status: initialStatus, error: null });
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const checkStatus = React.useCallback(async ({ redirectApproved = true } = {}) => {
@@ -147,9 +165,11 @@ export default function KycPending() {
       if (status === 'approved' && redirectApproved) {
         navigate('/community', { replace: true });
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to check your account status.';
-      setPageState((current) => ({ ...current, error: message }));
+    } catch {
+      setPageState((current) => ({
+        ...current,
+        error: 'Unable to check your account status right now. Please try again, or contact support if this continues.',
+      }));
     } finally {
       setIsRefreshing(false);
     }
@@ -164,7 +184,13 @@ export default function KycPending() {
   };
 
   const handleContactSupport = () => {
-    navigate('/contact-us');
+    const params = new URLSearchParams({ topic: 'account-status' });
+
+    if (pageState.status !== 'checking') {
+      params.set('status', pageState.status);
+    }
+
+    navigate(`/contact-us?${params.toString()}`);
   };
 
   const handleSignOut = async () => {
