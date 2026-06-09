@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Loader2, AlertCircle, Download, Calendar, Shield } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Shield } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import html2canvas from 'html2canvas';
 import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
 import { RegisterStep1Data } from '../RegisterStep1';
 import { RegisterStep2Data } from './Step2';
 import { RegisterStep3Data } from './Step3';
+import { LoadingCard, PageSection, PrimaryButton, StatusAlert } from '../Form';
 
 interface PendingApprovalProps {
   registrationData: {
@@ -141,14 +142,9 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   if (isSubmitting) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <RegistrationProgress currentStep={4} className="mb-6 text-left" />
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Submitting Your Application</h1>
-          <p className="text-sm text-gray-600">
-            Please wait while we process your registration...
-          </p>
-        </div>
+        <LoadingCard title="Submitting Your Application" message="Please wait while we process your registration...">
+          <RegistrationProgress currentStep={4} className="mt-6 text-left" />
+        </LoadingCard>
       </div>
     );
   }
@@ -157,30 +153,22 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   if (error) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2 text-red-600">Registration Failed</h1>
-          <p className="text-sm text-gray-600 mb-4">
+        <PageSection className="text-center">
+          <StatusAlert variant="error" title="Registration Failed" className="mb-4 text-left">
             {error}
-          </p>
+          </StatusAlert>
           <Link to="/contact-us" className="mb-6 inline-flex text-sm font-semibold text-[#4B9EC8] underline">
             Contact support if you need help
           </Link>
           <div className="flex items-center gap-3">
-            <button
-              onClick={onGoBackToStep1}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
+            <PrimaryButton onClick={onGoBackToStep1} className="flex-1" fullWidth={false}>
               Try Again
-            </button>
-            <button
-              onClick={onGoHome}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border"
-            >
+            </PrimaryButton>
+            <PrimaryButton onClick={onGoHome} variant="ghost" className="flex-1" fullWidth={false}>
               Go Home
-            </button>
+            </PrimaryButton>
           </div>
-        </div>
+        </PageSection>
       </div>
     );
   }

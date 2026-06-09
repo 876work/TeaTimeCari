@@ -4,13 +4,12 @@ import {
   LogIn,
   User,
   Lock,
-  Loader2,
-  AlertCircle,
   ArrowLeft,
   Eye,
   EyeOff,
 } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
+import { FormField, PageSection, PrimaryButton, PrivacyNote, StatusAlert } from "../components/Form";
 import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
@@ -235,7 +234,7 @@ export default function Login() {
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <PageSection>
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <LogIn className="w-8 h-8 text-[#4B9EC8]" />
@@ -251,33 +250,18 @@ export default function Login() {
         </div>
 
         {error && (
-          <div
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-            role="alert"
-          >
-            <div className="flex items-start">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <span className="text-red-700 text-sm">{error}</span>
-                <p className="mt-2 text-sm text-red-700">
-                  Need help?{' '}
-                  <Link to="/contact-us?topic=account-status" className="font-semibold underline">Contact support</Link>.
-                </p>
-              </div>
-            </div>
-          </div>
+          <StatusAlert variant="error" className="mb-6">
+            <span>{error}</span>
+            <p className="mt-2">
+              Need help?{' '}
+              <Link to="/contact-us?topic=account-status" className="font-semibold underline">Contact support</Link>.
+            </p>
+          </StatusAlert>
         )}
 
         <form name="login" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
           <input type="hidden" name="form-name" value="login" readOnly />
-          <div>
-            <label
-              htmlFor="loginIdentifier"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Email Address or Username
-            </label>
-
+          <FormField id="loginIdentifier" label="Email Address or Username">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <User className="h-5 w-5 text-gray-400" />
@@ -296,16 +280,9 @@ export default function Login() {
                 autoComplete="username"
               />
             </div>
-          </div>
+          </FormField>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Password
-            </label>
-
+          <FormField id="password" label="Password">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -338,29 +315,17 @@ export default function Login() {
                 )}
               </button>
             </div>
-          </div>
+          </FormField>
 
-          <button
+          <PrimaryButton
             type="submit"
             disabled={loading || !loginIdentifier || !password}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !loading && loginIdentifier && password
-                ? "bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            isLoading={loading}
+            loadingLabel="Logging in..."
+            icon={<LogIn className="h-5 w-5" />}
           >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Logging in...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <LogIn className="w-5 h-5 mr-2" />
-                Log In
-              </div>
-            )}
-          </button>
+            Log In
+          </PrimaryButton>
         </form>
 
         <div className="mt-8 space-y-4">
@@ -384,15 +349,10 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="mt-8">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 text-center">
-              <strong>New to Tea Time Cari?</strong> You'll need an invitation
-              to join our community.
-            </p>
-          </div>
-        </div>
-      </div>
+        <PrivacyNote className="mt-8" title="New to Tea Time Cari?">
+          You'll need an invitation to join our community.
+        </PrivacyNote>
+      </PageSection>
     </AuthLayout>
   );
 }
