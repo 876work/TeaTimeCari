@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getAdminSession } from '@/lib/adminAuth';
 import type { AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
+import { debugError } from '@/lib/debugLogger';
 
 const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
 const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
@@ -124,7 +125,7 @@ function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
           setAdminSession(nextAdminSession);
         }
       } catch (error) {
-        console.error('Admin access check failed:', error);
+        debugError('Admin access check failed:', error);
 
         if (!cancelled) {
           setAdminSession(null);
@@ -175,55 +176,56 @@ function App() {
         <NotificationProvider>
           <Router>
             <React.Suspense fallback={<PageLoading />}>
-            <Routes>
-              <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
-              <Route path="/contact-us/success" element={<PublicLayout><ContactUsSuccess /></PublicLayout>} />
-              <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
-              <Route path="/sso" element={<Sso />} />
-              <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
-              <Route path="/community" element={<CommunityRedirect />} />
-              <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
-              <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
-              <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
-              <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
-              <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
-              <Route path="/Community-Guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
-              <Route path="/community-guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
-              <Route path="/anonymous-mode" element={<PublicLayout><AnonymousModeExplained /></PublicLayout>} />
-              <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
-              <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
-              <Route path="/logout" element={<Logout />} />
-              <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
-              <Route path="/users/:userId" element={<AppLayout><UserProfileRoute /></AppLayout>} />
-              <Route path="/posts/:postId" element={<AppLayout><PostThreadRoute /></AppLayout>} />
-              <Route path="/feed" element={<AppLayout><GenderFeed /></AppLayout>} />
-              <Route path="/upload" element={<AppLayout><UploadPost /></AppLayout>} />
-              <Route path="/opposite-feed" element={<AppLayout><OppositeGenderFeed /></AppLayout>} />
+              <Routes>
+                <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
+                <Route path="/contact-us/success" element={<PublicLayout><ContactUsSuccess /></PublicLayout>} />
+                <Route path="/kyc-pending" element={<PublicLayout><KycPending /></PublicLayout>} />
+                <Route path="/sso" element={<Sso />} />
+                <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
+                <Route path="/community" element={<CommunityRedirect />} />
+                <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
+                <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
+                <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
+                <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
+                <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
+                <Route path="/Community-Guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
+                <Route path="/community-guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
+                <Route path="/anonymous-mode" element={<PublicLayout><AnonymousModeExplained /></PublicLayout>} />
+                <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
+                <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
+                <Route path="/logout" element={<Logout />} />
+                <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
+                <Route path="/users/:userId" element={<AppLayout><UserProfileRoute /></AppLayout>} />
+                <Route path="/posts/:postId" element={<AppLayout><PostThreadRoute /></AppLayout>} />
+                <Route path="/feed" element={<AppLayout><GenderFeed /></AppLayout>} />
+                <Route path="/upload" element={<AppLayout><UploadPost /></AppLayout>} />
+                <Route path="/opposite-feed" element={<AppLayout><OppositeGenderFeed /></AppLayout>} />
 
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
-              <Route path="/teamin" element={<AdminLoginPage />} />
-              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="/admin/dashboard" element={<AdminPortalRoute initialPage="dashboard" />} />
-              <Route path="/admin/users" element={<AdminPortalRoute initialPage="user-reviews" />} />
-              <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
-              <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
-              <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
-              <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
-              <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
-              <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/teamin" element={<AdminLoginPage />} />
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/admin/dashboard" element={<AdminPortalRoute initialPage="dashboard" />} />
+                <Route path="/admin/users" element={<AdminPortalRoute initialPage="user-reviews" />} />
+                <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
+                <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
+                <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
+                <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
+                <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
+                <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
 
-              {/* Main App Route */}
-              <Route
-                path="/"
-                element={
-                  <PublicLayout showHeader={false}>
-                    <HomePage />
-                  </PublicLayout>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Main App Route */}
+                <Route
+                  path="/"
+                  element={
+                    <PublicLayout showHeader={false}>
+                      <HomePage />
+                    </PublicLayout>
+                  }
+                />
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </React.Suspense>
           </Router>
         </NotificationProvider>

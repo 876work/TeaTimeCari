@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { trackAuthLogin } from '@/hooks/useAuthActivityTracking';
+import { debugError, debugLog, debugWarn } from '@/lib/debugLogger';
 
 export interface RegistrationPayload {
   fullName: string;
@@ -93,7 +94,7 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
     }
   }
 
-  console.log('Submitting registration with normalized data:', {
+  debugLog('Submitting registration with normalized data:', {
     email: normalizedPayload.email,
     username: normalizedPayload.username,
     status: payload.status || 'pending'
@@ -104,12 +105,12 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
   });
 
   if (error) {
-    console.error('Registration function error:', error);
+    debugError('Registration function error:', error);
     throw new Error(await getFunctionErrorMessage(error));
   }
 
   if (!data?.ok) {
-    console.error('Registration function returned an unsuccessful response:', data);
+    debugError('Registration function returned an unsuccessful response:', data);
     throw new Error(data?.error || 'Registration failed. Please try again.');
   }
 
@@ -121,7 +122,7 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
 
     if (signInError) {
       await supabase.auth.signOut().catch((signOutError) => {
-        console.warn('Unable to clear auth session after registration sign-in failed:', signOutError);
+        debugWarn('Unable to clear auth session after registration sign-in failed:', signOutError);
       });
 
       data.sessionSynced = false;
@@ -132,7 +133,7 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
     }
   }
 
-  console.log('Registration submitted successfully:', {
+  debugLog('Registration submitted successfully:', {
     alreadyExists: Boolean(data.alreadyExists),
     isNewSubmission: !data.alreadyExists,
     sessionSynced: data.sessionSynced ?? false,

@@ -4,6 +4,7 @@ import { Check, X, AlertCircle, Loader2, User, Eye, EyeOff, Lock, HelpCircle } f
 import { RegistrationProgress } from './Register/RegistrationProgress';
 import { useDebounce } from '../hooks/useDebounce';
 import { validateEmail, validatePhoneNumber, validateUsername } from '../utils/usernameValidation';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 // Updated interface to match Edge Function response
 interface UsernameValidationResult {
@@ -172,14 +173,14 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       });
       
       if (error) {
-        console.error('Error checking username availability:', error);
+        debugError('Error checking username availability:', error);
         setGlobalError('Failed to check username availability. Please try again.');
         setUsernameStatus(prev => ({ ...prev, isAvailable: false }));
         return false;
       }
       
       if (!data.success) {
-        console.error('Username availability check failed:', data.error);
+        debugError('Username availability check failed:', data.error);
         setGlobalError('Failed to check username availability. Please try again.');
         setUsernameStatus(prev => ({ ...prev, isAvailable: false }));
         return false;
@@ -204,7 +205,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       return isAvailable;
       
     } catch (error) {
-      console.error('Error checking username availability:', error);
+      debugError('Error checking username availability:', error);
       setGlobalError('Failed to check username availability. Please try again.');
       setUsernameStatus(prev => ({
         ...prev,
@@ -230,14 +231,14 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       });
       
       if (error) {
-        console.error('Error checking email availability:', error);
+        debugError('Error checking email availability:', error);
         setGlobalError('Failed to check email availability. Please try again.');
         setEmailStatus(prev => ({ ...prev, isAvailable: false }));
         return false;
       }
       
       if (!data.success) {
-        console.error('Email availability check failed:', data.error);
+        debugError('Email availability check failed:', data.error);
         setGlobalError('Failed to check email availability. Please try again.');
         setEmailStatus(prev => ({ ...prev, isAvailable: false }));
         return false;
@@ -250,7 +251,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       
       const isAvailable = emailResult.isAvailable;
       
-      console.log('Email availability check:', { 
+      debugLog('Email availability check:', { 
         email, 
         isAvailable,
         error: emailResult.error
@@ -265,7 +266,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       return isAvailable;
       
     } catch (error) {
-      console.error('Error checking email availability:', error);
+      debugError('Error checking email availability:', error);
       setGlobalError('Failed to check email availability. Please try again.');
       setEmailStatus(prev => ({
         ...prev,
@@ -443,7 +444,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       onNext(formData);
       
     } catch (err) {
-      console.error('Error during availability check:', err);
+      debugError('Error during availability check:', err);
       setGlobalError('Failed to verify email and username availability. Please try again.');
       return;
     }

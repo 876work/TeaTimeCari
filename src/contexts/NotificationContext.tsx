@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
+import { debugLog } from '@/lib/debugLogger';
 
 // Type definitions
 export interface Notification {
@@ -235,7 +236,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           filter: `user_id=eq.${session.user.id}`
         },
         (payload) => {
-          console.log('New notification received:', payload);
+          debugLog('New notification received:', payload);
           const newNotification = payload.new as Notification;
           
           // Add new notification to the beginning of the list

@@ -3,6 +3,7 @@ import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { Image, Upload, X, CheckCircle, AlertCircle, Loader2, Camera, ArrowRight } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 interface UserData {
   id: string;
@@ -46,7 +47,7 @@ export function UploadPost() {
           .single();
 
         if (userError) {
-          console.error('Error fetching user data:', userError);
+          debugError('Error fetching user data:', userError);
           setError('Failed to load user data. Please try again.');
           setUserLoading(false);
           return;
@@ -66,7 +67,7 @@ export function UploadPost() {
 
         setCurrentUser(userData);
       } catch (err: unknown) {
-        console.error('Error in fetchCurrentUser:', err);
+        debugError('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
         setUserLoading(false);
@@ -115,11 +116,11 @@ export function UploadPost() {
       setSelectedFile(compressedFile);
       setPreviewUrl(previewUrl);
       
-      console.log('Original file size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-      console.log('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+      debugLog('Original file size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+      debugLog('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
       
     } catch (err: unknown) {
-      console.error('Error processing image:', err);
+      debugError('Error processing image:', err);
       setError('Failed to process image. Please try a different file.');
     } finally {
       setIsProcessing(false);
@@ -203,7 +204,7 @@ export function UploadPost() {
       }
 
     } catch (err: unknown) {
-      console.error('Error uploading post:', err);
+      debugError('Error uploading post:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload post. Please try again.');
     } finally {
       setIsUploading(false);
