@@ -27,6 +27,7 @@ import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 import { getAdminSession } from '@/lib/adminAuth';
+import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -41,7 +42,7 @@ interface UserRow {
   gender?: 'Male' | 'Female' | null;
   captureType?: 'selfie' | 'id' | null;
   imageData?: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'verified' | 'banned' | 'suspended';
+  status: string;
   created_at?: string | null;
   password_temp?: string | null;
   rejection_reason?: string | null;
@@ -76,9 +77,8 @@ interface PendingConfirmation {
   user: UserRow;
   reason: string;
 }
-type StatusFilter = 'all' | UserRow['status'];
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
 
 const safeDisplayName = (u: UserRow) => {
   const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(
@@ -132,26 +132,24 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-// ─── Status badge ────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    approved: 'bg-blue-50 text-blue-700 border-blue-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     rejected: 'bg-slate-100 text-slate-600 border-slate-200',
     banned: 'bg-red-50 text-red-700 border-red-200',
     suspended: 'bg-orange-50 text-orange-700 border-orange-200',
   };
-  const cls = map[status] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+
+  const displayStatus = normalizeApprovalStatus(status);
+  const cls = map[displayStatus] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace('_', ' ')}
     </span>
   );
 }
-
-// ─── Presence badge ──────────────────────────────────────────────────────────
 
 function PresenceBadge({ online }: { online: boolean }) {
   return (
@@ -172,8 +170,6 @@ function PresenceBadge({ online }: { online: boolean }) {
     </span>
   );
 }
-
-// ─── Summary card ────────────────────────────────────────────────────────────
 
 function SummaryCard({
   label,
@@ -201,13 +197,10 @@ function SummaryCard({
   );
 }
 
-// ─── Detail panel ────────────────────────────────────────────────────────────
-
 function DetailPanel({ user }: { user: UserRow }) {
   return (
     <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Registration Tracking */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-4 h-4 text-slate-400" />
@@ -223,7 +216,6 @@ function DetailPanel({ user }: { user: UserRow }) {
           </dl>
         </div>
 
-        {/* Login & Activity Tracking */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-4 h-4 text-slate-400" />
@@ -243,8 +235,8 @@ function DetailPanel({ user }: { user: UserRow }) {
                 user.captureType === 'selfie'
                   ? 'Selfie'
                   : user.captureType === 'id'
-                  ? 'ID Document'
-                  : null
+                    ? 'ID Document'
+                    : null
               }
             />
           </dl>
@@ -253,8 +245,6 @@ function DetailPanel({ user }: { user: UserRow }) {
     </div>
   );
 }
-
-// ─── Main component ──────────────────────────────────────────────────────────
 
 export function AdminUserReview({
   activePage = 'user-reviews',
@@ -270,7 +260,9 @@ export function AdminUserReview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [actionMessages, setActionMessages] = useState<Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>>({});
+  const [actionMessages, setActionMessages] = useState<
+    Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>
+  >({});
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
@@ -305,16 +297,20 @@ export function AdminUserReview({
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s?.access_token) throw new Error('You must be logged in as an admin.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]
@@ -328,6 +324,7 @@ export function AdminUserReview({
         ...u,
         fullName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
       }));
+
       setUsers(mapped);
       setLastUpdated(new Date());
     } catch (err) {
@@ -344,6 +341,7 @@ export function AdminUserReview({
       setLoading(false);
       return;
     }
+
     fetchUsers();
 
     getAdminSession()
@@ -351,12 +349,12 @@ export function AdminUserReview({
       .catch(() => setIsOwner(false));
   }, [isAdmin]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-
   const handleApprove = async (user: UserRow) => {
     if (!confirm(`Approve ${user.username ?? safeDisplayName(user)}?`)) return;
+
     setProcessingId(user.id);
     setError(null);
+
     try {
       const data = await approveRegistration(user.id);
       const status = data?.status ?? 'approved';
@@ -398,9 +396,11 @@ export function AdminUserReview({
   const handleRetryDiscourseSync = async (user: UserRow) => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const data = await retryDiscourseSync(user.id);
       const status = data?.status;
+
       if (status === 'discourse_sync_retried') {
         setActionMessages((prev) => ({
           ...prev,
@@ -419,7 +419,6 @@ export function AdminUserReview({
       setProcessingId(null);
     }
   };
-
 
   const openEditUser = (user: UserRow) => {
     setEditingUser(user);
@@ -455,32 +454,42 @@ export function AdminUserReview({
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s) throw new Error('Not authenticated.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-profile', {
         body: { registration_id: editingUser.id, ...editForm },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.ok) throw new Error(data?.error || 'Failed to update user profile');
 
       const updatedUser = data.user as Partial<UserRow>;
-      setUsers((prev) => prev.map((u) => (
-        u.id === editingUser.id
-          ? {
-              ...u,
-              ...updatedUser,
-              fullName: [updatedUser.firstName ?? editForm.firstName, updatedUser.lastName ?? editForm.lastName]
-                .filter(Boolean)
-                .join(' ')
-                .trim() || updatedUser.username || editForm.username || null,
-            }
-          : u
-      )));
 
-      const discourseWarning = data.discourse?.success === false
-        ? `Profile saved, but Discourse sync needs attention: ${data.discourse?.error || data.discourse?.message || 'Sync failed.'}`
-        : '';
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id
+            ? {
+                ...u,
+                ...updatedUser,
+                fullName:
+                  [updatedUser.firstName ?? editForm.firstName, updatedUser.lastName ?? editForm.lastName]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim() || updatedUser.username || editForm.username || null,
+              }
+            : u,
+        ),
+      );
+
+      const discourseWarning =
+        data.discourse?.success === false
+          ? `Profile saved, but Discourse sync needs attention: ${
+              data.discourse?.error || data.discourse?.message || 'Sync failed.'
+            }`
+          : '';
+
       setActionMessages((prev) => ({
         ...prev,
         [editingUser.id]: {
@@ -488,6 +497,7 @@ export function AdminUserReview({
           message: discourseWarning || 'Profile updated and synced across the app.',
         },
       }));
+
       setEditingUser(null);
     } catch (err) {
       setError(`Failed to update user profile: ${getErrorMessage(err)}`);
@@ -508,11 +518,14 @@ export function AdminUserReview({
   const executeReject = async (user: UserRow, reason: string) => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s) throw new Error('Not authenticated.');
+
       const { data, error: fnErr } = await supabase.functions.invoke('send-rejection-email', {
         body: {
           registration_id: user.id,
@@ -523,14 +536,20 @@ export function AdminUserReview({
         },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
+
       if (data?.status === 'rejected_with_email_error') {
         setActionMessages((prev) => ({
           ...prev,
-          [user.id]: { type: 'warning', message: `Rejected, but rejection email needs attention: ${data.warning || 'Email failed.'}` },
+          [user.id]: {
+            type: 'warning',
+            message: `Rejected, but rejection email needs attention: ${data.warning || 'Email failed.'}`,
+          },
         }));
       }
+
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'rejected' } : u)));
     } catch (err) {
       setError(`Failed to reject: ${getErrorMessage(err)}`);
@@ -542,16 +561,19 @@ export function AdminUserReview({
   const executeSuspension = async (user: UserRow, action: 'suspend' | 'unsuspend') => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s) throw new Error('Not authenticated.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-status', {
         body: { registration_id: user.id, action },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.ok) throw new Error(data?.error || 'Failed to update user status');
 
@@ -577,17 +599,14 @@ export function AdminUserReview({
     setPendingConfirmation(null);
   };
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
   const summaryStats = {
     total: users.length,
-    pending: users.filter((u) => u.status === 'pending').length,
-    approved: users.filter((u) => u.status === 'approved').length,
-    verified: users.filter((u) => u.status === 'verified').length,
-    suspended: users.filter((u) => u.status === 'suspended').length,
+    pending: users.filter((u) => normalizeApprovalStatus(u.status) === 'pending').length,
+    approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
+    suspended: users.filter((u) => normalizeApprovalStatus(u.status) === 'suspended').length,
     online: users.filter(isOnline).length,
     offline: users.filter((u) => !isOnline(u)).length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
@@ -599,9 +618,10 @@ export function AdminUserReview({
       const hay = [u.fullName, u.firstName, u.lastName, u.email, u.username, u.phone].map(
         (v) => (v ?? '').toLowerCase(),
       );
+
       return (
         (!needle || hay.some((h) => h.includes(needle))) &&
-        (filterStatus === 'all' || u.status === filterStatus) &&
+        (filterStatus === 'all' || normalizeApprovalStatus(u.status) === filterStatus) &&
         (presenceFilter === 'all' ||
           (presenceFilter === 'online' && isOnline(u)) ||
           (presenceFilter === 'offline' && !isOnline(u)))
@@ -609,53 +629,56 @@ export function AdminUserReview({
     })
     .sort((a, b) => {
       const ts = (v?: string | null) => (v ? new Date(v).getTime() || 0 : 0);
+
       switch (sortBy) {
-        case 'registration_asc': return ts(a.created_at) - ts(b.created_at);
-        case 'last_login_desc': return ts(b.last_login_at) - ts(a.last_login_at);
-        case 'last_login_asc': return ts(a.last_login_at) - ts(b.last_login_at);
-        default: return ts(b.created_at) - ts(a.created_at);
+        case 'registration_asc':
+          return ts(a.created_at) - ts(b.created_at);
+        case 'last_login_desc':
+          return ts(b.last_login_at) - ts(a.last_login_at);
+        case 'last_login_asc':
+          return ts(a.last_login_at) - ts(b.last_login_at);
+        default:
+          return ts(b.created_at) - ts(a.created_at);
       }
     });
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-
-        {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-slate-900">User Management</h2>
             <p className="text-sm text-slate-500 mt-0.5">View and manage all user registrations</p>
           </div>
+
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <p className="text-xs font-medium text-slate-500">
               Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
             </p>
+
             <div className="flex items-center gap-2">
-            {discourseBaseUrl && (
+              {discourseBaseUrl && (
+                <button
+                  onClick={() => window.open(discourseBaseUrl, '_blank')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">Community Forum</span>
+                </button>
+              )}
+
               <button
-                onClick={() => window.open(discourseBaseUrl, '_blank')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                onClick={fetchUsers}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span className="hidden sm:inline">Community Forum</span>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
-            )}
-            <button
-              onClick={fetchUsers}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
             </div>
           </div>
         </div>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
           <SummaryCard label="Pending Approval" value={summaryStats.pending} icon={<Clock className="w-4 h-4" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
@@ -664,7 +687,6 @@ export function AdminUserReview({
           <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -679,10 +701,8 @@ export function AdminUserReview({
           </p>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
@@ -693,7 +713,6 @@ export function AdminUserReview({
               />
             </div>
 
-            {/* Dropdowns */}
             <div className="flex flex-wrap gap-2">
               <select
                 value={filterStatus}
@@ -703,7 +722,6 @@ export function AdminUserReview({
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
-                <option value="verified">Verified</option>
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
                 <option value="suspended">Suspended</option>
@@ -737,7 +755,6 @@ export function AdminUserReview({
             <p>Online means active within the last 15 minutes.</p>
           </div>
 
-          {/* Result count */}
           <p className="text-xs text-slate-400 mt-3">
             Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{' '}
             <span className="font-medium text-slate-600">{users.length}</span> users
@@ -745,7 +762,6 @@ export function AdminUserReview({
           </p>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -798,11 +814,11 @@ export function AdminUserReview({
                     const online = isOnline(user);
                     const isExpanded = expandedId === user.id;
                     const isProcessing = processingId === user.id;
+                    const normalizedStatus = normalizeApprovalStatus(user.status);
 
                     return (
                       <React.Fragment key={user.id}>
                         <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
-                          {/* User */}
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -820,13 +836,11 @@ export function AdminUserReview({
                             </div>
                           </td>
 
-                          {/* Contact */}
                           <td className="px-5 py-4 hidden md:table-cell">
                             <p className="text-sm text-slate-700">{user.email ?? <span className="text-slate-400">—</span>}</p>
                             <p className="text-xs text-slate-400 mt-0.5">{user.phone ?? '—'}</p>
                           </td>
 
-                          {/* Status */}
                           <td className="px-5 py-4">
                             <div className="flex flex-col gap-1.5">
                               <StatusBadge status={user.status} />
@@ -834,14 +848,12 @@ export function AdminUserReview({
                             </div>
                           </td>
 
-                          {/* Gender */}
                           <td className="px-5 py-4 hidden lg:table-cell">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${user.gender === 'Male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>
                               {user.gender ?? '—'}
                             </span>
                           </td>
 
-                          {/* Registered */}
                           <td className="px-5 py-4 hidden lg:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
                             {user.registration_ip_location && (
@@ -852,7 +864,6 @@ export function AdminUserReview({
                             )}
                           </td>
 
-                          {/* Last Login */}
                           <td className="px-5 py-4 hidden xl:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.last_login_at) ?? '—'}</p>
                             {user.last_login_ip_location && (
@@ -863,7 +874,6 @@ export function AdminUserReview({
                             )}
                           </td>
 
-                          {/* IP / Browser */}
                           <td className="px-5 py-4 hidden xl:table-cell">
                             {user.registration_ip_address && (
                               <p className="text-xs text-slate-600 font-mono">{user.registration_ip_address}</p>
@@ -880,10 +890,8 @@ export function AdminUserReview({
                             )}
                           </td>
 
-                          {/* Actions */}
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Expand toggle */}
                               <button
                                 onClick={() => setExpandedId(isExpanded ? null : user.id)}
                                 title={isExpanded ? 'Hide details' : 'View details'}
@@ -893,7 +901,6 @@ export function AdminUserReview({
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </button>
 
-                              {/* Photo */}
                               {user.imageData && (
                                 <button
                                   onClick={() => setImageModal(user.imageData!)}
@@ -918,8 +925,7 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Approve / Reject (pending) */}
-                              {user.status === 'pending' && (
+                              {normalizedStatus === 'pending' && (
                                 <>
                                   <button
                                     onClick={() => handleApprove(user)}
@@ -931,6 +937,7 @@ export function AdminUserReview({
                                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                                     <span>Approve</span>
                                   </button>
+
                                   <button
                                     onClick={() => requestConfirmation('reject', user)}
                                     disabled={isProcessing}
@@ -957,8 +964,7 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Suspend (approved/verified) */}
-                              {(user.status === 'approved' || user.status === 'verified') && (
+                              {normalizedStatus === 'approved' && (
                                 <button
                                   onClick={() => requestConfirmation('suspend', user)}
                                   disabled={isProcessing}
@@ -971,8 +977,7 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Remove suspension */}
-                              {user.status === 'suspended' && (
+                              {normalizedStatus === 'suspended' && (
                                 <button
                                   onClick={() => requestConfirmation('unsuspend', user)}
                                   disabled={isProcessing}
@@ -988,7 +993,6 @@ export function AdminUserReview({
                           </td>
                         </tr>
 
-                        {/* Expanded detail panel */}
                         {isExpanded && (
                           <tr>
                             <td colSpan={8} className="p-0">
@@ -1008,8 +1012,6 @@ export function AdminUserReview({
         </div>
       </div>
 
-
-
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-edit-user-title">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
@@ -1020,6 +1022,7 @@ export function AdminUserReview({
                   Owner-only changes update registrations, profiles, posts, comments, Auth email, and Discourse group sync.
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={closeEditUser}
@@ -1040,6 +1043,7 @@ export function AdminUserReview({
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
+
               <label className="block text-sm font-semibold text-slate-700">
                 Last name
                 <input
@@ -1048,6 +1052,7 @@ export function AdminUserReview({
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
+
               <label className="block text-sm font-semibold text-slate-700">
                 Username
                 <input
@@ -1057,6 +1062,7 @@ export function AdminUserReview({
                   required
                 />
               </label>
+
               <label className="block text-sm font-semibold text-slate-700">
                 Email
                 <input
@@ -1067,6 +1073,7 @@ export function AdminUserReview({
                   required
                 />
               </label>
+
               <label className="block text-sm font-semibold text-slate-700">
                 Phone
                 <input
@@ -1075,6 +1082,7 @@ export function AdminUserReview({
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </label>
+
               <label className="block text-sm font-semibold text-slate-700">
                 Gender category
                 <select
@@ -1101,6 +1109,7 @@ export function AdminUserReview({
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 onClick={handleSaveUserProfile}
@@ -1122,6 +1131,7 @@ export function AdminUserReview({
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               </div>
+
               <div>
                 <h2 id="admin-confirmation-title" className="text-lg font-bold text-slate-900">
                   {pendingConfirmation.action === 'reject'
@@ -1130,11 +1140,13 @@ export function AdminUserReview({
                       ? 'Suspend this user?'
                       : 'Remove suspension?'}
                 </h2>
+
                 <p className="mt-2 text-sm text-slate-600">
                   {safeDisplayName(pendingConfirmation.user)}
                   {pendingConfirmation.user.username && ` (@${pendingConfirmation.user.username})`}
                   {pendingConfirmation.user.email && ` • ${pendingConfirmation.user.email}`}
                 </p>
+
                 <p className="mt-2 text-sm text-slate-500">
                   {pendingConfirmation.action === 'reject'
                     ? 'This marks the registration as rejected and sends a rejection email.'
@@ -1153,7 +1165,11 @@ export function AdminUserReview({
                 <textarea
                   id="rejection-reason"
                   value={pendingConfirmation.reason}
-                  onChange={(event) => setPendingConfirmation((current) => current ? { ...current, reason: event.target.value } : current)}
+                  onChange={(event) =>
+                    setPendingConfirmation((current) =>
+                      current ? { ...current, reason: event.target.value } : current,
+                    )
+                  }
                   rows={3}
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Add a short reason for the rejection email"
@@ -1170,6 +1186,7 @@ export function AdminUserReview({
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 onClick={confirmPendingAction}
@@ -1194,7 +1211,6 @@ export function AdminUserReview({
         </div>
       )}
 
-      {/* Image modal */}
       {imageModal && (
         <div
           className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50"
@@ -1207,6 +1223,7 @@ export function AdminUserReview({
             >
               <X className="w-4 h-4 text-slate-700" />
             </button>
+
             <img
               src={imageModal}
               alt="Registration photo"

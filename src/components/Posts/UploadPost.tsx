@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { Image, Upload, X, CheckCircle, AlertCircle, Loader2, Camera, ArrowRight } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
 
 interface UserData {
   id: string;
@@ -57,8 +58,8 @@ export function UploadPost() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to upload posts.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to upload posts.');
           setUserLoading(false);
           return;
         }

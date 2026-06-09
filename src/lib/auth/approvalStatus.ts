@@ -10,16 +10,30 @@ export type ApprovalStatus =
   | 'not_approved';
 
 const knownStatuses = ['approved', 'pending', 'rejected', 'suspended', 'banned'] as const;
+const legacyStatusAliases: Partial<Record<string, ApprovalStatus>> = {
+  // Legacy rows used `verified` for the same approved community-access state.
+  verified: 'approved',
+};
 
 export function normalizeApprovalStatus(status?: string | null): ApprovalStatus {
-  if (!status) return 'missing';
-  return knownStatuses.includes(status as (typeof knownStatuses)[number])
-    ? (status as ApprovalStatus)
+  const normalized = status?.trim().toLowerCase();
+
+  if (!normalized) return 'missing';
+
+  const legacyAlias = legacyStatusAliases[normalized];
+  if (legacyAlias) return legacyAlias;
+
+  return knownStatuses.includes(normalized as (typeof knownStatuses)[number])
+    ? (normalized as ApprovalStatus)
     : 'not_approved';
 }
 
 export function isApprovedStatus(status: ApprovalStatus) {
   return status === 'approved';
+}
+
+export function isApprovedRegistrationStatus(status?: string | null) {
+  return isApprovedStatus(normalizeApprovalStatus(status));
 }
 
 export function isBlockedStatus(status: ApprovalStatus) {

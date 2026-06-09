@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Wifi,
   WifiOff,
-  TrendingUp,
   CalendarDays,
   ArrowRight,
   Flag,
@@ -26,6 +25,7 @@ import { DiscourseCommunityAdmins } from './DiscourseCommunityAdmins';
 import { AdminAuditLogs } from './AdminAuditLogs';
 import FunctionPing from '../../dev/FunctionPing';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -63,7 +63,6 @@ interface DashboardStats {
   banned: number;
   suspended: number;
   approved: number;
-  verified: number;
 }
 
 interface AdminDashboardProps {
@@ -185,7 +184,6 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     banned: 0,
     suspended: 0,
     approved: 0,
-    verified: 0,
   });
 
   const [dailyRegs, setDailyRegs] = useState<DailyRegistration[]>([]);
@@ -249,11 +247,10 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         online,
         offline: users.length - online,
         registeredToday: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
-        pending: users.filter((u) => u.status === 'pending').length,
-        banned: users.filter((u) => u.status === 'banned').length,
-        suspended: users.filter((u) => u.status === 'suspended').length,
-        approved: users.filter((u) => u.status === 'approved').length,
-        verified: users.filter((u) => u.status === 'verified').length,
+        pending: users.filter((u) => normalizeApprovalStatus(u.status) === 'pending').length,
+        banned: users.filter((u) => normalizeApprovalStatus(u.status) === 'banned').length,
+        suspended: users.filter((u) => normalizeApprovalStatus(u.status) === 'suspended').length,
+        approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
       });
 
       const days: DailyRegistration[] = Array.from({ length: 7 }, (_, i) => {
@@ -424,7 +421,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         </div>
 
         {/* Secondary stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Pending Approval"
             value={stats.pending}
@@ -435,20 +432,11 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             loading={loading}
           />
           <StatCard
-            label="Verified"
-            value={stats.verified}
+            label="Approved"
+            value={stats.approved}
             icon={<UserCheck className="w-5 h-5" />}
             iconBg="bg-emerald-50"
             iconColor="text-emerald-600"
-            sub="KYC complete"
-            loading={loading}
-          />
-          <StatCard
-            label="Approved"
-            value={stats.approved}
-            icon={<TrendingUp className="w-5 h-5" />}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-500"
             sub="Access granted"
             loading={loading}
           />
@@ -552,8 +540,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
           <h3 className="text-sm font-semibold text-slate-900 mb-4">User Status Breakdown</h3>
           <div className="space-y-3">
             {[
-              { label: 'Verified', count: stats.verified, color: 'bg-emerald-500', pct: stats.total > 0 ? (stats.verified / stats.total) * 100 : 0 },
-              { label: 'Approved', count: stats.approved, color: 'bg-blue-500', pct: stats.total > 0 ? (stats.approved / stats.total) * 100 : 0 },
+              { label: 'Approved', count: stats.approved, color: 'bg-emerald-500', pct: stats.total > 0 ? (stats.approved / stats.total) * 100 : 0 },
               { label: 'Pending', count: stats.pending, color: 'bg-amber-400', pct: stats.total > 0 ? (stats.pending / stats.total) * 100 : 0 },
               { label: 'Banned', count: stats.banned, color: 'bg-red-400', pct: stats.total > 0 ? (stats.banned / stats.total) * 100 : 0 },
             ].map(({ label, count, color, pct }) => (
