@@ -21,10 +21,12 @@ import {
   ExternalLink,
   X,
   AlertTriangle,
+  Edit3,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { getAdminSession } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
@@ -68,46 +70,53 @@ interface UserRow {
 type PresenceFilter = 'all' | 'online' | 'offline';
 type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'last_login_asc';
 type ConfirmationAction = 'reject' | 'suspend' | 'unsuspend';
+type EditableUser = Pick<UserRow, 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'gender'>;
 
 interface PendingConfirmation {
   action: ConfirmationAction;
   user: UserRow;
   reason: string;
 }
-type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
 
 const safeDisplayName = (u: UserRow) => {
   const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(
     (s) => (s ?? '').trim(),
   );
+
   return (full ?? '').trim() || u.username || u.email || 'Unknown user';
 };
 
 const getErrorMessage = (err: unknown) => {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
+
   if (err && typeof err === 'object') {
     const maybeError = err as { message?: unknown; error?: unknown; detail?: unknown; details?: unknown };
     const parts = [maybeError.message, maybeError.error, maybeError.detail, maybeError.details]
       .filter(Boolean)
       .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)));
+
     if (parts.length > 0) return parts.join(': ');
     return JSON.stringify(err);
   }
+
   return String(err);
 };
 
 const fmt = (value?: string | null) => {
   if (!value) return null;
   const d = new Date(value);
+
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
 const formatDateTime = (value?: string | null) => {
   const d = fmt(value);
+
   if (!d) return null;
+
   return d.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -133,10 +142,9 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function genderAccessGroupLabel(gender?: UserRow['gender']) {
   if (gender === 'Male') return 'Men private category / men Discourse group';
   if (gender === 'Female') return 'Women private category / women Discourse group';
+
   return null;
 }
-
-// ─── Status badge ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -146,16 +154,16 @@ function StatusBadge({ status }: { status: string }) {
     banned: 'bg-red-50 text-red-700 border-red-200',
     suspended: 'bg-orange-50 text-orange-700 border-orange-200',
   };
+
   const displayStatus = normalizeApprovalStatus(status);
   const cls = map[displayStatus] ?? 'bg-slate-100 text-slate-600 border-slate-200';
+
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
       {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace('_', ' ')}
     </span>
   );
 }
-
-// ─── Presence badge ──────────────────────────────────────────────────────────
 
 function PresenceBadge({ online }: { online: boolean }) {
   return (
@@ -176,8 +184,6 @@ function PresenceBadge({ online }: { online: boolean }) {
     </span>
   );
 }
-
-// ─── Summary card ────────────────────────────────────────────────────────────
 
 function SummaryCard({
   label,
@@ -205,34 +211,33 @@ function SummaryCard({
   );
 }
 
-// ─── Detail panel ────────────────────────────────────────────────────────────
-
 function DetailPanel({ user }: { user: UserRow }) {
   return (
     <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Access Group Review */}
         <div className="bg-white rounded-xl border border-sky-200 p-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Users className="w-4 h-4 text-sky-500" />
             <h4 className="text-sm font-semibold text-slate-900">Gender Access Review</h4>
           </div>
+
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Self-selected gender" value={user.gender} />
             <Field label="Access controlled" value={genderAccessGroupLabel(user.gender)} />
           </dl>
+
           <p className="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900">
             This selection controls the user's default private category, community feed visibility, and Discourse group sync.
             If the applicant reports a wrong selection, update access through the approved support/admin process without asking them to start over.
           </p>
         </div>
 
-        {/* Registration Tracking */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-4 h-4 text-slate-400" />
             <h4 className="text-sm font-semibold text-slate-900">Registration Tracking</h4>
           </div>
+
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Timestamp" value={formatDateTime(user.created_at)} />
             <Field label="IP Address" value={na(user.registration_ip_address)} />
@@ -243,12 +248,12 @@ function DetailPanel({ user }: { user: UserRow }) {
           </dl>
         </div>
 
-        {/* Login & Activity Tracking */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="w-4 h-4 text-slate-400" />
             <h4 className="text-sm font-semibold text-slate-900">Login & Activity</h4>
           </div>
+
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Last Login" value={formatDateTime(user.last_login_at)} />
             <Field label="Last Seen" value={formatDateTime(user.last_seen_at)} />
@@ -263,8 +268,8 @@ function DetailPanel({ user }: { user: UserRow }) {
                 user.captureType === 'selfie'
                   ? 'Selfie'
                   : user.captureType === 'id'
-                  ? 'ID Document'
-                  : null
+                    ? 'ID Document'
+                    : null
               }
             />
           </dl>
@@ -273,8 +278,6 @@ function DetailPanel({ user }: { user: UserRow }) {
     </div>
   );
 }
-
-// ─── Main component ──────────────────────────────────────────────────────────
 
 export function AdminUserReview({
   activePage = 'user-reviews',
@@ -290,7 +293,9 @@ export function AdminUserReview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [actionMessages, setActionMessages] = useState<Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>>({});
+  const [actionMessages, setActionMessages] = useState<
+    Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>
+  >({});
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
@@ -301,6 +306,16 @@ export function AdminUserReview({
   const [imageModal, setImageModal] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState<EditableUser>({
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    phone: '',
+    gender: 'Male',
+  });
 
   const [discourseBaseUrl] = useState(() => import.meta.env.VITE_DISCOURSE_BASE_URL || '');
 
@@ -309,22 +324,27 @@ export function AdminUserReview({
   const isOnline = (u: UserRow) => {
     if (!u.last_seen_at) return false;
     const t = new Date(u.last_seen_at).getTime();
+
     return Number.isFinite(t) && Date.now() - t <= ONLINE_THRESHOLD_MS;
   };
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s?.access_token) throw new Error('You must be logged in as an admin.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+
       if (!data?.ok) {
         throw new Error(
           [data?.error, data?.detail, data?.details]
@@ -338,6 +358,7 @@ export function AdminUserReview({
         ...u,
         fullName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
       }));
+
       setUsers(mapped);
       setLastUpdated(new Date());
     } catch (err) {
@@ -354,15 +375,20 @@ export function AdminUserReview({
       setLoading(false);
       return;
     }
-    fetchUsers();
-  }, [isAdmin]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+    fetchUsers();
+
+    getAdminSession()
+      .then((admin) => setIsOwner(admin?.role === 'owner'))
+      .catch(() => setIsOwner(false));
+  }, [isAdmin]);
 
   const handleApprove = async (user: UserRow) => {
     if (!confirm(`Approve ${user.username ?? safeDisplayName(user)}?`)) return;
+
     setProcessingId(user.id);
     setError(null);
+
     try {
       const data = await approveRegistration(user.id);
       const status = data?.status ?? 'approved';
@@ -404,9 +430,11 @@ export function AdminUserReview({
   const handleRetryDiscourseSync = async (user: UserRow) => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const data = await retryDiscourseSync(user.id);
       const status = data?.status;
+
       if (status === 'discourse_sync_retried') {
         setActionMessages((prev) => ({
           ...prev,
@@ -426,6 +454,92 @@ export function AdminUserReview({
     }
   };
 
+  const openEditUser = (user: UserRow) => {
+    setEditingUser(user);
+    setEditForm({
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      username: user.username ?? '',
+      email: user.email ?? '',
+      phone: user.phone ?? '',
+      gender: user.gender ?? 'Male',
+    });
+  };
+
+  const closeEditUser = () => {
+    if (processingId) return;
+    setEditingUser(null);
+  };
+
+  const handleEditFormChange = (field: keyof EditableUser, value: string) => {
+    setEditForm((current) => ({
+      ...current,
+      [field]: field === 'gender' ? (value as UserRow['gender']) : value,
+    }));
+  };
+
+  const handleSaveUserProfile = async () => {
+    if (!editingUser) return;
+
+    setProcessingId(editingUser.id);
+    setError(null);
+
+    try {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+
+      if (!s) throw new Error('Not authenticated.');
+
+      const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-profile', {
+        body: { registration_id: editingUser.id, ...editForm },
+        headers: { Authorization: `Bearer ${s.access_token}` },
+      });
+
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+      if (!data?.ok) throw new Error(data?.error || 'Failed to update user profile');
+
+      const updatedUser = data.user as Partial<UserRow>;
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id
+            ? {
+                ...u,
+                ...updatedUser,
+                fullName:
+                  [updatedUser.firstName ?? editForm.firstName, updatedUser.lastName ?? editForm.lastName]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim() || updatedUser.username || editForm.username || null,
+              }
+            : u,
+        ),
+      );
+
+      const discourseWarning =
+        data.discourse?.success === false
+          ? `Profile saved, but Discourse sync needs attention: ${
+              data.discourse?.error || data.discourse?.message || 'Sync failed.'
+            }`
+          : '';
+
+      setActionMessages((prev) => ({
+        ...prev,
+        [editingUser.id]: {
+          type: discourseWarning ? 'warning' : 'success',
+          message: discourseWarning || 'Profile updated and synced across the app.',
+        },
+      }));
+
+      setEditingUser(null);
+    } catch (err) {
+      setError(`Failed to update user profile: ${getErrorMessage(err)}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const requestConfirmation = (action: ConfirmationAction, user: UserRow) => {
     setPendingConfirmation({ action, user, reason: '' });
   };
@@ -438,11 +552,14 @@ export function AdminUserReview({
   const executeReject = async (user: UserRow, reason: string) => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s) throw new Error('Not authenticated.');
+
       const { data, error: fnErr } = await supabase.functions.invoke('send-rejection-email', {
         body: {
           registration_id: user.id,
@@ -453,14 +570,20 @@ export function AdminUserReview({
         },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
+
       if (data?.status === 'rejected_with_email_error') {
         setActionMessages((prev) => ({
           ...prev,
-          [user.id]: { type: 'warning', message: `Rejected, but rejection email needs attention: ${data.warning || 'Email failed.'}` },
+          [user.id]: {
+            type: 'warning',
+            message: `Rejected, but rejection email needs attention: ${data.warning || 'Email failed.'}`,
+          },
         }));
       }
+
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'rejected' } : u)));
     } catch (err) {
       setError(`Failed to reject: ${getErrorMessage(err)}`);
@@ -472,16 +595,19 @@ export function AdminUserReview({
   const executeSuspension = async (user: UserRow, action: 'suspend' | 'unsuspend') => {
     setProcessingId(user.id);
     setError(null);
+
     try {
       const {
         data: { session: s },
       } = await supabase.auth.getSession();
+
       if (!s) throw new Error('Not authenticated.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('admin-update-user-status', {
         body: { registration_id: user.id, action },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
+
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
       if (!data?.ok) throw new Error(data?.error || 'Failed to update user status');
 
@@ -507,8 +633,6 @@ export function AdminUserReview({
     setPendingConfirmation(null);
   };
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -528,6 +652,7 @@ export function AdminUserReview({
       const hay = [u.fullName, u.firstName, u.lastName, u.email, u.username, u.phone].map(
         (v) => (v ?? '').toLowerCase(),
       );
+
       return (
         (!needle || hay.some((h) => h.includes(needle))) &&
         (filterStatus === 'all' || normalizeApprovalStatus(u.status) === filterStatus) &&
@@ -538,53 +663,56 @@ export function AdminUserReview({
     })
     .sort((a, b) => {
       const ts = (v?: string | null) => (v ? new Date(v).getTime() || 0 : 0);
+
       switch (sortBy) {
-        case 'registration_asc': return ts(a.created_at) - ts(b.created_at);
-        case 'last_login_desc': return ts(b.last_login_at) - ts(a.last_login_at);
-        case 'last_login_asc': return ts(a.last_login_at) - ts(b.last_login_at);
-        default: return ts(b.created_at) - ts(a.created_at);
+        case 'registration_asc':
+          return ts(a.created_at) - ts(b.created_at);
+        case 'last_login_desc':
+          return ts(b.last_login_at) - ts(a.last_login_at);
+        case 'last_login_asc':
+          return ts(a.last_login_at) - ts(b.last_login_at);
+        default:
+          return ts(b.created_at) - ts(a.created_at);
       }
     });
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-
-        {/* Page header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-slate-900">User Management</h2>
             <p className="text-sm text-slate-500 mt-0.5">View and manage all user registrations</p>
           </div>
+
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <p className="text-xs font-medium text-slate-500">
               Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
             </p>
+
             <div className="flex items-center gap-2">
-            {discourseBaseUrl && (
+              {discourseBaseUrl && (
+                <button
+                  onClick={() => window.open(discourseBaseUrl, '_blank')}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">Community Forum</span>
+                </button>
+              )}
+
               <button
-                onClick={() => window.open(discourseBaseUrl, '_blank')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                onClick={fetchUsers}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span className="hidden sm:inline">Community Forum</span>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
-            )}
-            <button
-              onClick={fetchUsers}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
             </div>
           </div>
         </div>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
           <SummaryCard label="Pending Approval" value={summaryStats.pending} icon={<Clock className="w-4 h-4" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
@@ -593,7 +721,6 @@ export function AdminUserReview({
           <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -608,10 +735,8 @@ export function AdminUserReview({
           </p>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
@@ -622,7 +747,6 @@ export function AdminUserReview({
               />
             </div>
 
-            {/* Dropdowns */}
             <div className="flex flex-wrap gap-2">
               <select
                 value={filterStatus}
@@ -632,7 +756,7 @@ export function AdminUserReview({
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
+                <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
                 <option value="suspended">Suspended</option>
               </select>
@@ -665,7 +789,6 @@ export function AdminUserReview({
             <p>Online means active within the last 15 minutes.</p>
           </div>
 
-          {/* Result count */}
           <p className="text-xs text-slate-400 mt-3">
             Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{' '}
             <span className="font-medium text-slate-600">{users.length}</span> users
@@ -673,7 +796,6 @@ export function AdminUserReview({
           </p>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -685,6 +807,7 @@ export function AdminUserReview({
               <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center">
                 <Users className="w-7 h-7 text-slate-400" />
               </div>
+
               <div className="text-center">
                 <p className="text-sm font-medium text-slate-700">
                   {users.length === 0 ? 'No users found' : 'No users match your filters'}
@@ -695,6 +818,7 @@ export function AdminUserReview({
                     : 'Try adjusting your search or filter criteria.'}
                 </p>
               </div>
+
               {users.length === 0 && (
                 <button
                   onClick={fetchUsers}
@@ -713,6 +837,7 @@ export function AdminUserReview({
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Gender</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">Last Login</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">IP / Browser</th>
@@ -730,12 +855,12 @@ export function AdminUserReview({
                     return (
                       <React.Fragment key={user.id}>
                         <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
-                          {/* User */}
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
                                 <User className="w-4 h-4 text-blue-500" />
                               </div>
+
                               <div>
                                 <p className="text-sm font-medium text-slate-900">{safeDisplayName(user)}</p>
                                 <p className="text-xs text-slate-400">@{user.username ?? '—'}</p>
@@ -748,13 +873,11 @@ export function AdminUserReview({
                             </div>
                           </td>
 
-                          {/* Contact */}
                           <td className="px-5 py-4 hidden md:table-cell">
                             <p className="text-sm text-slate-700">{user.email ?? <span className="text-slate-400">—</span>}</p>
                             <p className="text-xs text-slate-400 mt-0.5">{user.phone ?? '—'}</p>
                           </td>
 
-                          {/* Status */}
                           <td className="px-5 py-4">
                             <div className="flex flex-col gap-1.5">
                               <StatusBadge status={user.status} />
@@ -762,7 +885,12 @@ export function AdminUserReview({
                             </div>
                           </td>
 
-                          {/* Registered */}
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${user.gender === 'Male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>
+                              {user.gender ?? '—'}
+                            </span>
+                          </td>
+
                           <td className="px-5 py-4 hidden lg:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
                             {user.registration_ip_location && (
@@ -773,7 +901,6 @@ export function AdminUserReview({
                             )}
                           </td>
 
-                          {/* Last Login */}
                           <td className="px-5 py-4 hidden xl:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.last_login_at) ?? '—'}</p>
                             {user.last_login_ip_location && (
@@ -784,11 +911,11 @@ export function AdminUserReview({
                             )}
                           </td>
 
-                          {/* IP / Browser */}
                           <td className="px-5 py-4 hidden xl:table-cell">
                             {user.registration_ip_address && (
                               <p className="text-xs text-slate-600 font-mono">{user.registration_ip_address}</p>
                             )}
+
                             {(user.registration_browser || user.registration_operating_system) && (
                               <p className="text-xs text-slate-400 mt-0.5">
                                 {[user.registration_browser, user.registration_operating_system]
@@ -796,15 +923,14 @@ export function AdminUserReview({
                                   .join(' · ')}
                               </p>
                             )}
+
                             {!user.registration_ip_address && !user.registration_browser && (
                               <span className="text-xs text-slate-300">—</span>
                             )}
                           </td>
 
-                          {/* Actions */}
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-1.5">
-                              {/* Expand toggle */}
                               <button
                                 onClick={() => setExpandedId(isExpanded ? null : user.id)}
                                 title={isExpanded ? 'Hide details' : 'View details'}
@@ -814,7 +940,6 @@ export function AdminUserReview({
                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </button>
 
-                              {/* Photo */}
                               {user.imageData && (
                                 <button
                                   onClick={() => setImageModal(user.imageData!)}
@@ -826,7 +951,19 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Approve / Reject (pending) */}
+                              {isOwner && (
+                                <button
+                                  onClick={() => openEditUser(user)}
+                                  disabled={isProcessing}
+                                  title="Edit user profile"
+                                  aria-label={`Edit ${user.username || user.email}`}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+
                               {normalizedStatus === 'pending' && (
                                 <>
                                   <button
@@ -839,6 +976,7 @@ export function AdminUserReview({
                                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                                     <span>Approve</span>
                                   </button>
+
                                   <button
                                     onClick={() => requestConfirmation('reject', user)}
                                     disabled={isProcessing}
@@ -865,7 +1003,6 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Suspend approved users */}
                               {normalizedStatus === 'approved' && (
                                 <button
                                   onClick={() => requestConfirmation('suspend', user)}
@@ -879,7 +1016,6 @@ export function AdminUserReview({
                                 </button>
                               )}
 
-                              {/* Remove suspension */}
                               {normalizedStatus === 'suspended' && (
                                 <button
                                   onClick={() => requestConfirmation('unsuspend', user)}
@@ -896,10 +1032,9 @@ export function AdminUserReview({
                           </td>
                         </tr>
 
-                        {/* Expanded detail panel */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="transition-all duration-200 animate-in slide-in-from-top-1">
                                 <DetailPanel user={user} />
                               </div>
@@ -916,6 +1051,117 @@ export function AdminUserReview({
         </div>
       </div>
 
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-edit-user-title">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="admin-edit-user-title" className="text-lg font-bold text-slate-900">Edit user profile</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Owner-only changes update registrations, profiles, posts, comments, Auth email, and Discourse group sync.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeEditUser}
+                disabled={Boolean(processingId)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                aria-label="Close edit user dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-semibold text-slate-700">
+                First name
+                <input
+                  value={editForm.firstName ?? ''}
+                  onChange={(event) => handleEditFormChange('firstName', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-slate-700">
+                Last name
+                <input
+                  value={editForm.lastName ?? ''}
+                  onChange={(event) => handleEditFormChange('lastName', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-slate-700">
+                Username
+                <input
+                  value={editForm.username ?? ''}
+                  onChange={(event) => handleEditFormChange('username', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-slate-700">
+                Email
+                <input
+                  type="email"
+                  value={editForm.email ?? ''}
+                  onChange={(event) => handleEditFormChange('email', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-slate-700">
+                Phone
+                <input
+                  value={editForm.phone ?? ''}
+                  onChange={(event) => handleEditFormChange('phone', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="block text-sm font-semibold text-slate-700">
+                Gender category
+                <select
+                  value={editForm.gender ?? 'Male'}
+                  onChange={(event) => handleEditFormChange('gender', event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Male">Male / men category</option>
+                  <option value="Female">Female / women category</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+              Changing gender moves the user into the selected feed/category, removes the old Discourse gender group, and updates their existing posts/comments to the new category label.
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeEditUser}
+                disabled={Boolean(processingId)}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveUserProfile}
+                disabled={Boolean(processingId) || !editForm.email?.trim() || !editForm.username?.trim()}
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {processingId === editingUser.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+                Save and sync
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-confirmation-title">
@@ -924,6 +1170,7 @@ export function AdminUserReview({
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               </div>
+
               <div>
                 <h2 id="admin-confirmation-title" className="text-lg font-bold text-slate-900">
                   {pendingConfirmation.action === 'reject'
@@ -932,11 +1179,13 @@ export function AdminUserReview({
                       ? 'Suspend this user?'
                       : 'Remove suspension?'}
                 </h2>
+
                 <p className="mt-2 text-sm text-slate-600">
                   {safeDisplayName(pendingConfirmation.user)}
                   {pendingConfirmation.user.username && ` (@${pendingConfirmation.user.username})`}
                   {pendingConfirmation.user.email && ` • ${pendingConfirmation.user.email}`}
                 </p>
+
                 <p className="mt-2 text-sm text-slate-500">
                   {pendingConfirmation.action === 'reject'
                     ? 'This marks the registration as rejected and sends a rejection email.'
@@ -952,10 +1201,15 @@ export function AdminUserReview({
                 <label htmlFor="rejection-reason" className="block text-sm font-semibold text-slate-700">
                   Rejection reason (optional)
                 </label>
+
                 <textarea
                   id="rejection-reason"
                   value={pendingConfirmation.reason}
-                  onChange={(event) => setPendingConfirmation((current) => current ? { ...current, reason: event.target.value } : current)}
+                  onChange={(event) =>
+                    setPendingConfirmation((current) =>
+                      current ? { ...current, reason: event.target.value } : current,
+                    )
+                  }
                   rows={3}
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Add a short reason for the rejection email"
@@ -972,6 +1226,7 @@ export function AdminUserReview({
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 onClick={confirmPendingAction}
@@ -996,7 +1251,6 @@ export function AdminUserReview({
         </div>
       )}
 
-      {/* Image modal */}
       {imageModal && (
         <div
           className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50"
@@ -1009,6 +1263,7 @@ export function AdminUserReview({
             >
               <X className="w-4 h-4 text-slate-700" />
             </button>
+
             <img
               src={imageModal}
               alt="Registration photo"
