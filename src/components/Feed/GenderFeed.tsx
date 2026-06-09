@@ -13,6 +13,7 @@ import {
   Heart
 } from 'lucide-react';
 import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { anonymousComposerHelperText } from '@/content/anonymousMode';
 
 // Type definitions
 interface Post {
@@ -567,6 +568,9 @@ export function GenderFeed() {
                       {currentUser?.gender}
                     </span>
                   </p>
+                  <div className="rounded-xl border border-[#A3C6E0]/50 bg-[#F4FBFF] p-4 text-sm leading-6 text-gray-700">
+                    {anonymousComposerHelperText}
+                  </div>
                 </div>
                 
                 <textarea

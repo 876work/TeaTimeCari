@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { anonymousComposerHelperText } from '@/content/anonymousMode';
 import { StripeProvider } from '../Payment/StripeProvider';
 import { PaymentForm } from '../Payment/PaymentForm';
 
@@ -832,6 +833,9 @@ export function OppositeGenderFeed() {
                         {currentUser?.gender}
                       </span>
                     </p>
+                    <div className="rounded-xl border border-[#E0A3A3]/50 bg-[#FFF7F8] p-4 text-sm leading-6 text-gray-700">
+                      {anonymousComposerHelperText}
+                    </div>
                   </div>
                   
                   <textarea
