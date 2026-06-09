@@ -22,7 +22,7 @@ export default function Sso() {
 
       if (!sso || !sig) {
         setHasError(true);
-        setMsg("Missing community sign-in parameters. Please start from the community link again.");
+        setMsg("Your community sign-in session expired or is missing required security details. Please start again from the Community link.");
         return;
       }
 
@@ -46,7 +46,7 @@ export default function Sso() {
       if (error) {
         console.error("sso-complete error:", error);
         setHasError(true);
-        setMsg("Could not complete community sign-in. Please try again or contact support.");
+        setMsg("Your community sign-in session may have expired. Please start again from the Community link, or contact support if this keeps happening.");
         return;
       }
 
@@ -55,7 +55,7 @@ export default function Sso() {
         window.location.href = redirectUrl;
       } else {
         setHasError(true);
-        setMsg("Unexpected response from community sign-in. Please try again.");
+        setMsg("We could not finish community sign-in. Please start again from the Community link, or contact support if this keeps happening.");
       }
     })();
   }, [navigate, q]);
@@ -81,10 +81,10 @@ export default function Sso() {
           </div>
         )}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link to="/login" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Return to login
+          <Link to="/community" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            Start community sign-in again
           </Link>
-          <Link to="/contact-us" className="rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]">
+          <Link to="/contact-us?topic=account-status" className="rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]">
             Contact support
           </Link>
         </div>

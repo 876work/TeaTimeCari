@@ -14,12 +14,37 @@ import { AuthLayout } from "../components/AuthLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
-import { getApprovalStatus, isBlockedStatus, safeAppPath } from "@/lib/auth/approvalStatus";
+import { ApprovalStatus, getApprovalStatus, isBlockedStatus, safeAppPath } from "@/lib/auth/approvalStatus";
 
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
 }
+
+const getApprovalMessage = (status: ApprovalStatus) => {
+  switch (status) {
+    case "pending":
+      return "Your application is still under review. We’ll email you when the review is complete, or you can check your status from the pending page.";
+    case "rejected":
+      return "This account was not approved for community access. Please contact support if you believe this decision was made in error.";
+    case "suspended":
+      return "This account is currently suspended, so access is paused. You have been signed out for safety. Contact support if you believe this is a mistake.";
+    case "banned":
+      return "This account is not eligible to access Tea Time Cari. You have been signed out for safety. Contact support if you believe this is a mistake.";
+    case "missing":
+      return "We could not find a completed application for this account. Sign in with the email you used to register, contact support, or start a new signup if you have not applied yet.";
+    case "not_approved":
+      return "This account is not approved for community access yet. Please check your application status or contact support if this looks incorrect.";
+    default:
+      return "Your account is not currently eligible to log in or use Tea Time Cari. Please contact support if you believe this is a mistake.";
+  }
+};
+
+const getKycPendingUrl = (status: ApprovalStatus) => `/kyc-pending?status=${encodeURIComponent(status)}`;
+
+const getSsoSessionExpiredMessage = () =>
+  "Your community sign-in session expired or is missing required security details. Please start again from the Community link, then log in if prompted.";
+
 
 export default function Login() {
   const q = useQuery();
@@ -46,20 +71,18 @@ export default function Login() {
     return safeAppPath(next || q.get("redirectTo") || q.get("returnTo"));
   }, [q]);
 
-  const blockedMessage = "Your account is not currently eligible to log in or use Tea Time Cari. Please contact support if you believe this is a mistake.";
-
   const redirectAfterApprovalCheck = async (userId: string) => {
     const approvalStatus = await getApprovalStatus(userId);
 
     if (isBlockedStatus(approvalStatus)) {
       await supabase.auth.signOut();
-      setError(blockedMessage);
+      setError(getApprovalMessage(approvalStatus));
       setLoading(false);
       return;
     }
 
     if (approvalStatus !== "approved") {
-      window.location.href = "/kyc-pending";
+      window.location.href = getKycPendingUrl(approvalStatus);
       return;
     }
 
@@ -100,31 +123,32 @@ export default function Login() {
 
         if (isBlockedStatus(approvalStatus)) {
           await supabase.auth.signOut();
-          setError(blockedMessage);
+          setError(getApprovalMessage(approvalStatus));
           return;
         }
 
-        navigate("/kyc-pending", { replace: true });
-      } catch (err: unknown) {
+        navigate(getKycPendingUrl(approvalStatus), { replace: true });
+      } catch {
         if (!isMounted) {
           return;
         }
 
-        const message = err instanceof Error ? err.message : "";
         setError(
-          `Unable to verify approval status. Please try again. ${
-            message ? `(${message})` : ""
-          }`.trim()
+          "Unable to verify your account status right now. Please try again, or contact support if the issue continues."
         );
       }
     };
+
+    if (q.get("next") === "/sso" && (!q.get("sso") || !q.get("sig"))) {
+      setError(getSsoSessionExpiredMessage());
+    }
 
     checkExistingSession();
 
     return () => {
       isMounted = false;
     };
-  }, [navigate, getPostLoginDestination]);
+  }, [navigate, getPostLoginDestination, q]);
 
   const signInWithFallback = async () => {
     const normalizedIdentifier = loginIdentifier.trim().toLowerCase();
@@ -170,7 +194,12 @@ export default function Login() {
     const { data: signInData, error } = await signInWithFallback();
 
     if (error) {
-      setError(error.message);
+      const message =
+        error.message.toLowerCase().includes("sso") ||
+        error.message.toLowerCase().includes("session")
+          ? getSsoSessionExpiredMessage()
+          : error.message;
+      setError(message);
       setLoading(false);
       return;
     }
@@ -185,7 +214,7 @@ export default function Login() {
       const approvalStatus = await getApprovalStatus(userId);
       if (isBlockedStatus(approvalStatus)) {
         await supabase.auth.signOut();
-        setError(blockedMessage);
+        setError(getApprovalMessage(approvalStatus));
         setLoading(false);
         return;
       }
@@ -195,9 +224,9 @@ export default function Login() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";
       setError(
-        `Unable to verify approval status. Please try again. ${
-          message ? `(${message})` : ""
-        }`.trim()
+        message === "sso_session_expired"
+          ? getSsoSessionExpiredMessage()
+          : "Unable to verify your account status right now. Please try again, or contact support if the issue continues."
       );
 
       setLoading(false);
@@ -232,7 +261,7 @@ export default function Login() {
                 <span className="text-red-700 text-sm">{error}</span>
                 <p className="mt-2 text-sm text-red-700">
                   Need help?{' '}
-                  <Link to="/contact-us" className="font-semibold underline">Contact support</Link>.
+                  <Link to="/contact-us?topic=account-status" className="font-semibold underline">Contact support</Link>.
                 </p>
               </div>
             </div>

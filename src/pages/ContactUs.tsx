@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Mail,
   Phone,
@@ -21,6 +21,25 @@ interface ContactFormData {
 }
 
 const CONTACT_FORM_NAME = "contact";
+
+const getAccountStatusSupportCopy = (status: string | null) => {
+  switch (status) {
+    case "pending":
+      return "I need help with my pending application status. I understand I do not need to submit another application unless support asks me to.";
+    case "rejected":
+      return "I need help with an account that was not approved. Please let me know what next steps are available.";
+    case "suspended":
+      return "I need help with a suspended account. I believe this may need review by support.";
+    case "banned":
+      return "I need help with an unavailable account. Please review whether support can assist with next steps.";
+    case "missing":
+      return "I need help because my completed application could not be found. I may have used a different email or may need to finish signup.";
+    case "signed_out":
+      return "I need help checking my account status because I cannot access the original login session or application email.";
+    default:
+      return "I need help with my Tea Time Cari account status. Please let me know the next steps.";
+  }
+};
 
 const getFieldError = (
   field: keyof ContactFormData,
@@ -68,12 +87,17 @@ const encodeContactFormData = (data: ContactFormData) => {
 
 export default function ContactUs() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const query = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const isAccountStatusHelp = query.get("topic") === "account-status";
 
   const [formData, setFormData] = useState<ContactFormData>({
     name: "",
     email: "",
     phone: "",
-    message: "",
+    message: isAccountStatusHelp
+      ? getAccountStatusSupportCopy(query.get("status"))
+      : "",
   });
 
   const [errors, setErrors] = useState<
@@ -285,6 +309,18 @@ export default function ContactUs() {
             Need help? Send us a message and we'll get back to you soon.
           </p>
         </div>
+
+        {isAccountStatusHelp && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-800">
+                Tell us the email you used to apply and what you expected to happen.
+                For your privacy, please do not include passwords, ID numbers, or payment details.
+              </p>
+            </div>
+          </div>
+        )}
 
         {submitError && (
           <div
