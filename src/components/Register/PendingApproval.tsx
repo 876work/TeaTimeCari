@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, Loader2, AlertCircle, Download, User, Mail, Camera, Calendar, Shield } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle, Download, Calendar, Shield } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import html2canvas from 'html2canvas';
 import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
@@ -30,13 +30,13 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [alreadyExists, setAlreadyExists] = useState(false);
 
-  // Download registration summary as image
-  const downloadSummaryAsImage = async () => {
+  // Download a privacy-safe confirmation receipt as image
+  const downloadReceiptAsImage = async () => {
     setIsDownloading(true);
     try {
-      const element = document.getElementById('registration-summary');
+      const element = document.getElementById('confirmation-receipt');
       if (!element) {
-        throw new Error('Summary element not found');
+        throw new Error('Receipt element not found');
       }
 
       const canvas = await html2canvas(element, {
@@ -54,7 +54,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `tea-time-cari-registration-${new Date().toISOString().split('T')[0]}.png`;
+          link.download = `tea-time-cari-confirmation-receipt-${new Date().toISOString().split('T')[0]}.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -63,8 +63,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       }, 'image/png', 0.95);
 
     } catch (err: unknown) {
-      console.error('Error downloading summary:', err);
-      alert('Failed to download summary. Please try again.');
+      console.error('Error downloading receipt:', err);
+      alert('Failed to download receipt. Please try again.');
     } finally {
       setIsDownloading(false);
     }
@@ -191,83 +191,19 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       <div className="space-y-6">
         <RegistrationProgress currentStep={4} className="mb-6" />
 
-        {/* Registration Summary */}
-        <div id="registration-summary" className="rounded-2xl border p-8 shadow-sm bg-white">
+        {/* Privacy-safe Confirmation Receipt */}
+        <div id="confirmation-receipt" className="rounded-2xl border p-8 shadow-sm bg-white">
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
               <Shield className="w-8 h-8 text-[#4B9EC8]" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Summary</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirmation Receipt</h2>
             <p className="text-sm text-gray-600">
-              Submitted on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              Your registration application was received.
             </p>
           </div>
 
-          {/* Personal Information */}
           <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="w-5 h-5 mr-2 text-blue-600" />
-                Personal Information
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.fullName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                  <p className="text-gray-900 font-medium">@{registrationData.step1?.username}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step2?.gender}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2 text-green-600" />
-                Contact Information
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.email}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.phone}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Verification Details */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Camera className="w-5 h-5 mr-2 text-purple-600" />
-                Verification Details
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Verification Method</label>
-                  <p className="text-gray-900 font-medium capitalize">
-                    {registrationData.step3?.captureType === 'selfie' ? 'Live Selfie Capture' : 'ID Document Photo'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo Status</label>
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                    <p className="text-gray-900 font-medium">Successfully Captured</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Information */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-amber-600" />
@@ -290,6 +226,17 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                 </div>
               </div>
             </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                Privacy Note
+              </h3>
+              <p className="text-sm text-gray-700">
+                This receipt intentionally excludes personal details such as your name, username,
+                contact information, gender, and verification method.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -311,9 +258,9 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           </div>
 
           <div className="space-y-3">
-            {/* Download Summary Button */}
+            {/* Download Receipt Button */}
             <button
-              onClick={downloadSummaryAsImage}
+              onClick={downloadReceiptAsImage}
               disabled={isDownloading || isSubmitting}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 !isDownloading && !isSubmitting
@@ -324,12 +271,12 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               {isDownloading ? (
                 <div className="flex items-center justify-center">
                   <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                  Generating Download...
+                  Generating Receipt...
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
                   <Download className="w-5 h-5 mr-2" />
-                  Download Summary as Image
+                  Download Confirmation Receipt
                 </div>
               )}
             </button>
