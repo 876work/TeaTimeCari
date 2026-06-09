@@ -126,7 +126,9 @@ Deno.serve(async (req) => {
         external_id: profile.id,
         email: profile.email,
         username: profile.username,
-        name: profile.fullName || profile.firstName + ' ' + profile.lastName || profile.username,
+        // Do not sync legal/full names into Discourse display fields; the public
+        // community identity is the member-selected username.
+        name: profile.username,
         add_groups: groups
       };
 
@@ -237,7 +239,9 @@ Deno.serve(async (req) => {
         external_id: profile.id,
         email: profile.email,
         username: profile.username,
-        name: profile.fullName || profile.firstName + ' ' + profile.lastName || profile.username,
+        // Do not sync legal/full names into Discourse display fields; the public
+        // community identity is the member-selected username.
+        name: profile.username,
         add_groups: groups
       };
 
