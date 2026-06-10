@@ -12,6 +12,7 @@ Use these paths from the site root to access the main Tea Time Cari pages.
 | `/logout` | Logout page |
 | `/forgot-password` | Forgot password page |
 | `/reset-password` | Reset password page |
+| `/reset-password/verify` | Branded Supabase password recovery verification handoff |
 | `/kyc-pending` | KYC pending status page |
 | `/contact-us` | Contact page |
 | `/faq` | FAQ page |

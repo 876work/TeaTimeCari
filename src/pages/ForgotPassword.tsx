@@ -12,7 +12,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState<string | null>(null);
 
   // Where the magic link will send users after they click the email button
-  const redirectBase = import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin;
+  const redirectBase = (import.meta.env.VITE_PUBLIC_SITE_URL || window.location.origin).replace(/\/+$/, "");
   const redirectTo = `${redirectBase}/reset-password`;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,9 +35,13 @@ export default function ForgotPassword() {
 
     try {
       // Always call the reset function, but don't reveal if the email exists
-      await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
         redirectTo,
       });
+
+      if (resetError) {
+        console.error('Password reset request error:', resetError);
+      }
 
       // Always show success message regardless of whether email exists
       setSubmitted(true);
