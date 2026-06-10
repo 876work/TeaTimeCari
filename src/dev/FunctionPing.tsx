@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as Sentry from "@sentry/react";
 import { supabase } from '@/lib/supabaseClient';
 
 export default function FunctionPing() {
@@ -97,6 +98,16 @@ export default function FunctionPing() {
       </button>
       <button onClick={async () => setRejectionResp(await rawFetchRejection())} style={{ padding: 8 }}>
         RAW fetch rejection
+      </button>
+      <button
+        onClick={() => {
+          Sentry.logger.info('Admin triggered Sentry test error', { action: 'test_error_button_click' });
+          Sentry.metrics.count('test_counter', 1);
+          throw new Error('Sentry test error from admin health page');
+        }}
+        style={{ padding: 8, marginLeft: 8, background: '#c00', color: '#fff', border: 'none', cursor: 'pointer' }}
+      >
+        Trigger Sentry test error
       </button>
 
       <pre style={{ background: "#111", color: "#0f0", padding: 12, marginTop: 12 }}>

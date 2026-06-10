@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { SessionContextProvider, useSession, useSessionContext } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -171,7 +172,8 @@ function App() {
   useAuthActivityTracking();
 
   return (
-    <SessionContextProvider supabaseClient={supabase}>
+    <Sentry.ErrorBoundary fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><p className="text-sm text-slate-500">Something went wrong. Please refresh the page.</p></div>}>
+      <SessionContextProvider supabaseClient={supabase}>
       <SsoAutoFinisher />
       <StripeProvider>
         <NotificationProvider>
@@ -233,6 +235,7 @@ function App() {
         </NotificationProvider>
       </StripeProvider>
     </SessionContextProvider>
+    </Sentry.ErrorBoundary>
   );
 }
 
