@@ -44,29 +44,6 @@ function parseRecoveryLink(): RecoveryLinkResult {
     };
   }
 
-  const tokenHash = params.get("token_hash") || params.get("token");
-  const redirectTo = params.get("redirect_to") || `${allowedResetOrigin}/reset-password`;
-
-  if (tokenHash) {
-    try {
-      if (!isAllowedResetRedirect(redirectTo, allowedResetOrigin)) {
-        throw new Error("Unexpected reset redirect target");
-      }
-
-      const confirmationUrl = new URL("/auth/v1/verify", allowedSupabaseOrigin);
-      confirmationUrl.searchParams.set("token", tokenHash);
-      confirmationUrl.searchParams.set("type", "recovery");
-      confirmationUrl.searchParams.set("redirect_to", redirectTo);
-
-      return { ok: true, confirmationUrl: confirmationUrl.toString() };
-    } catch {
-      return {
-        ok: false,
-        message: "This password reset link is invalid. Please request a new one.",
-      };
-    }
-  }
-
   const rawConfirmationUrl = params.get("confirmation_url");
 
   if (!rawConfirmationUrl) {
@@ -84,13 +61,17 @@ function parseRecoveryLink(): RecoveryLinkResult {
       confirmationUrl.origin !== allowedSupabaseOrigin ||
       confirmationUrl.pathname !== "/auth/v1/verify" ||
       confirmationUrl.searchParams.get("type") !== "recovery" ||
+      !confirmationUrl.searchParams.get("token") ||
       !confirmationRedirectTo ||
       !isAllowedResetRedirect(confirmationRedirectTo, allowedResetOrigin)
     ) {
       throw new Error("Unexpected confirmation URL");
     }
 
-    return { ok: true, confirmationUrl: confirmationUrl.toString() };
+    return {
+      ok: true,
+      confirmationUrl: confirmationUrl.toString(),
+    };
   } catch {
     return {
       ok: false,
@@ -109,7 +90,11 @@ export default function ResetPasswordVerify() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
             <Lock className="h-8 w-8 text-[#4B9EC8]" />
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">Continue to password reset</h1>
+
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">
+            Continue to password reset
+          </h1>
+
           <p className="text-gray-600">
             For your security, confirm that you want to continue before we verify your reset link.
           </p>
