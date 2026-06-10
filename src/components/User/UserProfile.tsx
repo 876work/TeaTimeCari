@@ -503,7 +503,7 @@ export function UserProfile({ userId }: UserProfileProps) {
 
   if (!userId || !isValidUUID(userId)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
+      <div className="p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -525,7 +525,7 @@ export function UserProfile({ userId }: UserProfileProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
+      <div className="p-4">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
@@ -538,7 +538,7 @@ export function UserProfile({ userId }: UserProfileProps) {
 
   if (!profileUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
+      <div className="p-4">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -560,7 +560,7 @@ export function UserProfile({ userId }: UserProfileProps) {
   const isBanned = profileUser.status === 'banned';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3] p-4">
+    <div className="p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <button
           onClick={goBackToFeed}
@@ -657,7 +657,7 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-6 py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -673,28 +673,28 @@ export function UserProfile({ userId }: UserProfileProps) {
             </div>
           </div>
           <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Full name</p>
               <div className="mt-2">
                 <VisibilityIndicator audience="admins" isOwnProfile={isOwnProfile} />
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-600">Used for account review and moderation, not community display.</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
               <div className="mt-2">
                 <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-600">Your community-facing identity.</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Gender</p>
               <div className="mt-2">
                 <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-600">Used to place members in appropriate community spaces.</p>
             </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Joined date</p>
               <div className="mt-2">
                 <VisibilityIndicator audience="community" isOwnProfile={isOwnProfile} />
@@ -705,7 +705,7 @@ export function UserProfile({ userId }: UserProfileProps) {
         </div>
 
         {isOwnProfile && (
-          <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-xl shadow-blue-900/10">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-blue-900/10">
             <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#4B9EC8] px-6 py-6 text-white">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -728,7 +728,7 @@ export function UserProfile({ userId }: UserProfileProps) {
             </div>
 
             <div className="grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-5">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
                 <div className="mb-4 flex items-center text-blue-900">
                   <Mail className="mr-2 h-5 w-5" />
                   <h3 className="font-semibold">How reauthentication works</h3>
