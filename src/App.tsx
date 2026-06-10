@@ -34,6 +34,7 @@ const AnonymousModeExplained = React.lazy(() => import('./pages/AnonymousModeExp
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Faq = React.lazy(() => import('./pages/Faq'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const ResetPasswordVerify = React.lazy(() => import('./pages/ResetPasswordVerify'));
 const Logout = React.lazy(() => import('./pages/Logout'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 
@@ -185,6 +186,7 @@ function App() {
                 <Route path="/community" element={<CommunityRedirect />} />
                 <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
                 <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
+                <Route path="/reset-password/verify" element={<PublicLayout><ResetPasswordVerify /></PublicLayout>} />
                 <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
                 <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
                 <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
