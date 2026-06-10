@@ -49,7 +49,7 @@ export default function Login() {
 
   const getApprovalStatus = async (
     userId: string
-  ): Promise<"approved" | "not_approved" | "missing"> => {
+  ): Promise<"approved" | "pending" | "rejected" | "suspended" | "missing" | "not_approved"> => {
     const { data, error: statusError } = await supabase
       .from("registrations")
       .select("status")
@@ -64,11 +64,24 @@ export default function Login() {
       return "missing";
     }
 
-    return data.status === "approved" ? "approved" : "not_approved";
+    if (["approved", "pending", "rejected", "suspended"].includes(data.status)) {
+      return data.status as "approved" | "pending" | "rejected" | "suspended";
+    }
+
+    return "not_approved";
   };
+
+  const suspendedMessage = "Your account has been suspended. You cannot log in or use TeaTime Cari at this time.";
 
   const redirectAfterApprovalCheck = async (userId: string) => {
     const approvalStatus = await getApprovalStatus(userId);
+
+    if (approvalStatus === "suspended") {
+      await supabase.auth.signOut();
+      setError(suspendedMessage);
+      setLoading(false);
+      return;
+    }
 
     if (approvalStatus !== "approved") {
       window.location.href = "/kyc-pending";
@@ -107,6 +120,12 @@ export default function Login() {
 
         if (approvalStatus === "approved") {
           navigate(getPostLoginDestination(), { replace: true });
+          return;
+        }
+
+        if (approvalStatus === "suspended") {
+          await supabase.auth.signOut();
+          setError(suspendedMessage);
           return;
         }
 
@@ -177,6 +196,14 @@ export default function Login() {
 
       if (!userId) {
         throw new Error("No authenticated user found after login.");
+      }
+
+      const approvalStatus = await getApprovalStatus(userId);
+      if (approvalStatus === "suspended") {
+        await supabase.auth.signOut();
+        setError(suspendedMessage);
+        setLoading(false);
+        return;
       }
 
       await trackAuthLogin();

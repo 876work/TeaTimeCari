@@ -22,16 +22,24 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
 import { ReviewFlaggedPosts } from './ReviewFlaggedPosts';
+import { DiscourseCommunityAdmins } from './DiscourseCommunityAdmins';
 import FunctionPing from '../../dev/FunctionPing';
+import { getFunctionErrorMessage } from '@/lib/functionError';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
-function isSchemaCacheColumnError(error: { code?: string; message?: string } | null) {
-  const message = error?.message?.toLowerCase() || '';
-  return (
-    error?.code === 'PGRST204' ||
-    (message.includes('schema cache') && message.includes('could not find'))
-  );
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const maybeError = error as { message?: unknown; error?: unknown; detail?: unknown; details?: unknown };
+    const parts = [maybeError.message, maybeError.error, maybeError.detail, maybeError.details]
+      .filter(Boolean)
+      .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)));
+    if (parts.length > 0) return parts.join(': ');
+    return JSON.stringify(error);
+  }
+  return String(error);
 }
 
 interface UserStat {
@@ -52,6 +60,7 @@ interface DashboardStats {
   registeredToday: number;
   pending: number;
   banned: number;
+  suspended: number;
   approved: number;
   verified: number;
 }
@@ -172,6 +181,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     registeredToday: 0,
     pending: 0,
     banned: 0,
+    suspended: 0,
     approved: 0,
     verified: 0,
   });
@@ -187,25 +197,28 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     setError(null);
 
     try {
-      let { data, error: dbError } = await supabase
-        .from('registrations')
-        .select('status, last_seen_at, created_at');
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) throw new Error('You must be logged in as an admin.');
 
-      if (dbError && isSchemaCacheColumnError(dbError)) {
-        console.warn(
-          'registrations.last_seen_at is unavailable; dashboard online counts will be unavailable',
-          dbError,
+      const { data, error: fnError } = await supabase.functions.invoke('get-admin-users', {
+        headers: { Authorization: `Bearer ${currentSession.access_token}` },
+      });
+      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+      if (!data?.ok) {
+        throw new Error(
+          [data?.error, data?.detail, data?.details]
+            .filter(Boolean)
+            .map((part) => (typeof part === 'string' ? part : JSON.stringify(part)))
+            .join(': ') || 'Unable to load dashboard data.',
         );
-        ({ data, error: dbError } = await supabase
-          .from('registrations')
-          .select('status, created_at'));
       }
 
-      if (dbError) throw dbError;
-
-      const users: UserStat[] = (data || []).map((user) => ({
-        ...user,
-        last_seen_at: 'last_seen_at' in user ? user.last_seen_at : null,
+      const users: UserStat[] = (data.users || []).map((user: Partial<UserStat>) => ({
+        status: user.status || 'unknown',
+        created_at: user.created_at || null,
+        last_seen_at: user.last_seen_at || null,
       }));
       const now = Date.now();
 
@@ -227,6 +240,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         registeredToday: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
         pending: users.filter((u) => u.status === 'pending').length,
         banned: users.filter((u) => u.status === 'banned').length,
+        suspended: users.filter((u) => u.status === 'suspended').length,
         approved: users.filter((u) => u.status === 'approved').length,
         verified: users.filter((u) => u.status === 'verified').length,
       });
@@ -251,8 +265,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
       setDailyRegs(days);
       setLastUpdated(new Date());
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Failed to load dashboard data: ${msg}`);
+      setError(`Failed to load dashboard data: ${getErrorMessage(err)}`);
     } finally {
       setLoading(false);
     }
@@ -274,8 +287,9 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   }, [isAdmin]);
 
   // Delegate to sub-pages
-  if (activePage === 'user-reviews') return <AdminUserReview />;
-  if (activePage === 'flagged-posts') return <ReviewFlaggedPosts />;
+  if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
+  if (activePage === 'flagged-posts') return <ReviewFlaggedPosts activePage={activePage} onNavigate={onNavigate} />;
+  if (activePage === 'discourse-admins') return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
@@ -356,7 +370,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         </div>
 
         {/* Secondary stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             label="Pending Approval"
             value={stats.pending}
@@ -382,6 +396,15 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             iconBg="bg-blue-50"
             iconColor="text-blue-500"
             sub="Access granted"
+            loading={loading}
+          />
+          <StatCard
+            label="Suspended"
+            value={stats.suspended}
+            icon={<UserX className="w-5 h-5" />}
+            iconBg="bg-orange-50"
+            iconColor="text-orange-500"
+            sub="Temporarily blocked"
             loading={loading}
           />
           <StatCard

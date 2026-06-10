@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
@@ -24,13 +24,48 @@ import ContactUs from './pages/ContactUs';
 import KycPending from './pages/KycPending';
 import Sso from './pages/Sso';
 import Login from './pages/Login';
-import Community from './pages/Community';
 import ForgotPassword from './pages/ForgotPassword';
 import Signup from './pages/Signup';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import ResetPassword from './pages/ResetPassword';
 import Logout from './pages/Logout';
 import CommunityRedirect from './pages/CommunityRedirect';
 import { UserTypeSelection } from './components/UserTypeSelection';
+
+type AdminPage =
+  | 'dashboard'
+  | 'user-reviews'
+  | 'flagged-posts'
+  | 'discourse-admins'
+  | 'logs'
+  | 'function-ping';
+
+const adminPagePaths: Record<AdminPage, string> = {
+  dashboard: '/admin/dashboard',
+  'user-reviews': '/admin/users',
+  'flagged-posts': '/admin/flagged-posts',
+  'discourse-admins': '/admin/discourse-admins',
+  logs: '/admin/logs',
+  'function-ping': '/admin/function-ping',
+};
+
+function AdminPortalRoute({ initialPage }: { initialPage: AdminPage }) {
+  const navigate = useNavigate();
+  const [activePage, setActivePage] = React.useState<AdminPage>(initialPage);
+
+  React.useEffect(() => {
+    setActivePage(initialPage);
+  }, [initialPage]);
+
+  const handleNavigate = (page: string) => {
+    const nextPage = page in adminPagePaths ? (page as AdminPage) : 'dashboard';
+    setActivePage(nextPage);
+    navigate(adminPagePaths[nextPage]);
+  };
+
+  return <AdminDashboard activePage={activePage} onNavigate={handleNavigate} />;
+}
 
 function App() {
   useAuthActivityTracking();
@@ -40,9 +75,9 @@ function App() {
   const [showWelcomePage, setShowWelcomePage] = React.useState(true);
   const [currentStep, setCurrentStep] = React.useState(1); // Start with basic info step
   const [currentPage, setCurrentPage] = React.useState<'user-type-selection' | 'register' | 'feed' | 'upload' | 'opposite-feed' | 'admin' | 'user-profile' | 'post-thread'>('user-type-selection');
-  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping'>('dashboard');
+  const [adminActivePage, setAdminActivePage] = React.useState<'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins'>('dashboard');
   const [selectedUserId, setSelectedUserId] = React.useState<string>('mock-user-1'); // Default for testing
-  const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null);
+  const [selectedPostId] = React.useState<string | null>(null);
   const [registrationData, setRegistrationData] = React.useState<{
     step1?: RegisterStep1Data;
     step2?: RegisterStep2Data;
@@ -112,13 +147,8 @@ function App() {
   };
 
 
-  const handleGoToAdminLogs = () => {
-    setCurrentPage('admin');
-    setAdminActivePage('logs');
-  };
-
   const handleAdminNavigate = (page: string) => {
-    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping');
+    setAdminActivePage(page as 'dashboard' | 'user-reviews' | 'flagged-posts' | 'invite-codes' | 'logs' | 'function-ping' | 'discourse-admins');
   };
 
   const handleGoToUserProfile = (userId?: string) => {
@@ -126,13 +156,6 @@ function App() {
       setSelectedUserId(userId);
     }
     setCurrentPage('user-profile');
-  };
-
-  const handleGoToPostThread = (postId?: string) => {
-    if (postId) {
-      setSelectedPostId(postId);
-    }
-    setCurrentPage('post-thread');
   };
 
   const handleBackToStep1 = () => {
@@ -169,10 +192,19 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/logout" element={<Logout />} />
               
               {/* Admin Routes */}
               <Route path="/teamin" element={<AdminLoginPage />} />
+              <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="/admin/dashboard" element={<AdminPortalRoute initialPage="dashboard" />} />
+              <Route path="/admin/users" element={<AdminPortalRoute initialPage="user-reviews" />} />
+              <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
+              <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
+              <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
+              <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />
               <Route path="/admin/registrations" element={<RegistrationsPage />} />
               
               {/* Main App Route */}
@@ -251,109 +283,6 @@ function App() {
                         <PostThread postId={selectedPostId} />
                       )}
                       
-                      {/* Navigation for testing - remove in production */}
-                      <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
-                        <div className="text-xs text-gray-600 mb-2">Navigation (Dev Mode)</div>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => setCurrentPage('user-type-selection')}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'user-type-selection' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            User Type
-                          </button>
-                          <button
-                            onClick={() => setCurrentPage('register')}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'register' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Register
-                          </button>
-                          <button
-                            onClick={() => window.location.href = `${discourseBaseUrl}/login`}
-                            className="px-3 py-1 text-xs rounded bg-gray-200 text-gray-700"
-                          >
-                            Discourse Login
-                          </button>
-                          <button
-                            onClick={handleGoToFeed}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Feed
-                          </button>
-                          <button
-                            onClick={handleGoToUpload}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'upload' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Upload
-                          </button>
-                          <button
-                            onClick={handleGoToOppositeFeed}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'opposite-feed' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Premium Feed
-                          </button>
-                          <button
-                            onClick={handleGoToAdminDashboard}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'admin' && adminActivePage === 'dashboard' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Admin Dashboard
-                          </button>
-                          <button
-                            onClick={handleGoToAdminFlaggedPosts}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'admin' && adminActivePage === 'flagged-posts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Admin Flagged
-                          </button>
-                          <button
-                            onClick={handleGoToAdminUserReviews}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'admin' && adminActivePage === 'user-reviews' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Admin Users
-                          </button>
-                          <button
-                            onClick={handleGoToAdminInviteCodes}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'admin' && adminActivePage === 'invite-codes' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Admin Invites
-                          </button>
-                          <button
-                            onClick={() => handleGoToUserProfile()}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'user-profile' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            User Profile
-                          </button>
-                          <button
-                            onClick={() => {
-                              setCurrentPage('admin');
-                              setAdminActivePage('function-ping');
-                            }}
-                            className={`px-3 py-1 text-xs rounded ${
-                              currentPage === 'admin' && adminActivePage === 'function-ping' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Function Ping
-                          </button>
-                        </div>
-                      </div>
                     </AppLayout>
                   )
                 } 
