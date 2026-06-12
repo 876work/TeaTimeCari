@@ -56,8 +56,8 @@ function nameFrom(input: { firstName?: string | null; lastName?: string | null; 
 
 function genderGroups() {
   return {
-    men: Deno.env.get("MEN_GROUP") || "men",
-    women: Deno.env.get("WOMEN_GROUP") || "women",
+    men: Deno.env.get("MEN_GROUP") || "men-slu",
+    women: Deno.env.get("WOMEN_GROUP") || "women-slu",
   };
 }
 

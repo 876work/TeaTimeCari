@@ -1,0 +1,73 @@
+<script type="text/discourse-plugin" version="0.8">
+  const TTC_CATEGORY_PATHS = {
+    men: "/c/user-photos/men-photos-slu/6",
+    women: "/c/user-photos/women-photos-slu/7",
+  };
+
+  const TTC_GROUP_ALIASES = {
+    men: ["men-slu", "men"],
+    women: ["women-slu", "women"],
+  };
+
+  function normalizeGroupName(group) {
+    if (!group) return "";
+    if (typeof group === "string") return group.toLowerCase();
+    if (typeof group.get === "function") {
+      return String(group.get("name") || "").toLowerCase();
+    }
+    return String(group.name || "").toLowerCase();
+  }
+
+  function collectionToArray(collection) {
+    if (!collection) return [];
+    if (Array.isArray(collection)) return collection;
+    if (typeof collection.toArray === "function") return collection.toArray();
+    return [];
+  }
+
+  function getCurrentUserGroups(user) {
+    const directGroups = collectionToArray(
+      user?.groups || (typeof user?.get === "function" ? user.get("groups") : null),
+    );
+    const groupUsers = collectionToArray(
+      user?.group_users || (typeof user?.get === "function" ? user.get("group_users") : null),
+    );
+    const groups = [];
+
+    groups.push(...directGroups.map(normalizeGroupName));
+    groups.push(...groupUsers.map((groupUser) => normalizeGroupName(groupUser?.group || groupUser)));
+
+    return groups.filter(Boolean);
+  }
+
+  function getCategoryPathForUser(user) {
+    const groups = getCurrentUserGroups(user);
+
+    if (TTC_GROUP_ALIASES.women.some((group) => groups.includes(group))) {
+      return TTC_CATEGORY_PATHS.women;
+    }
+
+    if (TTC_GROUP_ALIASES.men.some((group) => groups.includes(group))) {
+      return TTC_CATEGORY_PATHS.men;
+    }
+
+    return null;
+  }
+
+  function shouldRedirectFromCurrentPath() {
+    const path = window.location.pathname;
+    return path === "/" || path === "/latest";
+  }
+
+  api.onPageChange(() => {
+    if (!shouldRedirectFromCurrentPath()) return;
+
+    const currentUser = api.getCurrentUser();
+    if (!currentUser) return;
+
+    const targetPath = getCategoryPathForUser(currentUser);
+    if (!targetPath || window.location.pathname === targetPath) return;
+
+    window.location.replace(targetPath);
+  });
+</script>
