@@ -189,7 +189,7 @@ export default function CommunityRedirect() {
         } = await supabase.auth.getSession();
 
         if (!session?.user?.id) {
-          redirectToDiscourse(normalizeReturnPath(defaultReturnPath));
+          window.location.replace("/login?redirectTo=/community");
           return;
         }
 

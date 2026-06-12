@@ -62,8 +62,8 @@ export function buildDiscourseGroups(gender: 'men' | 'women', xaccess: boolean):
   const groups: string[] = [];
   
   // Add gender group
-  const menGroup = Deno.env.get("MEN_GROUP") || "men";
-  const womenGroup = Deno.env.get("WOMEN_GROUP") || "women";
+  const menGroup = Deno.env.get("MEN_GROUP") || "men-slu";
+  const womenGroup = Deno.env.get("WOMEN_GROUP") || "women-slu";
   
   if (gender === 'men') {
     groups.push(menGroup);

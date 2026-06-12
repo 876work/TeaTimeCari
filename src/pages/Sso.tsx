@@ -28,12 +28,7 @@ export default function Sso() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData?.session) {
-        const params = new URLSearchParams({
-          next: "/sso",
-          sso,
-          sig,
-        }).toString();
-        navigate(`/login?${params}`, { replace: true });
+        navigate("/login?redirectTo=/community", { replace: true });
         return;
       }
 
