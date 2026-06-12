@@ -74,19 +74,11 @@ function AppleStoreBadge() {
 
 function PlayStoreBadge() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 135 40" aria-hidden="true" className="h-full w-full">
-      <rect width="135" height="40" rx="6" fill="#000" />
-      <text x="44" y="13" fontFamily="system-ui, sans-serif" fontSize="7" fill="#fff" opacity="0.85">GET IT ON</text>
-      <text x="44" y="27" fontFamily="system-ui, sans-serif" fontSize="13" fontWeight="700" fill="#fff">Google Play</text>
-      {/* Simple play triangle */}
-      <polygon points="16,12 16,28 28,20" fill="url(#gp)" />
-      <defs>
-        <linearGradient id="gp" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00d2ff" />
-          <stop offset="100%" stopColor="#a8ed64" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <img
+      src="/GetItOnGooglePlay_Badge_Web_color_English.png"
+      alt="Get it on Google Play"
+      className="h-full w-full object-contain"
+    />
   );
 }
 
