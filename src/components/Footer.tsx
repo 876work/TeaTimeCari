@@ -62,13 +62,11 @@ const socialLinks = [
 
 function AppleStoreBadge() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" aria-hidden="true" className="h-full w-full">
-      <rect width="120" height="40" rx="6" fill="#000" />
-      <text x="38" y="13" fontFamily="system-ui, sans-serif" fontSize="7" fill="#fff" opacity="0.85">Download on the</text>
-      <text x="38" y="26" fontFamily="system-ui, sans-serif" fontSize="13" fontWeight="700" fill="#fff">App Store</text>
-      {/* Apple logo path */}
-      <path d="M18.5 10.2c1.1-1.3 1.8-3.1 1.6-4.9-1.6.1-3.4 1-4.5 2.3-1 1.1-1.8 2.9-1.6 4.7 1.7.1 3.4-.9 4.5-2.1zm1.6 2.6c-2.5-.1-4.6 1.4-5.8 1.4-1.2 0-3-1.3-5-1.3C6.6 13 3.9 14.7 2.5 17.4c-2.8 4.8-.7 12 2 15.9 1.3 1.9 2.9 4 5 4 2 0 2.7-1.3 5.1-1.3 2.4 0 3 1.3 5 1.3s3.5-1.9 4.8-3.8c1.5-2.2 2.1-4.3 2.2-4.4-.1 0-4.2-1.6-4.3-6.4-.1-4 3.3-5.9 3.5-6-.2-.1-3.3-3.3-6.7-3.4z" fill="#fff" transform="translate(0, 3) scale(0.85)" />
-    </svg>
+    <img
+      src="/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+      alt="Download on the App Store"
+      className="h-full w-full object-contain"
+    />
   );
 }
 
