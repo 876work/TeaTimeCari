@@ -164,6 +164,11 @@ npm run dev
 
 Visit `http://localhost:5173` to see the application running.
 
+
+### Discourse User Download Watermark Plugin
+
+This repository also includes a server-side Discourse plugin at [`discourse-user-download-watermark/`](discourse-user-download-watermark/) for serving temporary, per-user watermarked derivatives of post upload image downloads. The plugin keeps original Discourse uploads unchanged, checks Discourse permissions before generating a derivative, and documents installation/testing in its plugin README.
+
 ## 📊 Database Schema
 
 ### Core Tables

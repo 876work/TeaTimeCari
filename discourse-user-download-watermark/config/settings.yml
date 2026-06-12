@@ -1,0 +1,33 @@
+plugins:
+  enable_user_download_watermark:
+    default: true
+    client: true
+  watermark_text:
+    default: "Tea Time Cari Community"
+    client: true
+  watermark_include_username:
+    default: true
+    client: true
+  watermark_position:
+    default: "bottom_right"
+    client: false
+  watermark_opacity:
+    default: 0.35
+    client: false
+  watermark_font_size:
+    default: "responsive"
+    client: false
+  watermark_margin:
+    default: 24
+    client: false
+  watermark_apply_to_categories:
+    default: ""
+    type: category_list
+    client: false
+  watermark_excluded_categories:
+    default: ""
+    type: category_list
+    client: false
+  watermark_cache_enabled:
+    default: true
+    client: false
