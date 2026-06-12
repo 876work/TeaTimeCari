@@ -1,8 +1,8 @@
 import { Facebook, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const APP_STORE_URL = 'https://apps.apple.com/app/tea-time-cari';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.teatimecari';
+const APP_STORE_URL = 'https://teatimecari.app';
+const PLAY_STORE_URL = 'https://teatimecari.app';
 
 type FooterLink = {
   label: string;
