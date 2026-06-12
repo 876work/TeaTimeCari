@@ -59,12 +59,7 @@ export default function Login() {
     const next = q.get("next");
 
     if (next === "/sso") {
-      const sso = q.get("sso");
-      const sig = q.get("sig");
-
-      if (sso && sig) {
-        return `/sso?sso=${encodeURIComponent(sso)}&sig=${encodeURIComponent(sig)}`;
-      }
+      return "/community";
     }
 
     return safeAppPath(next || q.get("redirectTo") || q.get("returnTo"));
