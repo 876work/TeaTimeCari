@@ -379,7 +379,7 @@ export default function TermsOfService() {
           <dl className="grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
             <div>
               <dt className="font-semibold text-slate-900">Effective Date</dt>
-              <dd>June 4, 2026</dd>
+              <dd>March 4, 2026</dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-900">Website</dt>
