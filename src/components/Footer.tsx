@@ -55,7 +55,7 @@ const socialLinks = [
   {
     label: 'Facebook',
     href: 'https://www.facebook.com/people/Tea-Time-Cari/61590153702836/',
-    img: '/FB_logo.svg',
+    img: '/FB_logo1.png',
   },
 ];
 
