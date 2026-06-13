@@ -8,7 +8,12 @@ secure_password_change = true
 [functions.sso-complete]
 verify_jwt = false
 
+# This function performs its own admin authorization in code. Disabling the
+# gateway JWT check lets browser CORS preflight OPTIONS requests reach the
+# handler instead of being rejected before CORS headers are returned.
+[functions.admin-update-user-profile]
+verify_jwt = false
+
 [auth.email.template.recovery]
 subject = "Reset Your Tea Time Cari Password"
 content_path = "./supabase/templates/recovery.html"
-
