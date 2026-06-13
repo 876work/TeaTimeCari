@@ -1,4 +1,3 @@
-import { Facebook, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const APP_STORE_URL = 'https://teatimecari.app';
@@ -51,12 +50,12 @@ const socialLinks = [
   {
     label: 'Instagram',
     href: 'http://instagram.com/teatimecari',
-    Icon: Instagram,
+    img: '/IG_logo.png',
   },
   {
     label: 'Facebook',
     href: 'https://www.facebook.com/people/Tea-Time-Cari/61590153702836/',
-    Icon: Facebook,
+    img: '/FB_logo.svg',
   },
 ];
 
@@ -157,7 +156,7 @@ export function Footer() {
           </div>
 
           <div className="mt-5 flex items-center gap-3 sm:mt-0">
-            {socialLinks.map(({ label, href, Icon }) => (
+            {socialLinks.map(({ label, href, img }) => (
               <a
                 key={label}
                 href={href}
@@ -166,7 +165,7 @@ export function Footer() {
                 aria-label={label}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#4B9EC8] hover:text-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2"
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                <img src={img} alt={label} className="h-5 w-5 object-contain" aria-hidden="true" />
               </a>
             ))}
           </div>
