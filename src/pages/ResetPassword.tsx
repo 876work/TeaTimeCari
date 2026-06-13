@@ -10,6 +10,27 @@ type ResetStatus = {
   msg: string;
 };
 
+const INVALID_RESET_LINK_MESSAGE = "Reset link invalid or expired. Please request a new one.";
+
+function getRecoveryParams() {
+  const url = new URL(window.location.href);
+  const searchParams = url.searchParams;
+  const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+
+  return {
+    code: searchParams.get("code") ?? hashParams.get("code"),
+    tokenHash: searchParams.get("token_hash") ?? hashParams.get("token_hash"),
+    type: searchParams.get("type") ?? hashParams.get("type"),
+    accessToken: hashParams.get("access_token") ?? searchParams.get("access_token"),
+    refreshToken: hashParams.get("refresh_token") ?? searchParams.get("refresh_token"),
+    authError:
+      searchParams.get("error_description") ??
+      hashParams.get("error_description") ??
+      searchParams.get("error") ??
+      hashParams.get("error"),
+  };
+}
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -26,14 +47,26 @@ export default function ResetPassword() {
 
       setHasRecoverySession(true);
       setStatus(null);
+      setCheckingLink(false);
     };
 
     const cleanRecoveryParams = () => {
       const url = new URL(window.location.href);
-      ["code", "type", "token_hash", "error", "error_code", "error_description"].forEach((param) => {
+      [
+        "access_token",
+        "code",
+        "error",
+        "error_code",
+        "error_description",
+        "expires_at",
+        "expires_in",
+        "refresh_token",
+        "token_hash",
+        "type",
+      ].forEach((param) => {
         url.searchParams.delete(param);
       });
-      window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+      window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
     };
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -43,9 +76,7 @@ export default function ResetPassword() {
     });
 
     const verifyRecoveryLink = async () => {
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-      const authError = url.searchParams.get("error_description") || url.searchParams.get("error");
+      const { code, tokenHash, type, accessToken, refreshToken, authError } = getRecoveryParams();
 
       if (authError) {
         if (mounted) {
@@ -74,7 +105,7 @@ export default function ResetPassword() {
           } else if (mounted) {
             setStatus({
               variant: "error",
-              msg: "Reset link invalid or expired. Please request a new one.",
+              msg: INVALID_RESET_LINK_MESSAGE,
             });
           }
 
@@ -84,7 +115,62 @@ export default function ResetPassword() {
 
         markRecoveryReady();
         cleanRecoveryParams();
-        if (mounted) setCheckingLink(false);
+        return;
+      }
+
+      if (tokenHash && type === "recovery") {
+        if (mounted) {
+          setStatus({ variant: "info", msg: "Verifying your password reset link…" });
+        }
+
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (error) {
+          const { data } = await supabase.auth.getSession();
+
+          if (data.session) {
+            markRecoveryReady();
+            cleanRecoveryParams();
+          } else if (mounted) {
+            setStatus({
+              variant: "error",
+              msg: INVALID_RESET_LINK_MESSAGE,
+            });
+            setCheckingLink(false);
+          }
+
+          return;
+        }
+
+        markRecoveryReady();
+        cleanRecoveryParams();
+        return;
+      }
+
+      if (accessToken && refreshToken && type === "recovery") {
+        if (mounted) {
+          setStatus({ variant: "info", msg: "Verifying your password reset link…" });
+        }
+
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error && mounted) {
+          setStatus({
+            variant: "error",
+            msg: INVALID_RESET_LINK_MESSAGE,
+          });
+          setCheckingLink(false);
+          return;
+        }
+
+        markRecoveryReady();
+        cleanRecoveryParams();
         return;
       }
 
@@ -95,7 +181,7 @@ export default function ResetPassword() {
       } else if (mounted) {
         setStatus({
           variant: "warning",
-          msg: "Reset link invalid or expired. Please request a new one.",
+          msg: INVALID_RESET_LINK_MESSAGE,
         });
       }
 
