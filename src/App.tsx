@@ -1,5 +1,6 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
+import { usePostHog } from '@posthog/react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { SessionContextProvider, useSession, useSessionContext } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -10,7 +11,6 @@ import { getAdminSession } from '@/lib/adminAuth';
 import type { AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import { debugError } from '@/lib/debugLogger';
-import { capturePostHogPageview } from '@/lib/posthog';
 
 const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
 const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
@@ -42,10 +42,40 @@ const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 
 function PostHogPageviewTracker() {
   const location = useLocation();
+  const posthog = usePostHog();
 
   React.useEffect(() => {
-    capturePostHogPageview(`${location.pathname}${location.search}`);
-  }, [location.pathname, location.search]);
+    posthog?.capture('$pageview', {
+      $current_url: window.location.href,
+      path: `${location.pathname}${location.search}`,
+    });
+  }, [location.pathname, location.search, posthog]);
+
+  return null;
+}
+
+function PostHogIdentityTracker() {
+  const posthog = usePostHog();
+  const session = useSession();
+  const { isLoading } = useSessionContext();
+  const identifiedUserId = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (isLoading) return;
+
+    const userId = session?.user?.id ?? null;
+
+    if (userId && identifiedUserId.current !== userId) {
+      posthog?.identify(userId);
+      identifiedUserId.current = userId;
+      return;
+    }
+
+    if (!userId && identifiedUserId.current) {
+      posthog?.reset();
+      identifiedUserId.current = null;
+    }
+  }, [isLoading, posthog, session?.user?.id]);
 
   return null;
 }
@@ -192,6 +222,7 @@ function App() {
     >
       <SessionContextProvider supabaseClient={supabase}>
         <SsoAutoFinisher />
+        <PostHogIdentityTracker />
         <StripeProvider>
           <NotificationProvider>
             <Router>
