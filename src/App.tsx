@@ -1,6 +1,6 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { SessionContextProvider, useSession, useSessionContext } from '@supabase/auth-helpers-react';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { useAuthActivityTracking } from './hooks/useAuthActivityTracking';
@@ -10,6 +10,7 @@ import { getAdminSession } from '@/lib/adminAuth';
 import type { AdminSession } from '@/lib/adminAuth';
 import SsoAutoFinisher from '@/components/SsoAutoFinisher';
 import { debugError } from '@/lib/debugLogger';
+import { capturePostHogPageview } from '@/lib/posthog';
 
 const HomePage = React.lazy(() => import('./components/HomePage').then((module) => ({ default: module.HomePage })));
 const AppLayout = React.lazy(() => import('./components/AppLayout').then((module) => ({ default: module.AppLayout })));
@@ -38,6 +39,17 @@ const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const ResetPasswordVerify = React.lazy(() => import('./pages/ResetPasswordVerify'));
 const Logout = React.lazy(() => import('./pages/Logout'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
+
+
+function PostHogPageviewTracker() {
+  const location = useLocation();
+
+  React.useEffect(() => {
+    capturePostHogPageview(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
 
 function PageLoading() {
   return (
@@ -178,6 +190,7 @@ function App() {
       <StripeProvider>
         <NotificationProvider>
           <Router>
+            <PostHogPageviewTracker />
             <React.Suspense fallback={<PageLoading />}>
               <Routes>
                 <Route path="/contact-us" element={<PublicLayout><ContactUs /></PublicLayout>} />
