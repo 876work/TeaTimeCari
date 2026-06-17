@@ -1,0 +1,53 @@
+.ttc-back-to-community-button {
+  align-items: center;
+  appearance: none;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tertiary) 18%, var(--secondary)),
+    color-mix(in srgb, var(--danger) 16%, var(--secondary))
+  );
+  border: 1px solid color-mix(in srgb, var(--tertiary) 32%, var(--primary-low));
+  border-radius: 999px;
+  box-shadow: 0 0.35rem 1rem color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.875rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  line-height: 1.2;
+  margin: 0 0 1rem;
+  max-width: 100%;
+  padding: 0.5rem 0.85rem;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.ttc-back-to-community-button:hover,
+.ttc-back-to-community-button:focus {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tertiary) 26%, var(--secondary)),
+    color-mix(in srgb, var(--danger) 24%, var(--secondary))
+  );
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--tertiary));
+  box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, var(--primary) 14%, transparent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.ttc-back-to-community-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tertiary) 70%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .ttc-back-to-community-button {
+    font-size: 0.8125rem;
+    margin-bottom: 0.75rem;
+    padding: 0.45rem 0.75rem;
+  }
+}
