@@ -101,13 +101,24 @@ export default function FunctionPing() {
       </button>
       <button
         onClick={() => {
-          Sentry.logger.info('Admin triggered Sentry test error', { action: 'test_error_button_click' });
+          const testEvent = new Error('Sentry test event from admin health page');
+
+          Sentry.logger.info('Admin triggered Sentry test event', { action: 'test_event_button_click' });
           Sentry.metrics.count('test_counter', 1);
-          throw new Error('Sentry test error from admin health page');
+          Sentry.captureException(testEvent, {
+            level: 'info',
+            tags: {
+              source: 'admin_health_page',
+              handled: 'true',
+            },
+            extra: {
+              action: 'test_event_button_click',
+            },
+          });
         }}
         style={{ padding: 8, marginLeft: 8, background: '#c00', color: '#fff', border: 'none', cursor: 'pointer' }}
       >
-        Trigger Sentry test error
+        Send Sentry test event
       </button>
 
       <pre style={{ background: "#111", color: "#0f0", padding: 12, marginTop: 12 }}>
