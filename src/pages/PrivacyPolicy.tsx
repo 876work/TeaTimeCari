@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { GradientPageShell } from '@/components/GradientPageShell';
 
 type PolicySection = {
@@ -348,10 +348,16 @@ function BulletList({ items }: { items?: string[] }) {
 }
 
 export default function PrivacyPolicy() {
+  const location = useLocation();
+  const signupReturnState = location.state as { fromSignup?: boolean; returnTo?: string } | null;
+  const returnToSignup = signupReturnState?.fromSignup;
+  const backLinkTarget = returnToSignup ? signupReturnState?.returnTo || '/signup/photo-verification' : '/';
+  const backLinkLabel = returnToSignup ? '← Back to signup' : '← Back to home';
+
   return (
     <GradientPageShell maxWidth="max-w-5xl">
-        <Link to="/" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-          ← Back to home
+        <Link to={backLinkTarget} className="text-sm font-medium text-blue-600 hover:text-blue-700">
+          {backLinkLabel}
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-slate-900">Privacy Policy</h1>
         <h2 className="mt-2 text-2xl font-semibold text-slate-900">Tea Time Cari</h2>

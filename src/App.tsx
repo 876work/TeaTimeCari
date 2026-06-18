@@ -240,6 +240,7 @@ function App() {
                   <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
                   <Route path="/reset-password/verify" element={<PublicLayout><ResetPasswordVerify /></PublicLayout>} />
                   <Route path="/signup" element={<PublicLayout><Signup /></PublicLayout>} />
+                  <Route path="/signup/:signupStep" element={<PublicLayout><Signup /></PublicLayout>} />
                   <Route path="/privacy-policy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
                   <Route path="/terms-of-service" element={<PublicLayout><TermsOfService /></PublicLayout>} />
                   <Route path="/Community-Guidelines" element={<PublicLayout><CommunityGuidelines /></PublicLayout>} />
