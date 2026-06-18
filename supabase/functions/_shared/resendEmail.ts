@@ -85,28 +85,17 @@ Tea Time Cari Team`;
 export async function sendApprovalEmail(to: string, firstName?: string): Promise<ResendEmailResult> {
   const greeting = buildGreeting(firstName);
   const subject = "Your Tea Time Cari Account has been Approved";
-  const siteBaseUrl = getSiteBaseUrl();
-  const loginUrl = `${siteBaseUrl}/login`;
-  const privacyUrl = `${siteBaseUrl}/privacy-policy`;
-  const termsUrl = `${siteBaseUrl}/terms-of-service`;
-  const guidelinesUrl = `${siteBaseUrl}/community-guidelines`;
+  const loginUrl = `${getSiteBaseUrl()}/login`;
 
   const text = `${greeting}
 Your Tea Time Cari account has been approved.
 You can now log in here:
 ${loginUrl}
-Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy, Terms of Service, and Community Guidelines before participating.
-Privacy Policy:
-${privacyUrl}
-Terms of Service:
-${termsUrl}
-Community Guidelines:
-${guidelinesUrl}
 Welcome to the community.
 Best regards,
 Tea Time Cari Team`;
 
-  const html = `<p>${greeting}</p><p>Your Tea Time Cari account has been approved.</p><p>You can now log in here:<br/><a href="${loginUrl}">${loginUrl}</a></p><p>Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy, Terms of Service, and Community Guidelines before participating.</p><p>Privacy Policy:<br/><a href="${privacyUrl}">${privacyUrl}</a></p><p>Terms of Service:<br/><a href="${termsUrl}">${termsUrl}</a></p><p>Community Guidelines:<br/><a href="${guidelinesUrl}">${guidelinesUrl}</a></p><p>Welcome to the community.</p><p>Best regards,<br/>Tea Time Cari Team</p>`;
+  const html = `<p>${greeting}</p><p>Your Tea Time Cari account has been approved.</p><p>You can now log in here:<br/><a href="${loginUrl}">${loginUrl}</a></p><p>Welcome to the community.</p><p>Best regards,<br/>Tea Time Cari Team</p>`;
 
   return sendResendEmail({ to, subject, html, text });
 }
