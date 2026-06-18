@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, User, CreditCard, ShieldCheck } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
@@ -85,7 +85,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
       
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          errorMessage += 'Please allow camera permissions and try again.';
+          errorMessage += 'Allow camera access to take your verification photo and try again.';
         } else if (err.name === 'NotFoundError') {
           errorMessage += 'No camera found on this device.';
         } else if (err.name === 'NotSupportedError') {
@@ -132,14 +132,14 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
     };
   }, [stopCamera]);
 
-  // Handle mode selection
-  const handleModeSelect = (mode: 'selfie' | 'id') => {
+  // Handle capture option selection after the privacy notice has been shown.
+  const handleStartCapture = (mode: 'selfie' | 'id') => {
     setCaptureMode(initialData?.captureType || mode);
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
     setError(null);
-    setHasConfirmedPhotoNotice(false);
+    setHasConfirmedPhotoNotice(true);
   };
 
   // Capture photo
@@ -229,107 +229,51 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
           <p className="mt-2 text-sm text-slate-500">After submission, a team member usually reviews applications within 24–48 hours.</p>
         </div>
 
-        {/* Warning Message */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <AlertTriangle className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-amber-800">
-              <strong>Live camera required</strong> – uploading images is not allowed for verification.
-            </p>
-          </div>
-        </div>
-
-        {/* Mode Selection */}
+        {/* Simplified verification intro */}
         {!captureMode && (
-          <div className="space-y-4 mb-8">
-            <p className="text-center text-gray-700 font-medium mb-6">
-              Choose what you'd like to photograph:
-            </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => handleModeSelect('selfie')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#4B9EC8] hover:bg-[#D6EBF5] transition-all duration-200 group"
-              >
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#4B9EC8] group-hover:bg-opacity-25 transition-colors">
-                    <User className="w-8 h-8 text-[#4B9EC8]" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Take Selfie</h3>
-                  <p className="text-sm text-gray-600">
-                    Take a photo of yourself for identity verification
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleModeSelect('id')}
-                className="p-6 border-2 border-gray-300 rounded-xl hover:border-[#D96E6E] hover:bg-[#F9E3E3] transition-all duration-200 group"
-              >
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-[#F9E3E3] rounded-full flex items-center justify-center mb-4 group-hover:bg-[#D96E6E] group-hover:bg-opacity-25 transition-colors">
-                    <CreditCard className="w-8 h-8 text-[#D96E6E]" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Photograph ID</h3>
-                  <p className="text-sm text-gray-600">
-                    Take a photo of your government-issued ID
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
-
-        {captureMode && !hasConfirmedPhotoNotice && captureState !== 'captured' && (
           <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white text-[#4B9EC8] shadow-sm">
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900">Before we turn on your camera</h2>
-                <p className="mt-1 text-sm leading-6 text-slate-700">
-                  We use this {captureMode === 'selfie' ? 'selfie' : 'ID photo'} only to check that new accounts are real and eligible before community access is granted.
+                <h2 className="text-lg font-bold text-slate-900">Quick photo check</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Take a quick live selfie so we can confirm new accounts are real. Your photo is used only for account review, visible only to authorized Tea Time Cari reviewers, and never shown on your profile or posts.
+                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  We keep verification photos only as long as reasonably needed for review, fraud prevention, safety, legal, audit, or dispute needs. You can contact support to request deletion, subject to legal and safety exceptions.
+                </p>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  We use a live camera check so submitted photos are current. Uploads are not accepted for verification.
                 </p>
               </div>
             </div>
 
-            <dl className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700">
-              <div className="rounded-xl bg-white/80 p-3">
-                <dt className="font-semibold text-slate-900">Who can see it?</dt>
-                <dd>Only authorized Tea Time Cari administrators reviewing registrations and safety issues.</dd>
-              </div>
-              <div className="rounded-xl bg-white/80 p-3">
-                <dt className="font-semibold text-slate-900">Will it appear publicly?</dt>
-                <dd>No. Verification photos are not shown on your profile, posts, or public community areas.</dd>
-              </div>
-              <div className="rounded-xl bg-white/80 p-3">
-                <dt className="font-semibold text-slate-900">How long is it kept?</dt>
-                <dd>We keep it only as long as reasonably needed for account review, fraud prevention, safety, legal, audit, or dispute needs.</dd>
-              </div>
-              <div className="rounded-xl bg-white/80 p-3">
-                <dt className="font-semibold text-slate-900">How do I request deletion?</dt>
-                <dd>Contact support after submission; deletion requests are handled subject to legal and safety exceptions.</dd>
-              </div>
-            </dl>
-
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-5 flex flex-col gap-3">
               <button
                 type="button"
-                onClick={() => setHasConfirmedPhotoNotice(true)}
-                className="flex-1 rounded-lg bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#3382AA]"
+                onClick={() => handleStartCapture('selfie')}
+                className="rounded-lg bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#3382AA]"
               >
-                I understand, start camera
+                Start selfie
               </button>
-              <Link
-                to="/privacy-policy"
-                className="flex-1 rounded-lg border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:bg-blue-50"
-              >
-                Read Privacy Policy
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => handleStartCapture('id')}
+                  className="flex flex-1 items-center justify-center rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-blue-50"
+                >
+                  <CreditCard className="mr-2 h-4 w-4 text-[#D96E6E]" />
+                  Use ID instead
+                </button>
+                <Link
+                  to="/privacy-policy"
+                  className="flex-1 rounded-lg border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:bg-blue-50"
+                >
+                  Privacy details
+                </Link>
+              </div>
             </div>
           </div>
         )}
@@ -343,8 +287,8 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
               </h3>
               <p className="text-sm text-gray-600">
                 {captureMode === 'selfie' 
-                  ? 'Position your face in the center of the frame'
-                  : 'Make sure your ID is clearly visible and well-lit'
+                  ? 'Center your face and take a clear photo. Your camera turns off after capture.'
+                  : 'Make sure your ID is clearly visible and well-lit. Your camera turns off after capture.'
                 }
               </p>
             </div>
@@ -382,8 +326,8 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                       <div className="text-center text-white">
                         <Camera className="w-12 h-12 mx-auto mb-4 animate-pulse" />
-                        <p>Requesting camera access...</p>
-                        <p className="text-sm text-gray-300 mt-2">Please allow camera permissions</p>
+                        <p>Opening your camera...</p>
+                        <p className="text-sm text-gray-300 mt-2">Allow camera access to take your verification photo</p>
                       </div>
                     </div>
                   )}
@@ -393,12 +337,12 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                     <div className="absolute inset-0 flex items-center justify-center bg-red-50">
                       <div className="text-center text-red-700 p-6">
                         <AlertTriangle className="w-12 h-12 mx-auto mb-4" />
-                        <p className="font-medium mb-2">Camera Error</p>
+                        <p className="font-medium mb-2">We couldn’t open your camera</p>
                         <p className="text-sm">{error}</p>
                         <div className="mt-4 rounded-lg bg-white/80 p-3 text-left text-xs text-red-800">
                           <p className="font-semibold">Try these quick fixes:</p>
                           <ul className="mt-2 list-disc space-y-1 pl-4">
-                            <li>Allow camera permissions for this site.</li>
+                            <li>Allow camera access for this site.</li>
                             <li>Open this page in Safari or Chrome.</li>
                             <li>Try again from your phone if this device has no camera.</li>
                           </ul>
@@ -469,7 +413,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                   }`}
                 >
                   <Camera className="w-6 h-6 mr-2" />
-                  Capture Photo
+                  Take photo
                 </button>
               )}
             </div>
@@ -499,8 +443,8 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
 
         {isReadyToContinue && (
           <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
-            <h2 className="text-lg font-bold text-slate-900">Review before submitting</h2>
-            <p className="mt-1 text-sm text-slate-600">Please confirm these details before your application enters admin review.</p>
+            <h2 className="text-lg font-bold text-slate-900">Looks good?</h2>
+            <p className="mt-1 text-sm text-slate-600">Submit your application for review, or retake the photo if needed.</p>
             <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="font-semibold text-slate-500">Full name</dt>
