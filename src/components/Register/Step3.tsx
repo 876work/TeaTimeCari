@@ -269,6 +269,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
                 </button>
                 <Link
                   to="/privacy-policy"
+                  state={{ returnTo: '/signup', fromSignup: true }}
                   className="flex-1 rounded-lg border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:bg-blue-50"
                 >
                   Privacy details
@@ -486,6 +487,7 @@ export function RegisterStep3({ onNext, onBack, initialData, registrationData }:
             and our{' '}
             <Link
               to="/privacy-policy"
+              state={{ returnTo: '/signup', fromSignup: true }}
               className="font-semibold text-[#4B9EC8] underline underline-offset-2 transition-colors hover:text-[#3382AA]"
             >
               Privacy Policy
