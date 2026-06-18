@@ -70,6 +70,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   
   // Global error state
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
@@ -386,6 +387,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
     setGlobalError(null);
     
     // Mark all fields as touched
@@ -401,6 +408,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     const hasBasicErrors = Object.values(latestErrors).some(error => error);
     if (hasBasicErrors) {
       setGlobalError('Please fix the errors above before continuing.');
+      setIsSubmitting(false);
       return;
     }
     
@@ -415,6 +423,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           emailAvailable = await checkEmailAvailability(formData.email);
         } else {
           setGlobalError('Please enter a valid email address.');
+          setIsSubmitting(false);
           return;
         }
       }
@@ -425,6 +434,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
           usernameAvailable = await checkUsernameAvailability(formData.username);
         } else {
           setGlobalError('Please enter a valid username.');
+          setIsSubmitting(false);
           return;
         }
       }
@@ -432,11 +442,13 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
       // Check if email and username are available
       if (!emailAvailable) {
         setGlobalError('This email address is already registered. Please use a different email or try signing in.');
+        setIsSubmitting(false);
         return;
       }
       
       if (!usernameAvailable) {
         setGlobalError('This username is already taken. Please choose a different username.');
+        setIsSubmitting(false);
         return;
       }
       
@@ -446,6 +458,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     } catch (err) {
       debugError('Error during availability check:', err);
       setGlobalError('Failed to verify email and username availability. Please try again.');
+      setIsSubmitting(false);
       return;
     }
   };
@@ -816,14 +829,14 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             )}
             <button
               type="submit"
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || isSubmitting}
               className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-                isFormValid()
+                isFormValid() && !isSubmitting
                   ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              Next Step
+              {isSubmitting ? 'Checking...' : 'Next Step'}
             </button>
           </div>
         </form>

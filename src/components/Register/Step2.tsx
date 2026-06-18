@@ -128,13 +128,6 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
               </p>
             </div>
           </details>
-
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-semibold text-amber-900">Selected the wrong option?</p>
-            <p className="mt-1 text-sm text-amber-800">
-              No worries. Continue only when this looks right. If you notice a mistake after submitting, contact support so the team can review and update your access safely.
-            </p>
-          </div>
         </div>
 
         <div className="flex space-x-4">
