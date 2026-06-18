@@ -77,6 +77,7 @@ const loadSignupDraft = (): { currentStep: number; registrationData: Registratio
 
   try {
     const storedDraft = window.sessionStorage.getItem(SIGNUP_DRAFT_STORAGE_KEY);
+
     if (!storedDraft) {
       return { currentStep: 1, registrationData: {} };
     }
@@ -154,6 +155,7 @@ export default function Signup() {
 
   const handleStep1Complete = (data: RegisterStep1Data) => {
     const nextData = { ...registrationData, step1: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(2, nextData);
     setCurrentStep(2);
@@ -162,6 +164,7 @@ export default function Signup() {
 
   const handleStep2Complete = (data: RegisterStep2Data) => {
     const nextData = { ...registrationData, step2: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(3, nextData);
     setCurrentStep(3);
@@ -170,6 +173,7 @@ export default function Signup() {
 
   const handleStep3Complete = (data: RegisterStep3Data) => {
     const nextData = { ...registrationData, step3: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(4, nextData);
     setCurrentStep(4);
@@ -234,6 +238,7 @@ export default function Signup() {
             Sign in instead
           </Link>
         </p>
+
         <Link to="/" className="mt-3 inline-flex text-sm text-gray-600 hover:text-gray-800 transition-colors">
           ← Back to Home
         </Link>
