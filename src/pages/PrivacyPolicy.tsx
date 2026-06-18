@@ -135,7 +135,10 @@ const policySections: PolicySection[] = [
   },
   {
     title: '6. Limited Sharing of Information',
-    body: ['Although we do not sell or commercially share your personal information, limited disclosure may be necessary in specific circumstances.', 'We may share information with:'],
+    body: [
+      'Although we do not sell or commercially share your personal information, limited disclosure may be necessary in specific circumstances.',
+      'We may share information with:',
+    ],
     subsections: [
       {
         title: 'Service Providers',
@@ -158,7 +161,9 @@ const policySections: PolicySection[] = [
       },
       {
         title: 'Business Transfers',
-        body: ['If Tea Time Cari is involved in a merger, acquisition, restructuring, or sale of assets, user information may be transferred as part of that transaction. If this happens, we will take reasonable steps to ensure your information remains protected.'],
+        body: [
+          'If Tea Time Cari is involved in a merger, acquisition, restructuring, or sale of assets, user information may be transferred as part of that transaction. If this happens, we will take reasonable steps to ensure your information remains protected.',
+        ],
       },
     ],
   },
@@ -192,7 +197,10 @@ const policySections: PolicySection[] = [
   },
   {
     title: '9. Data Security',
-    body: ['We take reasonable technical and organizational measures to protect personal information from unauthorized access, alteration, disclosure, loss, misuse, or destruction.', 'These measures may include:'],
+    body: [
+      'We take reasonable technical and organizational measures to protect personal information from unauthorized access, alteration, disclosure, loss, misuse, or destruction.',
+      'These measures may include:',
+    ],
     items: [
       'Secure authentication',
       'Access controls',
@@ -207,8 +215,19 @@ const policySections: PolicySection[] = [
   },
   {
     title: '10. Account Review, Moderation, and Enforcement',
-    body: ['Tea Time Cari may review registrations, user activity, reports, posts, comments, messages, and uploaded content to protect the community.', 'We may use your information to:'],
-    items: ['Approve or reject accounts', 'Suspend or remove accounts', 'Investigate reports', 'Remove harmful or prohibited content', 'Limit access to features', 'Prevent repeated abuse', 'Protect users and the integrity of the platform'],
+    body: [
+      'Tea Time Cari may review registrations, user activity, reports, posts, comments, messages, and uploaded content to protect the community.',
+      'We may use your information to:',
+    ],
+    items: [
+      'Approve or reject accounts',
+      'Suspend or remove accounts',
+      'Investigate reports',
+      'Remove harmful or prohibited content',
+      'Limit access to features',
+      'Prevent repeated abuse',
+      'Protect users and the integrity of the platform',
+    ],
   },
   {
     title: '11. Data Retention',
@@ -217,7 +236,15 @@ const policySections: PolicySection[] = [
       'Verification photos are retained only as long as reasonably needed for registration review, fraud prevention, safety, legal, audit, dispute, or enforcement needs, unless a shorter retention period is required by law or operational policy.',
       'Retention periods may depend on:',
     ],
-    items: ['Whether your account is active', 'Whether the information is needed to provide the service', 'Legal or regulatory requirements', 'Security and fraud prevention needs', 'Moderation history', 'Dispute resolution', 'Backup and audit requirements'],
+    items: [
+      'Whether your account is active',
+      'Whether the information is needed to provide the service',
+      'Legal or regulatory requirements',
+      'Security and fraud prevention needs',
+      'Moderation history',
+      'Dispute resolution',
+      'Backup and audit requirements',
+    ],
   },
   {
     title: '12. Your Privacy Choices',
@@ -238,12 +265,28 @@ const policySections: PolicySection[] = [
   {
     title: '13. Email Communications',
     body: ['We may send you service related emails, including:'],
-    items: ['Account under review emails', 'Account approval emails', 'Account rejection emails', 'Password reset emails', 'Email verification emails', 'Security alerts', 'Suspension or account status emails', 'Important service updates'],
+    items: [
+      'Account under review emails',
+      'Account approval emails',
+      'Account rejection emails',
+      'Password reset emails',
+      'Email verification emails',
+      'Security alerts',
+      'Suspension or account status emails',
+      'Important service updates',
+    ],
   },
   {
     title: '14. Cookies and Similar Technologies',
     body: ['Tea Time Cari may use cookies, local storage, or similar technologies to:'],
-    items: ['Keep users logged in', 'Maintain session security', 'Remember preferences', 'Understand basic usage', 'Improve site performance', 'Prevent abuse or fraud'],
+    items: [
+      'Keep users logged in',
+      'Maintain session security',
+      'Remember preferences',
+      'Understand basic usage',
+      'Improve site performance',
+      'Prevent abuse or fraud',
+    ],
   },
   {
     title: '15. Children and Age Restrictions',
@@ -349,122 +392,151 @@ function BulletList({ items }: { items?: string[] }) {
 
 export default function PrivacyPolicy() {
   const location = useLocation();
-  const returnToSignup = (location.state as { fromSignup?: boolean; returnTo?: string } | null)?.fromSignup;
-  const backLinkTarget = returnToSignup ? '/signup' : '/';
+  const signupReturnState = location.state as { fromSignup?: boolean; returnTo?: string } | null;
+  const returnToSignup = signupReturnState?.fromSignup;
+  const backLinkTarget = returnToSignup ? signupReturnState?.returnTo || '/signup/photo-verification' : '/';
   const backLinkLabel = returnToSignup ? '← Back to signup' : '← Back to home';
 
   return (
     <GradientPageShell maxWidth="max-w-5xl">
-        <Link to={backLinkTarget} className="text-sm font-medium text-blue-600 hover:text-blue-700">
-          {backLinkLabel}
-        </Link>
-        <h1 className="mt-4 text-3xl font-bold text-slate-900">Privacy Policy</h1>
-        <h2 className="mt-2 text-2xl font-semibold text-slate-900">Tea Time Cari</h2>
+      <Link to={backLinkTarget} className="text-sm font-medium text-blue-600 hover:text-blue-700">
+        {backLinkLabel}
+      </Link>
 
-        <dl className="mt-6 space-y-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-          <div>
-            <dt className="inline font-semibold text-slate-900">Effective Date: </dt>
-            <dd className="inline">June 4, 2026</dd>
-          </div>
-          <div>
-            <dt className="inline font-semibold text-slate-900">Website: </dt>
-            <dd className="inline">
-              <a href={websiteUrl} className="text-blue-600 hover:text-blue-700">
-                {websiteUrl}
-              </a>
-            </dd>
-          </div>
-          <div>
-            <dt className="inline font-semibold text-slate-900">Contact: </dt>
-            <dd className="inline">
-              <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:text-blue-700">
-                {contactEmail}
-              </a>
-            </dd>
-          </div>
-        </dl>
+      <h1 className="mt-4 text-3xl font-bold text-slate-900">Privacy Policy</h1>
+      <h2 className="mt-2 text-2xl font-semibold text-slate-900">Tea Time Cari</h2>
 
-        <div className="mt-8 space-y-8 text-slate-700 leading-7">
-          <section>
-            <p>
-              Tea Time Cari respects your privacy. We understand that users may share personal, sensitive, or private experiences on the platform. This Privacy Policy explains what information we collect, how we use it, how we protect it, and the choices you have.
-            </p>
-            <p className="mt-3">
-              By creating an account, using Tea Time Cari, submitting information, or interacting with our service, you agree to the practices described in this Privacy Policy.
-            </p>
-          </section>
+      <dl className="mt-6 space-y-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+        <div>
+          <dt className="inline font-semibold text-slate-900">Effective Date: </dt>
+          <dd className="inline">June 4, 2026</dd>
+        </div>
 
-          {policySections.map((section) => (
-            <section key={section.title}>
-              <h2 className="text-xl font-semibold text-slate-900">{section.title}</h2>
-              <ParagraphList paragraphs={section.body} />
-              <BulletList items={section.items} />
-              {section.title === '3. How We Use Your Information' && (
-                <p className="mt-3">We do not use your personal data to publicly expose your identity.</p>
-              )}
-              {section.title === '7. Content Shared by Users' && (
-                <p className="mt-3">Tea Time Cari may remove content that violates our rules or creates legal, safety, privacy, or moderation concerns.</p>
-              )}
-              {section.title === '9. Data Security' && (
-                <p className="mt-3">No online service can guarantee complete security. You are responsible for keeping your login credentials private and using a strong password.</p>
-              )}
-              {section.title === '10. Account Review, Moderation, and Enforcement' && (
-                <p className="mt-3">Where appropriate, moderation decisions may be made by authorized administrators.</p>
-              )}
-              {section.title === '11. Data Retention' && (
-                <p className="mt-3">If your account is deleted, some information may be removed or anonymized. However, we may retain limited records where necessary for legal compliance, fraud prevention, safety, dispute resolution, or enforcement of our Terms of Service.</p>
-              )}
-              {section.title === '12. Your Privacy Choices' && (
-                <p className="mt-3">
-                  To make a privacy request, contact us at{' '}
+        <div>
+          <dt className="inline font-semibold text-slate-900">Website: </dt>
+          <dd className="inline">
+            <a href={websiteUrl} className="text-blue-600 hover:text-blue-700">
+              {websiteUrl}
+            </a>
+          </dd>
+        </div>
+
+        <div>
+          <dt className="inline font-semibold text-slate-900">Contact: </dt>
+          <dd className="inline">
+            <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:text-blue-700">
+              {contactEmail}
+            </a>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-8 space-y-8 text-slate-700 leading-7">
+        <section>
+          <p>
+            Tea Time Cari respects your privacy. We understand that users may share personal, sensitive, or private experiences on the platform. This Privacy Policy explains what information we collect, how we use it, how we protect it, and the choices you have.
+          </p>
+
+          <p className="mt-3">
+            By creating an account, using Tea Time Cari, submitting information, or interacting with our service, you agree to the practices described in this Privacy Policy.
+          </p>
+        </section>
+
+        {policySections.map((section) => (
+          <section key={section.title}>
+            <h2 className="text-xl font-semibold text-slate-900">{section.title}</h2>
+            <ParagraphList paragraphs={section.body} />
+            <BulletList items={section.items} />
+
+            {section.title === '3. How We Use Your Information' && (
+              <p className="mt-3">We do not use your personal data to publicly expose your identity.</p>
+            )}
+
+            {section.title === '7. Content Shared by Users' && (
+              <p className="mt-3">
+                Tea Time Cari may remove content that violates our rules or creates legal, safety, privacy, or moderation concerns.
+              </p>
+            )}
+
+            {section.title === '9. Data Security' && (
+              <p className="mt-3">
+                No online service can guarantee complete security. You are responsible for keeping your login credentials private and using a strong password.
+              </p>
+            )}
+
+            {section.title === '10. Account Review, Moderation, and Enforcement' && (
+              <p className="mt-3">Where appropriate, moderation decisions may be made by authorized administrators.</p>
+            )}
+
+            {section.title === '11. Data Retention' && (
+              <p className="mt-3">
+                If your account is deleted, some information may be removed or anonymized. However, we may retain limited records where necessary for legal compliance, fraud prevention, safety, dispute resolution, or enforcement of our Terms of Service.
+              </p>
+            )}
+
+            {section.title === '12. Your Privacy Choices' && (
+              <p className="mt-3">
+                To make a privacy request, contact us at{' '}
+                <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:text-blue-700">
+                  {contactEmail}
+                </a>
+                .
+              </p>
+            )}
+
+            {section.title === '13. Email Communications' && (
+              <>
+                <p className="mt-3">These emails are necessary for account security and service operation.</p>
+                <p className="mt-3">If we send marketing or promotional emails in the future, you will be able to opt out.</p>
+              </>
+            )}
+
+            {section.title === '14. Cookies and Similar Technologies' && (
+              <p className="mt-3">
+                You can adjust your browser settings to block cookies, but some parts of the service may not work properly.
+              </p>
+            )}
+
+            {section.title === '22. Contact Us' && (
+              <address className="mt-3 not-italic">
+                <p>Tea Time Cari</p>
+                <p>
+                  Email:{' '}
                   <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:text-blue-700">
                     {contactEmail}
                   </a>
-                  .
                 </p>
-              )}
-              {section.title === '13. Email Communications' && (
-                <>
-                  <p className="mt-3">These emails are necessary for account security and service operation.</p>
-                  <p className="mt-3">If we send marketing or promotional emails in the future, you will be able to opt out.</p>
-                </>
-              )}
-              {section.title === '14. Cookies and Similar Technologies' && (
-                <p className="mt-3">You can adjust your browser settings to block cookies, but some parts of the service may not work properly.</p>
-              )}
-              {section.title === '22. Contact Us' && (
-                <address className="mt-3 not-italic">
-                  <p>Tea Time Cari</p>
-                  <p>
-                    Email:{' '}
-                    <a href={`mailto:${contactEmail}`} className="text-blue-600 hover:text-blue-700">
-                      {contactEmail}
-                    </a>
+                <p>
+                  Website:{' '}
+                  <a href={websiteUrl} className="text-blue-600 hover:text-blue-700">
+                    {websiteUrl}
+                  </a>
+                </p>
+              </address>
+            )}
+
+            {section.subsections?.map((subsection) => (
+              <section key={subsection.title} className="mt-5">
+                <h3 className="text-lg font-semibold text-slate-900">{subsection.title}</h3>
+                <ParagraphList paragraphs={subsection.body} />
+                <BulletList items={subsection.items} />
+
+                {subsection.title === 'User Content' && (
+                  <p className="mt-3">
+                    You are responsible for the content you choose to share. You should not upload or post private information about yourself or others unless you have the right to do so.
                   </p>
-                  <p>
-                    Website:{' '}
-                    <a href={websiteUrl} className="text-blue-600 hover:text-blue-700">
-                      {websiteUrl}
-                    </a>
+                )}
+
+                {subsection.title === 'Technical and Usage Information' && (
+                  <p className="mt-3">
+                    This information helps us secure the platform, prevent abuse, troubleshoot issues, and understand how the service is being used.
                   </p>
-                </address>
-              )}
-              {section.subsections?.map((subsection) => (
-                <section key={subsection.title} className="mt-5">
-                  <h3 className="text-lg font-semibold text-slate-900">{subsection.title}</h3>
-                  <ParagraphList paragraphs={subsection.body} />
-                  <BulletList items={subsection.items} />
-                  {subsection.title === 'User Content' && (
-                    <p className="mt-3">You are responsible for the content you choose to share. You should not upload or post private information about yourself or others unless you have the right to do so.</p>
-                  )}
-                  {subsection.title === 'Technical and Usage Information' && (
-                    <p className="mt-3">This information helps us secure the platform, prevent abuse, troubleshoot issues, and understand how the service is being used.</p>
-                  )}
-                </section>
-              ))}
-            </section>
-          ))}
-        </div>
+                )}
+              </section>
+            ))}
+          </section>
+        ))}
+      </div>
     </GradientPageShell>
   );
 }

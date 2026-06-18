@@ -1,6 +1,6 @@
 // src/pages/Signup.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { RegisterStep1, type RegisterStep1Data } from '@/components/RegisterStep1';
 import { RegisterStep2, type RegisterStep2Data } from '@/components/Register/Step2';
 import { RegisterStep3, type RegisterStep3Data } from '@/components/Register/Step3';
@@ -8,6 +8,20 @@ import PendingApproval from '@/components/Register/PendingApproval';
 import { AuthLayout } from '@/components/AuthLayout';
 
 const SIGNUP_DRAFT_STORAGE_KEY = 'teatimecari.signupDraft';
+
+const STEP_PATHS = {
+  1: '/signup/account',
+  2: '/signup/access-group',
+  3: '/signup/photo-verification',
+  4: '/signup/pending-approval',
+} as const;
+
+const PATH_STEPS: Record<string, number> = {
+  '/signup/account': 1,
+  '/signup/access-group': 2,
+  '/signup/photo-verification': 3,
+  '/signup/pending-approval': 4,
+};
 
 type RegistrationData = {
   step1?: RegisterStep1Data;
@@ -38,6 +52,24 @@ const dataUrlToBlob = (dataUrl: string) => {
   return new Blob([bytes], { type: mimeType });
 };
 
+const getStepPath = (step: number) => STEP_PATHS[step as keyof typeof STEP_PATHS] || STEP_PATHS[1];
+
+const getEarliestAllowedStep = (registrationData: RegistrationData) => {
+  if (!registrationData.step1) {
+    return 1;
+  }
+
+  if (!registrationData.step2) {
+    return 2;
+  }
+
+  if (!registrationData.step3) {
+    return 3;
+  }
+
+  return 4;
+};
+
 const loadSignupDraft = (): { currentStep: number; registrationData: RegistrationData } => {
   if (typeof window === 'undefined') {
     return { currentStep: 1, registrationData: {} };
@@ -45,6 +77,7 @@ const loadSignupDraft = (): { currentStep: number; registrationData: Registratio
 
   try {
     const storedDraft = window.sessionStorage.getItem(SIGNUP_DRAFT_STORAGE_KEY);
+
     if (!storedDraft) {
       return { currentStep: 1, registrationData: {} };
     }
@@ -94,9 +127,27 @@ const saveSignupDraft = (currentStep: number, registrationData: RegistrationData
 };
 
 export default function Signup() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const initialDraft = React.useMemo(loadSignupDraft, []);
-  const [currentStep, setCurrentStep] = React.useState(initialDraft.currentStep);
+  const [currentStep, setCurrentStep] = React.useState(() => PATH_STEPS[location.pathname] || initialDraft.currentStep);
   const [registrationData, setRegistrationData] = React.useState<RegistrationData>(initialDraft.registrationData);
+
+  React.useEffect(() => {
+    const requestedStep = PATH_STEPS[location.pathname];
+    const earliestAllowedStep = getEarliestAllowedStep(registrationData);
+    const nextStep = requestedStep || Math.min(currentStep, earliestAllowedStep);
+    const guardedStep = nextStep > earliestAllowedStep ? earliestAllowedStep : nextStep;
+    const guardedPath = getStepPath(guardedStep);
+
+    if (currentStep !== guardedStep) {
+      setCurrentStep(guardedStep);
+    }
+
+    if (location.pathname !== guardedPath) {
+      navigate(guardedPath, { replace: true });
+    }
+  }, [currentStep, location.pathname, navigate, registrationData]);
 
   React.useEffect(() => {
     saveSignupDraft(currentStep, registrationData);
@@ -104,29 +155,36 @@ export default function Signup() {
 
   const handleStep1Complete = (data: RegisterStep1Data) => {
     const nextData = { ...registrationData, step1: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(2, nextData);
     setCurrentStep(2);
+    navigate(STEP_PATHS[2]);
   };
 
   const handleStep2Complete = (data: RegisterStep2Data) => {
     const nextData = { ...registrationData, step2: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(3, nextData);
     setCurrentStep(3);
+    navigate(STEP_PATHS[3]);
   };
 
   const handleStep3Complete = (data: RegisterStep3Data) => {
     const nextData = { ...registrationData, step3: data };
+
     setRegistrationData(nextData);
     saveSignupDraft(4, nextData);
     setCurrentStep(4);
+    navigate(STEP_PATHS[4]);
   };
 
   const resetRegistration = () => {
     window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
     setRegistrationData({});
     setCurrentStep(1);
+    navigate(STEP_PATHS[1], { replace: true });
   };
 
   return (
@@ -142,7 +200,10 @@ export default function Signup() {
       {currentStep === 2 && (
         <RegisterStep2
           onNext={handleStep2Complete}
-          onBack={() => setCurrentStep(1)}
+          onBack={() => {
+            setCurrentStep(1);
+            navigate(STEP_PATHS[1]);
+          }}
           initialData={registrationData.step2}
         />
       )}
@@ -150,7 +211,10 @@ export default function Signup() {
       {currentStep === 3 && (
         <RegisterStep3
           onNext={handleStep3Complete}
-          onBack={() => setCurrentStep(2)}
+          onBack={() => {
+            setCurrentStep(2);
+            navigate(STEP_PATHS[2]);
+          }}
           initialData={registrationData.step3}
           registrationData={registrationData}
         />
@@ -174,6 +238,7 @@ export default function Signup() {
             Sign in instead
           </Link>
         </p>
+
         <Link to="/" className="mt-3 inline-flex text-sm text-gray-600 hover:text-gray-800 transition-colors">
           ← Back to Home
         </Link>
