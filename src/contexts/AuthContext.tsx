@@ -14,6 +14,9 @@ export type AuthProfile = {
   country_code: string | null;
   city: string | null;
   status: ProfileStatus | null;
+  is_admin?: boolean | null;
+  xaccess?: boolean | null;
+  kyc_status?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -38,10 +41,14 @@ const allowedRoles = new Set<UserRole>(['business', 'creator', 'admin']);
 
 const normalizeProfile = (profile: AuthProfile | null): AuthProfile | null => {
   if (!profile) return null;
+
+  const legacyApproved = profile.kyc_status === 'approved' || profile.xaccess === true;
+  const inferredRole = profile.is_admin ? 'admin' : null;
+
   return {
     ...profile,
-    role: profile.role && allowedRoles.has(profile.role) ? profile.role : null,
-    status: profile.status ?? 'pending',
+    role: profile.role && allowedRoles.has(profile.role) ? profile.role : inferredRole,
+    status: profile.status ?? (legacyApproved || profile.is_admin ? 'active' : 'pending'),
   };
 };
 
@@ -60,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, role, full_name, email, avatar_url, country_code, city, status, created_at, updated_at')
+      .select('id, role, full_name, email, avatar_url, country_code, city, status, is_admin, xaccess, kyc_status, created_at, updated_at')
       .eq('id', nextUser.id)
       .maybeSingle();
 

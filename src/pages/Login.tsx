@@ -50,12 +50,20 @@ const roleDestinations: Record<string, string> = {
   admin: "/admin",
 };
 
+type LoginProfile = {
+  role?: string | null;
+  status?: string | null;
+  is_admin?: boolean | null;
+  xaccess?: boolean | null;
+  kyc_status?: string | null;
+};
+
 const getRoleDestination = async (userId: string, fallback: string) => {
   const { data, error } = await supabase
     .from("profiles")
-    .select("role, status")
+    .select("role, status, is_admin, xaccess, kyc_status")
     .eq("id", userId)
-    .maybeSingle();
+    .maybeSingle<LoginProfile>();
 
   if (error || !data) {
     return "/account/setup-error";
@@ -64,7 +72,11 @@ const getRoleDestination = async (userId: string, fallback: string) => {
   if (data.status === "suspended") return "/account/suspended";
   if (data.status === "deleted") return "/account/unavailable";
 
-  return roleDestinations[data.role as string] || fallback || "/account/setup-error";
+  const role = data.role || (data.is_admin ? "admin" : null);
+  if (role && roleDestinations[role]) return roleDestinations[role];
+
+  const hasLegacyAccess = data.status === "active" || data.kyc_status === "approved" || data.xaccess === true;
+  return hasLegacyAccess ? fallback : "/account/setup-error";
 };
 
 
