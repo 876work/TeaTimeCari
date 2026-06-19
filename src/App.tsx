@@ -42,6 +42,7 @@ const ResetPasswordVerify = React.lazy(() => import('./pages/ResetPasswordVerify
 const Logout = React.lazy(() => import('./pages/Logout'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
 const RoleSignup = React.lazy(() => import('./pages/creatorflow/RoleSignup'));
+const CreatorProfilePage = React.lazy(() => import('./pages/creatorflow/CreatorProfilePage'));
 const { VerifyEmail, AccountSuspended, AccountUnavailable, AccountSetupError, PlaceholderPage } = {
   VerifyEmail: React.lazy(() => import('./pages/creatorflow/AuthStatusPages').then((m) => ({ default: m.VerifyEmail }))),
   AccountSuspended: React.lazy(() => import('./pages/creatorflow/AuthStatusPages').then((m) => ({ default: m.AccountSuspended }))),
@@ -265,6 +266,7 @@ function App() {
                   <Route path="/anonymous-mode" element={<PublicLayout><AnonymousModeExplained /></PublicLayout>} />
                   <Route path="/faq" element={<PublicLayout><Faq /></PublicLayout>} />
                   <Route path="/how-it-works" element={<PublicLayout><HowItWorks /></PublicLayout>} />
+                  <Route path="/creators/:slug" element={<PublicLayout><CreatorProfilePage /></PublicLayout>} />
                   <Route path="/logout" element={<Logout />} />
                   <Route path="/profile" element={<AppLayout><OwnProfileRoute /></AppLayout>} />
                   <Route path="/users/:userId" element={<AppLayout><UserProfileRoute /></AppLayout>} />
