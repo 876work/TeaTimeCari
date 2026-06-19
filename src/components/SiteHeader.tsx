@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { useSession } from '@supabase/auth-helpers-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
 import { NotificationBell } from './Notifications/NotificationBell';
 
@@ -23,9 +23,8 @@ const glassButtonClass = `rounded-full border border-white/25 bg-white/15 text-s
 
 export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const session = useSession();
+  const { isAuthenticated, isBusiness, isCreator, isAdmin } = useAuth();
   const location = useLocation();
-  const isAuthenticated = Boolean(session?.user);
 
   React.useEffect(() => {
     setIsMenuOpen(false);
@@ -80,8 +79,8 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
             {showNotifications && isAuthenticated && <NotificationBell />}
             {isAuthenticated ? (
               <>
-                <NavLink to="/profile" className={`${glassButtonClass} px-4 py-2`}>
-                  Profile
+                <NavLink to={isAdmin ? '/admin' : isBusiness ? '/business/dashboard' : isCreator ? '/creator/dashboard' : '/profile'} className={`${glassButtonClass} px-4 py-2`}>
+                  {isAdmin ? 'Admin' : 'Dashboard'}
                 </NavLink>
                 <Link to="/logout" className={`${glassButtonClass} px-4 py-2`}>
                   Log Out
@@ -138,11 +137,11 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
                 {isAuthenticated ? (
                   <>
                     <NavLink
-                      to="/profile"
+                      to={isAdmin ? '/admin' : isBusiness ? '/business/dashboard' : isCreator ? '/creator/dashboard' : '/profile'}
                       onClick={closeMenu}
                       className={({ isActive }) => `${glassButtonClass} px-4 py-3 text-center ${isActive ? 'bg-white/20' : ''}`}
                     >
-                      Profile
+                      {isAdmin ? 'Admin' : 'Dashboard'}
                     </NavLink>
                     <Link to="/logout" onClick={closeMenu} className={`${glassButtonClass} px-4 py-3 text-center`}>
                       Log Out
