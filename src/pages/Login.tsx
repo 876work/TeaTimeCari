@@ -44,29 +44,6 @@ const getKycPendingUrl = (status: ApprovalStatus) => `/kyc-pending?status=${enco
 const getSsoSessionExpiredMessage = () =>
   "Your community sign-in session expired or is missing required security details. Please start again from the Community link, then log in if prompted.";
 
-const roleDestinations: Record<string, string> = {
-  business: "/business/dashboard",
-  creator: "/creator/dashboard",
-  admin: "/admin",
-};
-
-const getRoleDestination = async (userId: string, fallback: string) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("role, status")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !data) {
-    return "/account/setup-error";
-  }
-
-  if (data.status === "suspended") return "/account/suspended";
-  if (data.status === "deleted") return "/account/unavailable";
-
-  return roleDestinations[data.role as string] || fallback || "/account/setup-error";
-};
-
 
 export default function Login() {
   const q = useQuery();
@@ -89,10 +66,17 @@ export default function Login() {
   }, [q]);
 
   const redirectAfterApprovalCheck = async (userId: string) => {
-    const roleDestination = await getRoleDestination(userId, getPostLoginDestination());
+    const approvalStatus = await getApprovalStatus(userId);
 
-    if (roleDestination === "/account/suspended" || roleDestination === "/account/unavailable" || roleDestination === "/account/setup-error") {
-      window.location.href = roleDestination;
+    if (isBlockedStatus(approvalStatus)) {
+      await supabase.auth.signOut();
+      setError(getApprovalMessage(approvalStatus));
+      setLoading(false);
+      return;
+    }
+
+    if (approvalStatus !== "approved") {
+      window.location.href = getKycPendingUrl(approvalStatus);
       return;
     }
 
@@ -105,7 +89,7 @@ export default function Login() {
       return;
     }
 
-    window.location.href = roleDestination;
+    window.location.href = getPostLoginDestination();
   };
 
   useEffect(() => {
@@ -126,9 +110,8 @@ export default function Login() {
           return;
         }
 
-        const roleDestination = await getRoleDestination(userId, getPostLoginDestination());
-        if (roleDestination) {
-          navigate(roleDestination, { replace: true });
+        if (approvalStatus === "approved") {
+          navigate(getPostLoginDestination(), { replace: true });
           return;
         }
 
@@ -220,6 +203,14 @@ export default function Login() {
 
       if (!userId) {
         throw new Error("No authenticated user found after login.");
+      }
+
+      const approvalStatus = await getApprovalStatus(userId);
+      if (isBlockedStatus(approvalStatus)) {
+        await supabase.auth.signOut();
+        setError(getApprovalMessage(approvalStatus));
+        setLoading(false);
+        return;
       }
 
       await trackAuthLogin();
