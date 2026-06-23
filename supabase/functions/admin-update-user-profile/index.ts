@@ -54,6 +54,97 @@ function nameFrom(input: { firstName?: string | null; lastName?: string | null; 
   return parts.length > 0 ? parts.join(" ") : input.username?.trim() || "";
 }
 
+
+type AvailabilityConflict = {
+  field: "email" | "username";
+  value: string;
+  message: string;
+  suggestions?: string[];
+};
+
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function generateUsernameSuggestions(baseUsername: string) {
+  const cleanBase = baseUsername.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 17) || "teatime";
+  const suffixes = ["_new", "_cari", "_tt", new Date().getFullYear().toString().slice(-2)];
+  const suggestions = suffixes
+    .map((suffix) => `${cleanBase}${suffix}`)
+    .filter((suggestion) => suggestion.length <= 20);
+
+  while (suggestions.length < 5) {
+    const next = `${cleanBase.slice(0, 17)}${Math.floor(Math.random() * 900) + 100}`;
+    if (next.length <= 20 && !suggestions.includes(next)) suggestions.push(next);
+  }
+
+  return suggestions.slice(0, 5);
+}
+
+async function hasDuplicate(table: "registrations" | "profiles", field: "email" | "username", value: string, registrationId: string) {
+  const { data, error } = await supabaseAdmin
+    .from(table)
+    .select("id")
+    .ilike(field, value)
+    .neq("id", registrationId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703" || error.code === "PGRST116") return false;
+    throw error;
+  }
+
+  return Boolean(data);
+}
+
+async function findAvailabilityConflicts(input: {
+  registrationId: string;
+  email: string;
+  username: string;
+  currentEmail?: string | null;
+  currentUsername?: string | null;
+}) {
+  const conflicts: AvailabilityConflict[] = [];
+  const normalizedEmail = normalizeEmail(input.email);
+  const normalizedCurrentEmail = normalizeEmail(input.currentEmail || "");
+  const normalizedUsername = normalizeUsername(input.username);
+  const normalizedCurrentUsername = normalizeUsername(input.currentUsername || "");
+
+  if (normalizedEmail !== normalizedCurrentEmail) {
+    const emailExists = await hasDuplicate("registrations", "email", normalizedEmail, input.registrationId) ||
+      await hasDuplicate("profiles", "email", normalizedEmail, input.registrationId);
+
+    if (emailExists) {
+      conflicts.push({
+        field: "email",
+        value: input.email,
+        message: "That email address is already in the database. Please use a different email address.",
+      });
+    }
+  }
+
+  if (normalizedUsername !== normalizedCurrentUsername) {
+    const usernameExists = await hasDuplicate("registrations", "username", normalizedUsername, input.registrationId) ||
+      await hasDuplicate("profiles", "username", normalizedUsername, input.registrationId);
+
+    if (usernameExists) {
+      conflicts.push({
+        field: "username",
+        value: input.username,
+        message: "That username is already in the database. Please choose a different username.",
+        suggestions: generateUsernameSuggestions(input.username),
+      });
+    }
+  }
+
+  return conflicts;
+}
+
 function genderGroups() {
   return {
     men: Deno.env.get("MEN_GROUP") || "men-slu",
@@ -112,6 +203,7 @@ async function syncDiscourseUser(input: {
   const form = new URLSearchParams({ sso: b64, sig });
 
   const response = await fetch(`${DISCOURSE_BASE}/admin/users/sync_sso`, {
+    signal: AbortSignal.timeout(8000),
     method: "POST",
     headers: {
       "Api-Key": DISCOURSE_KEY,
@@ -186,6 +278,22 @@ Deno.serve(async (req: Request) => {
 
     if (!next.email) return json(400, { ok: false, error: "email is required" });
     if (!next.username) return json(400, { ok: false, error: "username is required" });
+
+    const conflicts = await findAvailabilityConflicts({
+      registrationId,
+      email: next.email,
+      username: next.username,
+      currentEmail: current.email,
+      currentUsername: current.username,
+    });
+    if (conflicts.length > 0) {
+      return json(409, {
+        ok: false,
+        error: "availability_conflict",
+        message: conflicts.map((conflict) => conflict.message).join(" "),
+        conflicts,
+      });
+    }
 
     const previousGender = normalizeGender(current.gender)?.norm ?? null;
     const profile = await maybeGetProfile(registrationId);

@@ -72,6 +72,13 @@ type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'la
 type ConfirmationAction = 'reject' | 'suspend' | 'unsuspend';
 type EditableUser = Pick<UserRow, 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'gender'>;
 
+type AvailabilityConflict = {
+  field: 'email' | 'username';
+  value: string;
+  message: string;
+  suggestions?: string[];
+};
+
 interface PendingConfirmation {
   action: ConfirmationAction;
   user: UserRow;
@@ -309,6 +316,7 @@ export function AdminUserReview({
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [editConflicts, setEditConflicts] = useState<AvailabilityConflict[]>([]);
   const [editForm, setEditForm] = useState<EditableUser>({
     firstName: '',
     lastName: '',
@@ -457,6 +465,7 @@ export function AdminUserReview({
 
   const openEditUser = (user: UserRow) => {
     setEditingUser(user);
+    setEditConflicts([]);
     setEditForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
@@ -470,9 +479,11 @@ export function AdminUserReview({
   const closeEditUser = () => {
     if (processingId) return;
     setEditingUser(null);
+    setEditConflicts([]);
   };
 
   const handleEditFormChange = (field: keyof EditableUser, value: string) => {
+    setEditConflicts((current) => current.filter((conflict) => conflict.field !== field));
     setEditForm((current) => ({
       ...current,
       [field]: field === 'gender' ? (value as UserRow['gender']) : value,
@@ -484,6 +495,7 @@ export function AdminUserReview({
 
     setProcessingId(editingUser.id);
     setError(null);
+    setEditConflicts([]);
 
     try {
       const {
@@ -498,7 +510,10 @@ export function AdminUserReview({
       });
 
       if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
-      if (!data?.ok) throw new Error(data?.error || 'Failed to update user profile');
+      if (!data?.ok) {
+        if (Array.isArray(data?.conflicts)) setEditConflicts(data.conflicts);
+        throw new Error(data?.message || data?.error || 'Failed to update user profile');
+      }
 
       const updatedUser = data.user as Partial<UserRow>;
 
@@ -1101,6 +1116,27 @@ export function AdminUserReview({
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+                {editConflicts
+                  .filter((conflict) => conflict.field === 'username')
+                  .map((conflict) => (
+                    <div key={`${conflict.field}-${conflict.value}`} className="mt-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+                      <p>{conflict.message}</p>
+                      {conflict.suggestions && conflict.suggestions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {conflict.suggestions.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() => handleEditFormChange('username', suggestion)}
+                              className="rounded-full bg-white px-2 py-1 font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+                            >
+                              @{suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
               </label>
 
               <label className="block text-sm font-semibold text-slate-700">
@@ -1112,6 +1148,13 @@ export function AdminUserReview({
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+                {editConflicts
+                  .filter((conflict) => conflict.field === 'email')
+                  .map((conflict) => (
+                    <p key={`${conflict.field}-${conflict.value}`} className="mt-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
+                      {conflict.message}
+                    </p>
+                  ))}
               </label>
 
               <label className="block text-sm font-semibold text-slate-700">
