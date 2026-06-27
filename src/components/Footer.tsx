@@ -57,6 +57,11 @@ const socialLinks = [
     href: 'https://www.facebook.com/people/Tea-Time-Cari/61590153702836/',
     img: '/FB_logo.png',
   },
+  {
+    label: 'WhatsApp Channel',
+    href: 'https://whatsapp.com/channel/0029VbDJhU46hENxsvU7ZM16',
+    img: '/whatsapp.svg',
+  },
 ];
 
 function AppleStoreBadge() {
