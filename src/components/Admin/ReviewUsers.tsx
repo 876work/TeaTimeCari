@@ -51,7 +51,15 @@ interface UserRow {
   last_code_sent_at?: string | null;
   last_code_delivery_status?: string | null;
   registration_ip_address?: string | null;
+  registration_ip_header?: string | null;
   registration_ip_location?: string | null;
+  registration_city?: string | null;
+  registration_region?: string | null;
+  registration_country?: string | null;
+  registration_country_code?: string | null;
+  registration_timezone?: string | null;
+  registration_location_provider?: string | null;
+  registration_location_status?: 'not_attempted' | 'success' | 'unavailable' | 'failed' | null;
   registration_browser?: string | null;
   registration_device?: string | null;
   registration_operating_system?: string | null;
@@ -231,6 +239,18 @@ function SummaryCard({
   );
 }
 
+function registrationLocationDisplay(user: UserRow) {
+  const cityCountry = [user.registration_city, user.registration_country].filter(Boolean).join(', ');
+  if (cityCountry) return cityCountry;
+  if (user.registration_ip_location?.trim()) return user.registration_ip_location.trim();
+  if (!user.registration_tracked_at && !user.created_at) return 'No registration tracking recorded';
+  if (!user.registration_ip_address) return 'IP unavailable';
+  if (user.registration_location_status === 'failed') return 'Location lookup failed';
+  if (user.registration_location_status === 'unavailable') return 'Location lookup unavailable';
+  if (user.registration_location_status === 'not_attempted') return 'Location lookup not attempted';
+  return 'Location lookup unavailable';
+}
+
 function loginLocationDisplay(user: UserRow) {
   const structured = [user.last_login_city, user.last_login_region, user.last_login_country].filter(Boolean).join(', ');
   if (structured) return structured;
@@ -273,7 +293,12 @@ function DetailPanel({ user }: { user: UserRow }) {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Timestamp" value={formatDateTime(user.created_at)} />
             <Field label="IP Address" value={na(user.registration_ip_address)} />
-            <Field label="Location" value={na(user.registration_ip_location)} />
+            <Field label="IP Header" value={na(user.registration_ip_header)} />
+            <Field label="Registered From" value={registrationLocationDisplay(user)} />
+            <Field label="Country Code" value={na(user.registration_country_code)} />
+            <Field label="Timezone" value={na(user.registration_timezone)} />
+            <Field label="Location Provider" value={na(user.registration_location_provider)} />
+            <Field label="Location Status" value={na(user.registration_location_status)} />
             <Field label="Browser" value={na(user.registration_browser)} />
             <Field label="Device" value={na(user.registration_device)} />
             <Field label="Operating System" value={na(user.registration_operating_system)} />
@@ -955,12 +980,10 @@ export function AdminUserReview({
 
                           <td className="px-5 py-4 hidden lg:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
-                            {user.registration_ip_location && (
-                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {user.registration_ip_location}
-                              </p>
-                            )}
+                            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {registrationLocationDisplay(user)}
+                            </p>
                           </td>
 
                           <td className="px-5 py-4 hidden xl:table-cell">

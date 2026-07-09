@@ -88,7 +88,15 @@ const OPTIONAL_REGISTRATION_FIELDS = new Set([
 
 const TRACKING_FIELDS = [
   "registration_ip_address",
+  "registration_ip_header",
   "registration_ip_location",
+  "registration_city",
+  "registration_region",
+  "registration_country",
+  "registration_country_code",
+  "registration_timezone",
+  "registration_location_provider",
+  "registration_location_status",
   "registration_browser",
   "registration_device",
   "registration_operating_system",
