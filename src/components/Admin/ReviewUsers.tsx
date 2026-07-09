@@ -59,7 +59,15 @@ interface UserRow {
   registration_tracked_at?: string | null;
   last_login_at?: string | null;
   last_login_ip_address?: string | null;
+  last_login_ip_header?: string | null;
   last_login_ip_location?: string | null;
+  last_login_city?: string | null;
+  last_login_region?: string | null;
+  last_login_country?: string | null;
+  last_login_country_code?: string | null;
+  last_login_timezone?: string | null;
+  last_login_location_provider?: string | null;
+  last_login_location_status?: 'not_attempted' | 'success' | 'unavailable' | 'failed' | null;
   last_login_browser?: string | null;
   last_login_device?: string | null;
   last_login_operating_system?: string | null;
@@ -86,6 +94,11 @@ interface PendingConfirmation {
 }
 
 type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
+
+type TrackingStatus = {
+  trackingFieldsAvailable: boolean;
+  omittedFields: string[];
+};
 
 const safeDisplayName = (u: UserRow) => {
   const full = [u.fullName, [u.firstName, u.lastName].filter(Boolean).join(' ')].find(
@@ -218,6 +231,18 @@ function SummaryCard({
   );
 }
 
+function loginLocationDisplay(user: UserRow) {
+  const structured = [user.last_login_city, user.last_login_region, user.last_login_country].filter(Boolean).join(', ');
+  if (structured) return structured;
+  if (user.last_login_ip_location?.trim()) return user.last_login_ip_location.trim();
+  if (!user.last_login_at) return 'No login recorded';
+  if (!user.last_login_ip_address) return 'IP unavailable';
+  if (user.last_login_location_status === 'failed') return 'Location lookup failed';
+  if (user.last_login_location_status === 'unavailable') return 'Location lookup unavailable';
+  if (user.last_login_location_status === 'not_attempted') return 'Location lookup not attempted';
+  return 'Location lookup unavailable';
+}
+
 function DetailPanel({ user }: { user: UserRow }) {
   return (
     <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
@@ -265,7 +290,12 @@ function DetailPanel({ user }: { user: UserRow }) {
             <Field label="Last Login" value={formatDateTime(user.last_login_at)} />
             <Field label="Last Seen" value={formatDateTime(user.last_seen_at)} />
             <Field label="Login IP" value={na(user.last_login_ip_address)} />
-            <Field label="Login Location" value={na(user.last_login_ip_location)} />
+            <Field label="Login IP Header" value={na(user.last_login_ip_header)} />
+            <Field label="Login Location" value={loginLocationDisplay(user)} />
+            <Field label="Login Country Code" value={na(user.last_login_country_code)} />
+            <Field label="Login Timezone" value={na(user.last_login_timezone)} />
+            <Field label="Location Provider" value={na(user.last_login_location_provider)} />
+            <Field label="Location Status" value={na(user.last_login_location_status)} />
             <Field label="Login Browser" value={na(user.last_login_browser)} />
             <Field label="Login Device" value={na(user.last_login_device)} />
             <Field label="Login OS" value={na(user.last_login_operating_system)} />
@@ -298,6 +328,7 @@ export function AdminUserReview({
   const session = useSession();
 
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({ trackingFieldsAvailable: true, omittedFields: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -369,10 +400,15 @@ export function AdminUserReview({
       }));
 
       setUsers(mapped);
+      setTrackingStatus({
+        trackingFieldsAvailable: data.trackingFieldsAvailable !== false,
+        omittedFields: Array.isArray(data.omittedFields) ? data.omittedFields : [],
+      });
       setLastUpdated(new Date());
     } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setUsers([]);
+      setTrackingStatus({ trackingFieldsAvailable: true, omittedFields: [] });
     } finally {
       setLoading(false);
     }
@@ -741,6 +777,16 @@ export function AdminUserReview({
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        {!trackingStatus.trackingFieldsAvailable && (
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+            <p className="text-sm font-semibold text-orange-900">Tracking schema warning</p>
+            <p className="mt-1 text-sm text-orange-800">
+              Some login tracking columns are missing from the active database, so affected fields may show troubleshooting placeholders instead of saved values.
+              {trackingStatus.omittedFields.length > 0 ? ` Missing: ${trackingStatus.omittedFields.join(', ')}.` : ''}
+            </p>
           </div>
         )}
 

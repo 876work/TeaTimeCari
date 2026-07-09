@@ -1,6 +1,14 @@
 export type TrackingMetadata = {
   ip_address: string | null;
+  ip_header: string | null;
   ip_location: string | null;
+  ip_city: string | null;
+  ip_region: string | null;
+  ip_country: string | null;
+  ip_country_code: string | null;
+  ip_timezone: string | null;
+  ip_location_provider: string | null;
+  ip_location_status: 'not_attempted' | 'success' | 'unavailable' | 'failed';
   browser: string | null;
   device: string | null;
   operating_system: string | null;
@@ -30,17 +38,22 @@ function stripPort(ip: string) {
 
 export function getClientIp(req: Request) {
   const candidates = [
-    req.headers.get('cf-connecting-ip'),
-    req.headers.get('x-real-ip'),
-    firstHeaderValue(req.headers.get('x-forwarded-for')),
-    req.headers.get('x-nf-client-connection-ip'),
-    req.headers.get('fastly-client-ip'),
-    req.headers.get('true-client-ip'),
+    { header: 'cf-connecting-ip', value: req.headers.get('cf-connecting-ip') },
+    { header: 'x-real-ip', value: req.headers.get('x-real-ip') },
+    { header: 'x-forwarded-for', value: firstHeaderValue(req.headers.get('x-forwarded-for')) },
+    { header: 'x-nf-client-connection-ip', value: req.headers.get('x-nf-client-connection-ip') },
+    { header: 'fastly-client-ip', value: req.headers.get('fastly-client-ip') },
+    { header: 'true-client-ip', value: req.headers.get('true-client-ip') },
   ];
 
-  const ip = candidates.map((candidate) => candidate ? stripPort(candidate.trim()) : null).find(Boolean) || null;
-  if (!ip || PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(ip))) return null;
-  return ip;
+  for (const candidate of candidates) {
+    const ip = candidate.value ? stripPort(candidate.value.trim()) : null;
+    if (ip && !PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(ip))) {
+      return { ip, header: candidate.header };
+    }
+  }
+
+  return { ip: null, header: null };
 }
 
 function parseBrowser(userAgent: string) {
@@ -70,11 +83,33 @@ function parseDevice(userAgent: string) {
   return null;
 }
 
-async function lookupIpLocation(ip: string | null) {
-  if (!ip) return null;
+type IpLocation = Pick<TrackingMetadata,
+  'ip_location' |
+  'ip_city' |
+  'ip_region' |
+  'ip_country' |
+  'ip_country_code' |
+  'ip_timezone' |
+  'ip_location_provider' |
+  'ip_location_status'
+>;
+
+const emptyLocation = (status: TrackingMetadata['ip_location_status']): IpLocation => ({
+  ip_location: null,
+  ip_city: null,
+  ip_region: null,
+  ip_country: null,
+  ip_country_code: null,
+  ip_timezone: null,
+  ip_location_provider: null,
+  ip_location_status: status,
+});
+
+async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
+  if (!ip) return emptyLocation('not_attempted');
 
   const ipinfoToken = Deno.env.get('IPINFO_TOKEN') || '';
-  const timeout = AbortSignal.timeout(1500);
+  const timeout = AbortSignal.timeout(3000);
 
   try {
     if (ipinfoToken) {
@@ -83,27 +118,49 @@ async function lookupIpLocation(ip: string | null) {
       });
       if (res.ok) {
         const data = await res.json();
-        return [data.city, data.region, data.country].filter(Boolean).join(', ') || null;
+        const countryCode = data.country || null;
+        return {
+          ip_city: data.city || null,
+          ip_region: data.region || null,
+          ip_country: countryCode,
+          ip_country_code: countryCode,
+          ip_timezone: data.timezone || null,
+          ip_location: [data.city, data.region, countryCode].filter(Boolean).join(', ') || null,
+          ip_location_provider: 'ipinfo',
+          ip_location_status: 'success',
+        };
       }
     }
 
     const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, { signal: timeout });
-    if (!res.ok) return null;
+    if (!res.ok) return emptyLocation('unavailable');
     const data = await res.json();
-    return [data.city, data.region, data.country_name || data.country].filter(Boolean).join(', ') || null;
+    const country = data.country_name || data.country || null;
+    return {
+      ip_city: data.city || null,
+      ip_region: data.region || null,
+      ip_country: country,
+      ip_country_code: data.country_code || data.country || null,
+      ip_timezone: data.timezone || null,
+      ip_location: [data.city, data.region, country].filter(Boolean).join(', ') || null,
+      ip_location_provider: 'ipapi',
+      ip_location_status: 'success',
+    };
   } catch (error) {
     console.warn('IP location lookup failed', error);
-    return null;
+    return emptyLocation('failed');
   }
 }
 
 export async function collectTrackingMetadata(req: Request): Promise<TrackingMetadata> {
   const userAgent = req.headers.get('user-agent')?.slice(0, 512) || null;
-  const ip = getClientIp(req);
+  const clientIp = getClientIp(req);
+  const location = await lookupIpLocation(clientIp.ip);
 
   return {
-    ip_address: ip,
-    ip_location: await lookupIpLocation(ip),
+    ip_address: clientIp.ip,
+    ip_header: clientIp.header,
+    ...location,
     browser: userAgent ? parseBrowser(userAgent) : null,
     device: userAgent ? parseDevice(userAgent) : null,
     operating_system: userAgent ? parseOperatingSystem(userAgent) : null,

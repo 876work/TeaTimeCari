@@ -108,7 +108,15 @@ function registrationUpsertPayload(
     ...(tracking
       ? {
           registration_ip_address: tracking.metadata.ip_address,
+          registration_ip_header: tracking.metadata.ip_header,
           registration_ip_location: tracking.metadata.ip_location,
+          registration_city: tracking.metadata.ip_city,
+          registration_region: tracking.metadata.ip_region,
+          registration_country: tracking.metadata.ip_country,
+          registration_country_code: tracking.metadata.ip_country_code,
+          registration_timezone: tracking.metadata.ip_timezone,
+          registration_location_provider: tracking.metadata.ip_location_provider,
+          registration_location_status: tracking.metadata.ip_location_status,
           registration_browser: tracking.metadata.browser,
           registration_device: tracking.metadata.device,
           registration_operating_system: tracking.metadata.operating_system,
