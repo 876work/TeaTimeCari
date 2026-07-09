@@ -20,6 +20,38 @@ interface PendingApprovalProps {
   onGoBackToStep1: () => void;
 }
 
+const SIGNUP_DRAFT_STORAGE_KEY = 'teatimecari.signupDraft';
+const submittedRegistrationKeys = new Set<string>();
+const inFlightRegistrationSubmissions = new Map<string, Promise<Awaited<ReturnType<typeof submitRegistration>>>>();
+
+function getSubmissionKey(email?: string) {
+  return `teatimecari.registrationSubmitted:${email?.trim().toLowerCase() || 'unknown'}`;
+}
+
+function hasSubmittedRegistration(key: string) {
+  return submittedRegistrationKeys.has(key) || window.sessionStorage.getItem(key) === 'true';
+}
+
+function markRegistrationSubmitted(key: string) {
+  submittedRegistrationKeys.add(key);
+  window.sessionStorage.setItem(key, 'true');
+}
+
+function submitRegistrationOnce(key: string, payload: RegistrationPayload) {
+  const existingSubmission = inFlightRegistrationSubmissions.get(key);
+
+  if (existingSubmission) {
+    return existingSubmission;
+  }
+
+  const submission = submitRegistration(payload).finally(() => {
+    inFlightRegistrationSubmissions.delete(key);
+  });
+
+  inFlightRegistrationSubmissions.set(key, submission);
+  return submission;
+}
+
 const PendingApproval: React.FC<PendingApprovalProps> = ({
   registrationData,
   onGoHome,
@@ -79,10 +111,19 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
     didRun.current = true;
 
     const handleSubmission = async () => {
-      if (isSubmitting) return;
+      const { step1, step2, step3 } = registrationData;
 
-      if (!registrationData.step1 || !registrationData.step2 || !registrationData.step3) {
+      if (!step1 || !step2 || !step3) {
         setError('Incomplete registration data. Please start over.');
+        return;
+      }
+
+      const submissionKey = getSubmissionKey(step1.email);
+
+      if (hasSubmittedRegistration(submissionKey)) {
+        setAlreadyExists(true);
+        setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
         return;
       }
 
@@ -91,8 +132,6 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       setSuccessMessage('');
 
       try {
-        const { step1, step2, step3 } = registrationData;
-
         const registrationPayload: RegistrationPayload = {
           fullName: step1.fullName,
           email: step1.email,
@@ -107,9 +146,11 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
         debugLog('Submitting registration data...');
 
-        const result = await submitRegistration(registrationPayload);
+        const result = await submitRegistrationOnce(submissionKey, registrationPayload);
 
         setAlreadyExists(result.alreadyExists);
+        markRegistrationSubmitted(submissionKey);
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
 
         if (result.alreadyExists) {
           setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
@@ -134,7 +175,7 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
     };
 
     handleSubmission();
-  }, [registrationData, isSubmitting]);
+  }, [registrationData]);
 
   if (isSubmitting) {
     return (

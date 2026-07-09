@@ -52,6 +52,43 @@ function isSchemaCacheColumnError(error: { code?: string; message?: string } | n
   );
 }
 
+function isUniqueViolation(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || "";
+  return error?.code === "23505" || message.includes("duplicate key");
+}
+
+async function existingRegistrationResponse(email: string, fallbackUserId?: string) {
+  const { data: existingRegistration, error: lookupError } = email
+    ? await admin
+      .from("registrations")
+      .select("id, status")
+      .eq("email", email)
+      .maybeSingle()
+    : await admin
+      .from("registrations")
+      .select("id, status")
+      .eq("id", fallbackUserId)
+      .maybeSingle();
+
+  if (lookupError) {
+    return json(500, {
+      error: "registration lookup failed",
+      detail: lookupError.message,
+    });
+  }
+
+  if (!existingRegistration?.id) {
+    return json(409, { error: "registration already exists" });
+  }
+
+  return json(200, {
+    ok: true,
+    userId: existingRegistration.id,
+    alreadyExists: true,
+    status: existingRegistration.status,
+  });
+}
+
 function registrationUpsertPayload(
   userId: string,
   normalized: ReturnType<typeof normalizeRequest>,
@@ -244,35 +281,42 @@ serve(async (req) => {
     // schema cache after a migration. If the newer admin-tracking columns are
     // unavailable, keep registration working and persist the core application.
     let trackingPersisted = true;
-    let { error: upsertError } = await admin
+    let { error: insertError } = await admin
       .from("registrations")
-      .upsert(
+      .insert(
         registrationUpsertPayload(userId, normalized, {
           metadata: registrationTracking,
           trackedAt: registrationTrackedAt,
         }),
-        { onConflict: "id" },
       );
 
-    if (upsertError && isSchemaCacheColumnError(upsertError)) {
-      console.warn(
-        "registrations tracking columns are unavailable; retrying registration without tracking metadata",
-        upsertError,
-      );
-      trackingPersisted = false;
-      ({ error: upsertError } = await admin
-        .from("registrations")
-        .upsert(registrationUpsertPayload(userId, normalized), { onConflict: "id" }));
+    if (insertError && isUniqueViolation(insertError)) {
+      return existingRegistrationResponse(normalized.email, userId);
     }
 
-    if (upsertError) {
+    if (insertError && isSchemaCacheColumnError(insertError)) {
+      console.warn(
+        "registrations tracking columns are unavailable; retrying registration without tracking metadata",
+        insertError,
+      );
+      trackingPersisted = false;
+      ({ error: insertError } = await admin
+        .from("registrations")
+        .insert(registrationUpsertPayload(userId, normalized)));
+    }
+
+    if (insertError && isUniqueViolation(insertError)) {
+      return existingRegistrationResponse(normalized.email, userId);
+    }
+
+    if (insertError) {
       if (!isRecoveredAuthUser) {
         await admin.auth.admin.deleteUser(userId).catch((deleteError) => {
-          console.error("Failed to roll back auth user after registration upsert error", deleteError);
+          console.error("Failed to roll back auth user after registration insert error", deleteError);
         });
       }
 
-      return json(500, { error: "upsert failed", detail: upsertError.message });
+      return json(500, { error: "registration insert failed", detail: insertError.message });
     }
 
     const underReviewEmail = await sendUnderReviewEmail(
