@@ -12,3 +12,64 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+@layer components {
+  .admin-shell :where(button, a, input, select, textarea) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .admin-shell :where(button, a, input, select, textarea):focus-visible {
+    outline: 2px solid rgb(37 99 235 / 0.9);
+    outline-offset: 2px;
+  }
+
+  .admin-shell :where(button, a) {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+  }
+
+  .admin-shell :where(button:not(:disabled), a):active {
+    transform: scale(0.99);
+  }
+
+  .admin-shell :where(tbody tr) {
+    transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  .admin-shell :where(tbody tr:hover) {
+    background-color: rgb(248 250 252 / 0.88);
+  }
+
+  .admin-page-enter {
+    animation: admin-page-enter 180ms ease-out both;
+  }
+
+  .admin-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, rgb(226 232 240 / 0.72), rgb(241 245 249 / 0.95), rgb(226 232 240 / 0.72));
+    background-size: 220% 100%;
+    animation: admin-skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+}
+
+@keyframes admin-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}

@@ -91,24 +91,24 @@ export function AdminLoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-10">
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute left-10 top-20 h-32 w-32 animate-pulse rounded-full bg-white/15" />
-        <div className="absolute right-20 top-40 h-24 w-24 animate-bounce rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-32 left-1/4 h-40 w-40 animate-pulse rounded-full bg-white/10" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-20 right-1/3 h-20 w-20 animate-bounce rounded-full bg-white/15" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute left-10 top-20 h-32 w-32 rounded-full bg-white/15" />
+        <div className="absolute right-20 top-40 h-24 w-24 rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-32 left-1/4 h-40 w-40 rounded-full bg-white/10" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-20 right-1/3 h-20 w-20 rounded-full bg-white/15" style={{ animationDelay: '0.5s' }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="admin-page-enter relative z-10 w-full max-w-md">
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-white/85 transition-colors hover:text-white"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
         >
           <ArrowLeft className="h-4 w-4" />
           Return to Tea Time Cari
         </button>
 
         <div className="rounded-[22px] bg-gradient-to-br from-[#D6EBF5] via-[#9B6BAE] to-[#D96E6E] p-[2px] shadow-2xl transition-all duration-300 hover:shadow-[0_0_30px_1px_rgba(214,235,245,0.35)]">
-          <div className="rounded-[20px] bg-[#171717] transition-all duration-200 hover:scale-[0.98]">
+          <div className="rounded-[20px] bg-[#171717] transition-shadow duration-200">
             <form
               name="admin-login"
               method="POST"
@@ -168,7 +168,7 @@ export function AdminLoginPage() {
                   name="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none transition-colors focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   required
                   disabled={isLoading || checkingSession}
                   autoComplete="email"
@@ -199,7 +199,7 @@ export function AdminLoginPage() {
                   name="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none transition-colors focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
                   required
                   disabled={isLoading || checkingSession}
                   autoComplete="current-password"
@@ -210,7 +210,7 @@ export function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || checkingSession || !email || !password}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#252525] px-5 py-3 text-sm font-semibold text-white transition-all duration-300 hover:bg-black disabled:cursor-not-allowed disabled:bg-[#252525]/60 disabled:text-white/45"
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#252525] px-5 py-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#252525]/60 disabled:text-white/45"
               >
                 {isLoading || checkingSession ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle, FileText, RefreshCw, XCircle } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
-import { AdminAlert, AdminButton, AdminEmptyState, AdminPageHeader, AdminTable } from './ui';
+import { AdminAlert, AdminButton, AdminEmptyState, AdminPageHeader, AdminSkeleton, AdminTable } from './ui';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 
 type AdminAuditLog = {
@@ -89,12 +89,24 @@ export function AdminAuditLogs({ activePage = 'logs', onNavigate }: { activePage
 
         <AdminTable>
           {loading ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-sm text-slate-500">Loading audit logs…</p>
+            <div className="p-5" aria-label="Loading audit logs">
+              <div className="mb-4 grid grid-cols-6 gap-4">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <AdminSkeleton key={index} className="h-4" />
+                ))}
+              </div>
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="grid grid-cols-6 gap-4 rounded-admin-lg border border-slate-100 p-4">
+                    {Array.from({ length: 6 }).map((__, cellIndex) => (
+                      <AdminSkeleton key={cellIndex} className="h-5" />
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : logs.length === 0 ? (
-            <AdminEmptyState title="No audit logs found" message="Admin actions will appear here once recorded." />
+            <AdminEmptyState icon={<FileText className="h-8 w-8" />} title="No audit logs found" message="Admin actions will appear here once recorded." />
           ) : (
             <div>
               <table className="min-w-full divide-y divide-slate-100">
@@ -110,7 +122,7 @@ export function AdminAuditLogs({ activePage = 'logs', onNavigate }: { activePage
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50">
+                    <tr key={log.id} className="hover:bg-slate-50/90">
                       <td className="px-5 py-4">
                         {log.success ? <CheckCircle className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
                       </td>

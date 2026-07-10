@@ -179,7 +179,7 @@ function AdminSkeleton({
 }) {
   return (
     <div
-      className={`animate-pulse rounded-xl bg-slate-100 ${className}`}
+      className={`admin-skeleton rounded-xl ${className}`}
       style={style}
     />
   );
@@ -355,7 +355,7 @@ function ShortcutButton({
     <button
       type="button"
       onClick={() => onNavigate?.(page)}
-      className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all duration-150 ease-out hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/60 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700">
@@ -813,7 +813,7 @@ export function AdminDashboard({
                     <button
                       type="button"
                       onClick={() => onNavigate?.("user-reviews")}
-                      className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                      className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                     >
                       <span className="flex items-start gap-3">
                         <Clock className="mt-0.5 h-5 w-5 text-amber-700" />
@@ -839,7 +839,7 @@ export function AdminDashboard({
                     <button
                       type="button"
                       onClick={() => onNavigate?.("flagged-posts")}
-                      className="flex w-full items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-5 text-left transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                      className="flex w-full items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-5 text-left transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-red-100 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     >
                       <span className="flex items-start gap-3">
                         <Flag className="mt-0.5 h-5 w-5 text-red-700" />
@@ -998,7 +998,7 @@ export function AdminDashboard({
               <button
                 type="button"
                 onClick={() => onNavigate?.("flagged-posts")}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 ease-out hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
               >
                 Review moderation queue
                 <ArrowRight className="h-4 w-4" />
