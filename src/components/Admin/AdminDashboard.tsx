@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import {
   Users,
@@ -6,17 +6,20 @@ import {
   UserX,
   Clock,
   RefreshCw,
-  Loader2,
   AlertCircle,
   CheckCircle,
   Wifi,
-  WifiOff,
   CalendarDays,
   ArrowRight,
   Flag,
   Database,
   Shield,
   HardDrive,
+  Activity,
+  Sparkles,
+  FileText,
+  MessageSquare,
+  ShieldAlert,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { AdminUserReview } from './ReviewUsers';
@@ -65,109 +68,162 @@ interface DashboardStats {
   approved: number;
 }
 
+interface ModerationStats {
+  flaggedPosts: number;
+  highRiskPosts: number;
+}
+
 interface AdminDashboardProps {
   activePage?: string;
   onNavigate?: (page: string) => void;
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-  iconBg,
-  iconColor,
-  sub,
-  loading,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  sub?: string;
-  loading: boolean;
-}) {
+function formatNumber(value: number) {
+  return value.toLocaleString();
+}
+
+function formatTime(value: Date) {
+  return value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function AdminBadge({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue' }) {
+  const tones = {
+    slate: 'border-slate-200 bg-slate-50 text-slate-600',
+    green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700',
+    red: 'border-red-200 bg-red-50 text-red-700',
+    blue: 'border-blue-200 bg-blue-50 text-blue-700',
+  };
+
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>{children}</span>;
+}
+
+function AdminCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <section className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50 ${className}`}>{children}</section>;
+}
+
+function AdminSectionHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <span className={iconColor}>{icon}</span>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
       </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-slate-900 mt-0.5">
-          {loading ? <Loader2 className="w-5 h-5 animate-spin text-slate-400 inline" /> : value.toLocaleString()}
-        </p>
-        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
-      </div>
+      {action}
     </div>
   );
 }
 
-function RegistrationChart({
-  data,
+function AdminSkeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`animate-pulse rounded-xl bg-slate-100 ${className}`} style={style} />;
+}
+
+function MetricCard({
+  title,
+  value,
+  description,
+  icon,
+  tone,
   loading,
 }: {
-  data: DailyRegistration[];
+  title: string;
+  value: number | string;
+  description: string;
+  icon: React.ReactNode;
+  tone: 'blue' | 'green' | 'amber' | 'red' | 'slate' | 'orange';
   loading: boolean;
 }) {
-  const max = Math.max(...data.map((d) => d.count), 1);
+  const tones = {
+    blue: 'bg-blue-50 text-blue-600 ring-blue-100',
+    green: 'bg-emerald-50 text-emerald-600 ring-emerald-100',
+    amber: 'bg-amber-50 text-amber-600 ring-amber-100',
+    red: 'bg-red-50 text-red-600 ring-red-100',
+    slate: 'bg-slate-100 text-slate-600 ring-slate-200',
+    orange: 'bg-orange-50 text-orange-600 ring-orange-100',
+  };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-900">New Registrations</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Last 7 days</p>
+    <AdminCard className="p-5 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-200/70">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</p>
+          <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+            {loading ? <AdminSkeleton className="h-9 w-20" /> : typeof value === 'number' ? formatNumber(value) : value}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
-          <span className="text-xs text-slate-500">Registrations</span>
-        </div>
+        <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ring-1 ${tones[tone]}`}>{icon}</div>
       </div>
+      <p className="mt-4 text-sm leading-5 text-slate-500">{description}</p>
+    </AdminCard>
+  );
+}
+
+function RegistrationChart({ data, loading }: { data: DailyRegistration[]; loading: boolean }) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+  const total = data.reduce((sum, day) => sum + day.count, 0);
+
+  return (
+    <AdminCard className="p-6">
+      <AdminSectionHeader
+        title="Registration activity"
+        description="New account registrations over the last 7 days."
+        action={<AdminBadge tone="blue">{loading ? 'Loading' : `${formatNumber(total)} this week`}</AdminBadge>}
+      />
 
       {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+        <div className="mt-8 grid h-52 grid-cols-7 items-end gap-3" aria-label="Loading registration activity">
+          {Array.from({ length: 7 }).map((_, index) => <AdminSkeleton key={index} className="w-full" style={{ height: `${44 + index * 8}px` } as React.CSSProperties} />)}
+        </div>
+      ) : data.length === 0 || total === 0 ? (
+        <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+          <CalendarDays className="mx-auto h-8 w-8 text-slate-400" />
+          <p className="mt-3 text-sm font-medium text-slate-700">No new registrations this week</p>
+          <p className="mt-1 text-xs text-slate-500">Registration activity will appear here as accounts are created.</p>
         </div>
       ) : (
-        <>
-          <div className="flex items-end gap-2 h-32">
+        <div className="mt-8">
+          <div className="grid h-52 grid-cols-7 items-end gap-3 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-4">
             {data.map((day) => {
-              const heightPct = max > 0 ? (day.count / max) * 100 : 0;
-              const dayLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                weekday: 'short',
-              });
-
+              const heightPct = (day.count / max) * 100;
+              const label = new Date(`${day.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' });
+              const dateLabel = new Date(`${day.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
               return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5 group">
-                  <div className="w-full flex flex-col justify-end" style={{ height: '112px' }}>
+                <div key={day.date} className="flex h-full min-w-0 flex-col items-center justify-end gap-2">
+                  <span className="text-xs font-semibold text-slate-600">{day.count}</span>
+                  <div className="flex w-full flex-1 items-end">
                     <div
-                      title={`${day.count} registrations`}
-                      className="w-full bg-blue-100 group-hover:bg-blue-200 rounded-t transition-colors relative"
-                      style={{
-                        height: `${Math.max(heightPct, day.count > 0 ? 6 : 0)}%`,
-                        minHeight: day.count > 0 ? '6px' : '2px',
-                      }}
-                    >
-                      {day.count > 0 && (
-                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs font-medium text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {day.count}
-                        </span>
-                      )}
-                    </div>
+                      className="w-full rounded-t-xl bg-blue-600/85 shadow-sm shadow-blue-200 transition-colors hover:bg-blue-700"
+                      title={`${day.count} registrations on ${dateLabel}`}
+                      style={{ height: `${Math.max(heightPct, day.count > 0 ? 8 : 1)}%` }}
+                    />
                   </div>
-                  <span className="text-xs text-slate-400">{dayLabel}</span>
+                  <span className="text-xs text-slate-500">{label}</span>
                 </div>
               );
             })}
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>{data.reduce((s, d) => s + d.count, 0)} total this week</span>
-            <span>Peak: {max} in a day</span>
-          </div>
-        </>
+        </div>
       )}
-    </div>
+    </AdminCard>
+  );
+}
+
+function ShortcutButton({ label, description, icon, page, onNavigate }: { label: string; description: string; icon: React.ReactNode; page: string; onNavigate?: (page: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.(page)}
+      className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-700">{icon}</span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-slate-900">{label}</span>
+          <span className="mt-0.5 block text-xs text-slate-500">{description}</span>
+        </span>
+      </span>
+      <ArrowRight className="h-4 w-4 flex-shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600" />
+    </button>
   );
 }
 
@@ -175,17 +231,8 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   const supabase = useSupabaseClient();
   const session = useSession();
 
-  const [stats, setStats] = useState<DashboardStats>({
-    total: 0,
-    online: 0,
-    offline: 0,
-    registeredToday: 0,
-    pending: 0,
-    banned: 0,
-    suspended: 0,
-    approved: 0,
-  });
-
+  const [stats, setStats] = useState<DashboardStats>({ total: 0, online: 0, offline: 0, registeredToday: 0, pending: 0, banned: 0, suspended: 0, approved: 0 });
+  const [moderationStats, setModerationStats] = useState<ModerationStats>({ flaggedPosts: 0, highRiskPosts: 0 });
   const [dailyRegs, setDailyRegs] = useState<DailyRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -202,17 +249,13 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         data: { session: currentSession },
       } = await supabase.auth.getSession();
 
-      if (!currentSession?.access_token) {
-        throw new Error('You must be logged in as an admin.');
-      }
+      if (!currentSession?.access_token) throw new Error('You must be logged in as an admin.');
 
       const { data, error: fnError } = await supabase.functions.invoke('get-admin-users', {
         headers: { Authorization: `Bearer ${currentSession.access_token}` },
       });
 
-      if (fnError) {
-        throw new Error(await getFunctionErrorMessage(fnError));
-      }
+      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
 
       if (!data?.ok) {
         throw new Error(
@@ -229,8 +272,21 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         last_seen_at: user.last_seen_at || null,
       }));
 
-      const now = Date.now();
+      const { count: flaggedCount, error: flaggedError } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .gte('red_flag_count', 1);
 
+      if (flaggedError && flaggedError.code !== '42P01') throw flaggedError;
+
+      const { count: highRiskCount, error: highRiskError } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .gte('red_flag_count', 5);
+
+      if (highRiskError && highRiskError.code !== '42P01') throw highRiskError;
+
+      const now = Date.now();
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -253,11 +309,12 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
         approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
       });
 
+      setModerationStats({ flaggedPosts: flaggedCount ?? 0, highRiskPosts: highRiskCount ?? 0 });
+
       const days: DailyRegistration[] = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
         d.setHours(0, 0, 0, 0);
-
         const next = new Date(d);
         next.setDate(d.getDate() + 1);
 
@@ -292,11 +349,18 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
 
   useEffect(() => {
     if (!isAdmin) return;
-
     const id = setInterval(fetchData, 30000);
-
     return () => clearInterval(id);
   }, [isAdmin]);
+
+  const totalAttentionItems = useMemo(() => stats.pending + moderationStats.flaggedPosts, [stats.pending, moderationStats.flaggedPosts]);
+  const inactiveRestricted = stats.suspended + stats.banned;
+  const statusRows = [
+    { label: 'Approved', count: stats.approved, color: 'bg-emerald-500', text: 'text-emerald-700' },
+    { label: 'Pending', count: stats.pending, color: 'bg-amber-400', text: 'text-amber-700' },
+    { label: 'Suspended', count: stats.suspended, color: 'bg-orange-400', text: 'text-orange-700' },
+    { label: 'Banned', count: stats.banned, color: 'bg-red-500', text: 'text-red-700' },
+  ];
 
   if (activePage === 'user-reviews') return <AdminUserReview activePage={activePage} onNavigate={onNavigate} />;
   if (activePage === 'flagged-posts') return <ReviewFlaggedPosts activePage={activePage} onNavigate={onNavigate} />;
@@ -306,256 +370,172 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <AdminCard className="p-6">
           <FunctionPing />
-        </div>
+        </AdminCard>
       </AdminLayout>
     );
   }
 
-  const quickLinks = [
-    { label: 'Review users', page: 'user-reviews', path: '/admin/users', icon: <Users className="w-4 h-4" /> },
-    { label: 'Flagged posts', page: 'flagged-posts', path: '/admin/flagged-posts', icon: <Flag className="w-4 h-4" /> },
-    { label: 'Discourse admins', page: 'discourse-admins', path: '/admin/discourse-admins', icon: <Shield className="w-4 h-4" /> },
-    { label: 'Logs', page: 'logs', path: '/admin/logs', icon: <Database className="w-4 h-4" /> },
-    { label: 'Health', page: 'function-ping', path: '/admin/health', icon: <HardDrive className="w-4 h-4" /> },
-  ];
-
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-      <div className="space-y-6">
-        {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Overview</h1>
-            <p className="text-sm text-slate-500 mt-0.5">System health, registrations, and moderation shortcuts</p>
+      <div className="space-y-8">
+        <AdminCard className="overflow-hidden">
+          <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-6 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <AdminBadge tone="blue"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Tea Time Cari Admin</AdminBadge>
+                  <AdminBadge tone={error ? 'red' : totalAttentionItems > 0 ? 'amber' : 'green'}>{error ? 'Needs retry' : totalAttentionItems > 0 ? `${formatNumber(totalAttentionItems)} need attention` : 'No urgent items'}</AdminBadge>
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Dashboard Overview</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Executive summary for users, moderation, system status, and recent admin operations so the team can decide what needs attention first.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+                <AdminBadge tone="slate">Last synced {formatTime(lastUpdated)}</AdminBadge>
+                <button
+                  type="button"
+                  onClick={fetchData}
+                  disabled={loading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <p className="text-xs font-medium text-slate-500">Last refreshed at {lastUpdated.toLocaleTimeString()}</p>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        </AdminCard>
 
-        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4" role="alert">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Dashboard data could not be refreshed</p>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
+            </div>
           </div>
         )}
 
-        {/* Quick links */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold text-slate-900">Quick Links</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Jump to common admin routes without leaving the dashboard. Route docs:{' '}
-              <code className="rounded bg-slate-100 px-1 py-0.5">docs/url-paths.md</code>; smoke checklist:{' '}
-              <code className="rounded bg-slate-100 px-1 py-0.5">docs/smoke-test-checklist.md</code>.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {quickLinks.map((link) => (
-              <button
-                key={link.page}
-                type="button"
-                onClick={() => onNavigate?.(link.page)}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-              >
-                <span className="text-slate-400">{link.icon}</span>
-                <span>
-                  <span className="block">{link.label}</span>
-                  <span className="block text-xs font-normal text-slate-400">{link.path}</span>
-                </span>
-              </button>
-            ))}
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard title="Total users" value={stats.total} icon={<Users className="h-5 w-5" />} tone="blue" description="All known admin-visible registrations." loading={loading} />
+          <MetricCard title="Pending reviews" value={stats.pending} icon={<Clock className="h-5 w-5" />} tone="amber" description="Accounts waiting for an admin decision." loading={loading} />
+          <MetricCard title="Flagged posts" value={moderationStats.flaggedPosts} icon={<Flag className="h-5 w-5" />} tone="red" description="Posts with one or more red flags." loading={loading} />
+          <MetricCard title="System health" value="Available" icon={<Activity className="h-5 w-5" />} tone="green" description="Health checks remain available in the admin health page." loading={loading} />
         </div>
 
-        {/* Primary stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Users"
-            value={stats.total}
-            icon={<Users className="w-5 h-5" />}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-600"
-            sub="All registrations"
-            loading={loading}
-          />
-          <StatCard
-            label="Online Now"
-            value={stats.online}
-            icon={<Wifi className="w-5 h-5" />}
-            iconBg="bg-green-50"
-            iconColor="text-green-600"
-            sub="Active within 15 min"
-            loading={loading}
-          />
-          <StatCard
-            label="Offline"
-            value={stats.offline}
-            icon={<WifiOff className="w-5 h-5" />}
-            iconBg="bg-slate-100"
-            iconColor="text-slate-500"
-            sub="Inactive users"
-            loading={loading}
-          />
-          <StatCard
-            label="Registered Today"
-            value={stats.registeredToday}
-            icon={<CalendarDays className="w-5 h-5" />}
-            iconBg="bg-sky-50"
-            iconColor="text-sky-600"
-            sub="Since midnight"
-            loading={loading}
-          />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard title="Approved users" value={stats.approved} icon={<UserCheck className="h-5 w-5" />} tone="green" description="Members with approved access." loading={loading} />
+          <MetricCard title="Restricted users" value={inactiveRestricted} icon={<UserX className="h-5 w-5" />} tone="orange" description="Suspended and banned accounts combined." loading={loading} />
+          <MetricCard title="Registered today" value={stats.registeredToday} icon={<CalendarDays className="h-5 w-5" />} tone="blue" description="New registrations since local midnight." loading={loading} />
+          <MetricCard title="Online now" value={stats.online} icon={<Wifi className="h-5 w-5" />} tone="green" description="Users active within the last 15 minutes." loading={loading} />
         </div>
 
-        {/* Secondary stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Pending Approval"
-            value={stats.pending}
-            icon={<Clock className="w-5 h-5" />}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-600"
-            sub="Awaiting review"
-            loading={loading}
-          />
-          <StatCard
-            label="Approved"
-            value={stats.approved}
-            icon={<UserCheck className="w-5 h-5" />}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
-            sub="Access granted"
-            loading={loading}
-          />
-          <StatCard
-            label="Suspended"
-            value={stats.suspended}
-            icon={<UserX className="w-5 h-5" />}
-            iconBg="bg-orange-50"
-            iconColor="text-orange-500"
-            sub="Temporarily blocked"
-            loading={loading}
-          />
-          <StatCard
-            label="Banned"
-            value={stats.banned}
-            icon={<UserX className="w-5 h-5" />}
-            iconBg="bg-red-50"
-            iconColor="text-red-500"
-            sub="Restricted accounts"
-            loading={loading}
-          />
-        </div>
-
-        {/* Chart + Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <RegistrationChart data={dailyRegs} loading={loading} />
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => onNavigate?.('user-reviews')}
-                className="w-full flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Users className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-slate-900">Review Users</p>
-                    {stats.pending > 0 && (
-                      <p className="text-xs text-amber-600 font-medium">{stats.pending} pending approval</p>
-                    )}
-                    {stats.pending === 0 && (
-                      <p className="text-xs text-slate-500">Manage registrations</p>
-                    )}
+        <div className="grid gap-6 xl:grid-cols-3">
+          <AdminCard className="p-6 xl:col-span-2">
+            <AdminSectionHeader title="Needs attention" description="The highest-priority queues based on existing dashboard data." />
+            <div className="mt-5 space-y-3">
+              {loading ? (
+                <>
+                  <AdminSkeleton className="h-20" />
+                  <AdminSkeleton className="h-20" />
+                </>
+              ) : totalAttentionItems === 0 ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="mt-0.5 h-5 w-5 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-900">All clear</p>
+                      <p className="mt-1 text-sm text-emerald-700">There are no pending user reviews or flagged posts requiring immediate action.</p>
+                    </div>
                   </div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              <button
-                onClick={() => onNavigate?.('flagged-posts')}
-                className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Flag className="w-4 h-4 text-slate-500" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-slate-900">Flagged Posts</p>
-                    <p className="text-xs text-slate-500">Content moderation</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+              ) : (
+                <>
+                  {stats.pending > 0 && (
+                    <button type="button" onClick={() => onNavigate?.('user-reviews')} className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
+                      <span className="flex items-start gap-3"><Clock className="mt-0.5 h-5 w-5 text-amber-700" /><span><span className="block text-sm font-semibold text-amber-950">{formatNumber(stats.pending)} pending user {stats.pending === 1 ? 'review' : 'reviews'}</span><span className="mt-1 block text-sm text-amber-700">Approve, reject, suspend, or ban from the existing user review queue.</span></span></span>
+                      <ArrowRight className="h-4 w-4 text-amber-700" />
+                    </button>
+                  )}
+                  {moderationStats.flaggedPosts > 0 && (
+                    <button type="button" onClick={() => onNavigate?.('flagged-posts')} className="flex w-full items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-5 text-left transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                      <span className="flex items-start gap-3"><Flag className="mt-0.5 h-5 w-5 text-red-700" /><span><span className="block text-sm font-semibold text-red-950">{formatNumber(moderationStats.flaggedPosts)} flagged {moderationStats.flaggedPosts === 1 ? 'post' : 'posts'}</span><span className="mt-1 block text-sm text-red-700">Review reported content in the existing moderation workflow.</span></span></span>
+                      <ArrowRight className="h-4 w-4 text-red-700" />
+                    </button>
+                  )}
+                </>
+              )}
             </div>
-          </div>
+          </AdminCard>
+
+          <AdminCard className="p-6">
+            <AdminSectionHeader title="Quick actions" description="Shortcuts to existing admin destinations." />
+            <div className="mt-5 space-y-3">
+              <ShortcutButton label="Users" description="Review and manage accounts" icon={<Users className="h-4 w-4" />} page="user-reviews" onNavigate={onNavigate} />
+              <ShortcutButton label="Moderation" description="Review flagged posts" icon={<Flag className="h-4 w-4" />} page="flagged-posts" onNavigate={onNavigate} />
+              <ShortcutButton label="Community admins" description="Manage Discourse admins" icon={<MessageSquare className="h-4 w-4" />} page="discourse-admins" onNavigate={onNavigate} />
+              <ShortcutButton label="Audit logs" description="Open admin activity logs" icon={<FileText className="h-4 w-4" />} page="logs" onNavigate={onNavigate} />
+              <ShortcutButton label="System health" description="Open health checks" icon={<HardDrive className="h-4 w-4" />} page="function-ping" onNavigate={onNavigate} />
+            </div>
+          </AdminCard>
         </div>
 
-        {/* System Health */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 mb-4">System Health</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: 'Database', sub: 'Connected', icon: <Database className="w-5 h-5" /> },
-              { label: 'Authentication', sub: 'Active', icon: <Shield className="w-5 h-5" /> },
-              { label: 'Storage', sub: 'Operational', icon: <HardDrive className="w-5 h-5" /> },
-            ].map(({ label, sub, icon }) => (
-              <div key={label} className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
-                <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="text-emerald-600">{icon}</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{label}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <CheckCircle className="w-3 h-3 text-emerald-500" />
-                    <span className="text-xs text-emerald-700">{sub}</span>
+        <div className="grid gap-6 xl:grid-cols-5">
+          <div className="xl:col-span-3"><RegistrationChart data={dailyRegs} loading={loading} /></div>
+
+          <AdminCard className="p-6 xl:col-span-2">
+            <AdminSectionHeader title="User status overview" description="Current account approval and restriction mix." />
+            <div className="mt-6 space-y-4">
+              {statusRows.map(({ label, count, color, text }) => {
+                const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                return (
+                  <div key={label}>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className={`text-sm font-semibold ${text}`}>{label}</span>
+                      <span className="text-sm font-medium text-slate-700">{loading ? '—' : formatNumber(count)}</span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(pct, count > 0 ? 2 : 0)}%` }} />
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          </AdminCard>
         </div>
 
-        {/* Registration breakdown */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-sm font-semibold text-slate-900 mb-4">User Status Breakdown</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Approved', count: stats.approved, color: 'bg-emerald-500', pct: stats.total > 0 ? (stats.approved / stats.total) * 100 : 0 },
-              { label: 'Pending', count: stats.pending, color: 'bg-amber-400', pct: stats.total > 0 ? (stats.pending / stats.total) * 100 : 0 },
-              { label: 'Banned', count: stats.banned, color: 'bg-red-400', pct: stats.total > 0 ? (stats.banned / stats.total) * 100 : 0 },
-            ].map(({ label, count, color, pct }) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 w-16 text-right flex-shrink-0">{label}</span>
-                <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${color}`}
-                    style={{ width: `${Math.max(pct, count > 0 ? 2 : 0)}%` }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-slate-700 w-8 flex-shrink-0">{loading ? '—' : count}</span>
-              </div>
-            ))}
-          </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <AdminCard className="p-6">
+            <AdminSectionHeader title="Moderation summary" description="Visible content signals from flagged posts." />
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Unresolved flagged posts</p><p className="mt-2 text-3xl font-semibold text-slate-950">{loading ? '—' : formatNumber(moderationStats.flaggedPosts)}</p></div>
+              <div className="rounded-2xl bg-red-50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-600">High risk posts</p><p className="mt-2 text-3xl font-semibold text-red-900">{loading ? '—' : formatNumber(moderationStats.highRiskPosts)}</p><p className="mt-1 text-xs text-red-700">Posts with 5+ red flags.</p></div>
+              <button type="button" onClick={() => onNavigate?.('flagged-posts')} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2">Review moderation queue <ArrowRight className="h-4 w-4" /></button>
+            </div>
+          </AdminCard>
+
+          <AdminCard className="p-6">
+            <AdminSectionHeader title="Recent activity" description="Open the full audit trail for admin actions and access checks." />
+            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
+              <FileText className="mx-auto h-8 w-8 text-slate-400" />
+              <p className="mt-3 text-sm font-semibold text-slate-800">Audit log preview is available in Audit Logs</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">No extra audit-log fetch is added on the overview page, keeping existing log loading behavior isolated.</p>
+              <button type="button" onClick={() => onNavigate?.('logs')} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">View audit logs <ArrowRight className="h-4 w-4" /></button>
+            </div>
+          </AdminCard>
+
+          <AdminCard className="p-6">
+            <AdminSectionHeader title="System health" description="Health checks remain available without changing ping logic." />
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><Database className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-slate-900">Dashboard data</p><p className="text-xs text-emerald-700">{error ? 'Issue loading latest data' : 'Loaded from existing sources'}</p></div></div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"><Shield className="h-5 w-5 text-slate-600" /><div><p className="text-sm font-semibold text-slate-900">Authentication</p><p className="text-xs text-slate-600">Session check unchanged</p></div></div>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"><ShieldAlert className="h-5 w-5 text-slate-600" /><div><p className="text-sm font-semibold text-slate-900">Health page</p><p className="text-xs text-slate-600">Existing system checks</p></div></div>
+              <button type="button" onClick={() => onNavigate?.('function-ping')} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Open system health <ArrowRight className="h-4 w-4" /></button>
+            </div>
+          </AdminCard>
         </div>
       </div>
     </AdminLayout>
