@@ -127,20 +127,24 @@ function withNullFields(users: Record<string, unknown>[], fields: string[]) {
   }));
 }
 
-async function fetchRegistrations() {
+async function fetchRegistrations({ limit = 10, offset = 0 }: { limit?: number; offset?: number } = {}) {
   const selectedFields = new Set([...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
   const omittedFields = new Set<string>();
 
   for (let attempts = 0; attempts < REGISTRATION_FIELDS.length + TRACKING_FIELDS.length + 1; attempts += 1) {
     const select = [...selectedFields].join(", ");
-    const { data, error } = await admin
+    const { data, error, count } = await admin
       .from("registrations")
-      .select(select)
-      .order("created_at", { ascending: false });
+      .select(select, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (!error) {
       return {
         users: withNullFields((data ?? []) as Record<string, unknown>[], [...omittedFields]),
+        total: count ?? 0,
+        limit,
+        offset,
         trackingFieldsAvailable: TRACKING_FIELDS.every((field) => selectedFields.has(field)),
         omittedFields: [...omittedFields],
       };
@@ -183,12 +187,28 @@ serve(async (req) => {
       return json(adminCheck.status, { ok: false, error: adminCheck.error, stage });
     }
 
+    let pagination = { limit: 10, offset: 0 };
+
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({})) as { limit?: unknown; offset?: unknown };
+      const requestedLimit = typeof body.limit === "number" ? body.limit : Number(body.limit);
+      const requestedOffset = typeof body.offset === "number" ? body.offset : Number(body.offset);
+
+      pagination = {
+        limit: Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 50) : 10,
+        offset: Number.isFinite(requestedOffset) ? Math.max(Math.floor(requestedOffset), 0) : 0,
+      };
+    }
+
     stage = "fetch_registrations";
-    const result = await fetchRegistrations();
+    const result = await fetchRegistrations(pagination);
 
     return json(200, {
       ok: true,
       users: result.users,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
       trackingFieldsAvailable: result.trackingFieldsAvailable,
       omittedFields: result.omittedFields,
     });
