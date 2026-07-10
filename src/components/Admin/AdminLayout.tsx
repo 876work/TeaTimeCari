@@ -98,7 +98,7 @@ export function AdminLayout({
             type="button"
             onClick={() => handleNavigate(item.id)}
             aria-current={isActive ? "page" : undefined}
-            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white ${
+            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ease-out active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white ${
               isActive
                 ? "bg-slate-900 text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
@@ -132,7 +132,7 @@ export function AdminLayout({
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="admin-shell min-h-screen bg-slate-50 text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200 bg-white/95 px-4 py-5 shadow-sm backdrop-blur lg:flex lg:flex-col">
         <div className="flex items-center gap-3 px-2 pb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm">
@@ -249,7 +249,7 @@ export function AdminLayout({
           )}
         </header>
 
-        <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <main className="admin-page-enter mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           {children}
         </main>
       </div>
