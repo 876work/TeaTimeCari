@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import {
-  AlertCircle,
-  CheckCircle,
   Crown,
   Loader2,
   RefreshCw,
@@ -13,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { AdminAlert, AdminButton, AdminFilterBar, AdminInput, AdminMetricCard, AdminPageHeader } from './ui';
 
 type DiscourseFlag = 'all' | 'active' | 'staff' | 'suspended' | 'new' | 'blocked' | 'suspect';
 type AdminAction = 'promote' | 'demote';
@@ -315,43 +314,24 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
   return (
     <AdminLayout activePage="discourse-admins" onNavigate={onNavigate}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Discourse/Community Admins</h1>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Review Discourse users and promote or demote Discourse-only administrator access.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => fetchUsers(page)}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
+        <AdminPageHeader
+          title="Discourse/Community Admins"
+          description="Review Discourse users and promote or demote Discourse-only administrator access."
+          actions={
+            <AdminButton type="button" onClick={() => fetchUsers(page)} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </AdminButton>
+          }
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Loaded Users</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : users.length}</p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Discourse Admins</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : adminCount}</p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Filter</p>
-            <p className="mt-1 text-2xl font-bold capitalize text-slate-900">{filter}</p>
-          </div>
+          <AdminMetricCard title="Loaded Users" value={users.length} loading={loading} accent="info" />
+          <AdminMetricCard title="Discourse Admins" value={adminCount} loading={loading} accent="warning" />
+          <AdminMetricCard title="Filter" value={<span className="capitalize">{filter}</span>} accent="muted" />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <AdminFilterBar>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {FILTERS.map((item) => (
@@ -374,40 +354,24 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
               <input type="hidden" name="form-name" value="discourse-admin-search" readOnly />
               <div className="relative flex-1 lg:w-80">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
+                <AdminInput
                   type="search"
                   name="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search username or email"
-                  className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="pl-9"
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                Search
-              </button>
+              <AdminButton type="submit" disabled={loading} variant="primary">Search</AdminButton>
             </form>
           </div>
-        </div>
+        </AdminFilterBar>
 
-        {success && (
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4" role="status">
-            <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" />
-            <p className="text-sm text-emerald-700">{success}</p>
-          </div>
-        )}
+        {success && <AdminAlert variant="success">{success}</AdminAlert>}
 
-        {error && (
-          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4" role="alert">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
+        {error && <AdminAlert variant="error">{error}</AdminAlert>}
 
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
           <div className="overflow-x-auto">

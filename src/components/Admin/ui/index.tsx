@@ -1,0 +1,82 @@
+import React from 'react';
+import { AlertCircle, CheckCircle, Info, Loader2, XCircle } from 'lucide-react';
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
+
+const buttonVariants = {
+  primary: 'border-admin-brand bg-admin-brand text-white shadow-admin-sm hover:bg-admin-brand-hover focus-visible:ring-admin-brand/25',
+  secondary: 'border-admin-border bg-white text-admin-fg shadow-admin-sm hover:bg-admin-muted focus-visible:ring-admin-brand/20',
+  ghost: 'border-transparent bg-transparent text-admin-muted-fg hover:bg-admin-muted hover:text-admin-fg focus-visible:ring-admin-brand/20',
+  danger: 'border-admin-danger bg-admin-danger text-white shadow-admin-sm hover:bg-red-700 focus-visible:ring-admin-danger/25',
+  success: 'border-admin-success bg-admin-success text-white shadow-admin-sm hover:bg-emerald-700 focus-visible:ring-admin-success/25',
+  subtle: 'border-admin-border bg-admin-muted text-admin-fg hover:bg-slate-200/70 focus-visible:ring-admin-brand/20',
+};
+
+const buttonSizes = { sm: 'h-8 px-3 text-xs', md: 'h-10 px-4 text-sm', lg: 'h-11 px-5 text-sm' };
+
+type AdminButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: keyof typeof buttonVariants;
+  size?: keyof typeof buttonSizes;
+  loading?: boolean;
+};
+
+export function AdminButton({ className, variant = 'secondary', size = 'md', loading, disabled, children, ...props }: AdminButtonProps) {
+  return (
+    <button
+      className={cn(
+        'inline-flex items-center justify-center gap-2 rounded-admin-md border font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-50',
+        buttonVariants[variant],
+        buttonSizes[size],
+        className,
+      )}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+      {children}
+    </button>
+  );
+}
+
+export function AdminCard({ title, description, actions, footer, className, children }: { title?: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; footer?: React.ReactNode; className?: string; children?: React.ReactNode }) {
+  return (
+    <section className={cn('overflow-hidden rounded-admin-xl border border-admin-border bg-admin-surface shadow-admin-sm', className)}>
+      {(title || description || actions) && (
+        <div className="flex items-start justify-between gap-4 border-b border-admin-border px-5 py-4">
+          <div>{title && <h2 className="text-sm font-semibold text-admin-fg">{title}</h2>}{description && <p className="mt-1 text-xs text-admin-muted-fg">{description}</p>}</div>
+          {actions}
+        </div>
+      )}
+      {children && <div className="p-5">{children}</div>}
+      {footer && <div className="border-t border-admin-border bg-admin-muted px-5 py-3">{footer}</div>}
+    </section>
+  );
+}
+
+const badgeVariants = {
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-700', warning: 'border-amber-200 bg-amber-50 text-amber-700', danger: 'border-red-200 bg-red-50 text-red-700', info: 'border-sky-200 bg-sky-50 text-sky-700', neutral: 'border-slate-200 bg-white text-slate-700', muted: 'border-slate-200 bg-slate-50 text-slate-500', brand: 'border-blue-200 bg-blue-50 text-blue-700',
+};
+export function AdminBadge({ variant = 'neutral', className, children }: { variant?: keyof typeof badgeVariants; className?: string; children: React.ReactNode }) { return <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', badgeVariants[variant], className)}>{children}</span>; }
+
+const control = 'w-full rounded-admin-md border border-admin-border bg-white px-3 py-2 text-sm text-admin-fg shadow-admin-sm outline-none transition placeholder:text-slate-400 focus:border-admin-brand focus:ring-4 focus:ring-admin-brand/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400';
+export const AdminInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => <input ref={ref} className={cn(control, className)} {...props} />);
+AdminInput.displayName = 'AdminInput';
+export const AdminSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className, ...props }, ref) => <select ref={ref} className={cn(control, className)} {...props} />);
+AdminSelect.displayName = 'AdminSelect';
+
+export function AdminAlert({ variant = 'info', children, className, role }: { variant?: 'info'|'success'|'warning'|'error'; children: React.ReactNode; className?: string; role?: string }) {
+  const cfg = { info: ['border-sky-200 bg-sky-50 text-sky-800', Info], success: ['border-emerald-200 bg-emerald-50 text-emerald-800', CheckCircle], warning: ['border-amber-200 bg-amber-50 text-amber-800', AlertCircle], error: ['border-red-200 bg-red-50 text-red-800', XCircle] } as const;
+  const [styles, Icon] = cfg[variant];
+  return <div className={cn('flex items-start gap-3 rounded-admin-lg border p-4 text-sm', styles, className)} role={role ?? (variant === 'error' ? 'alert' : 'status')}><Icon className="mt-0.5 h-5 w-5 flex-shrink-0" /> <div>{children}</div></div>;
+}
+
+export function AdminPageHeader({ title, description, actions, meta }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; meta?: React.ReactNode }) { return <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-xl font-bold tracking-tight text-admin-fg">{title}</h1>{description && <p className="mt-1 text-sm text-admin-muted-fg">{description}</p>}{meta && <div className="mt-2 text-xs text-admin-muted-fg">{meta}</div>}</div>{actions && <div className="flex flex-col items-start gap-2 sm:items-end">{actions}</div>}</div>; }
+export function AdminFilterBar({ className, children }: { className?: string; children: React.ReactNode }) { return <div className={cn('rounded-admin-xl border border-admin-border bg-admin-surface p-4 shadow-admin-sm', className)}>{children}</div>; }
+export function AdminMetricCard({ title, value, icon, description, loading, accent = 'brand' }: { title: React.ReactNode; value: React.ReactNode; icon?: React.ReactNode; description?: React.ReactNode; loading?: boolean; accent?: 'brand'|'success'|'warning'|'danger'|'muted'|'info' }) { const accents={brand:'bg-blue-50 text-blue-600',success:'bg-emerald-50 text-emerald-600',warning:'bg-amber-50 text-amber-600',danger:'bg-red-50 text-red-600',muted:'bg-slate-100 text-slate-500',info:'bg-sky-50 text-sky-600'}; return <AdminCard className="p-0"><div className="flex items-start gap-4 p-5">{icon && <div className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-admin-lg', accents[accent])}>{icon}</div>}<div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">{title}</p><p className="mt-0.5 text-2xl font-bold text-admin-fg">{loading ? <Loader2 className="inline h-5 w-5 animate-spin text-slate-400" /> : value}</p>{description && <p className="mt-0.5 text-xs text-admin-muted-fg">{description}</p>}</div></div></AdminCard>; }
+export function AdminEmptyState({ icon, title, message, action }: { icon?: React.ReactNode; title: React.ReactNode; message?: React.ReactNode; action?: React.ReactNode }) { return <div className="flex flex-col items-center justify-center px-6 py-14 text-center">{icon && <div className="mb-3 text-slate-400">{icon}</div>}<p className="text-sm font-semibold text-admin-fg">{title}</p>{message && <p className="mt-1 text-xs text-admin-muted-fg">{message}</p>}{action && <div className="mt-4">{action}</div>}</div>; }
+export function AdminSkeleton({ className }: { className?: string }) { return <div className={cn('animate-pulse rounded-admin-md bg-slate-200/80', className)} />; }
+export function AdminTable({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn('overflow-hidden rounded-admin-xl border border-admin-border bg-admin-surface shadow-admin-sm', className)}><div className="overflow-x-auto">{children}</div></div>; }
+export function StatusBadge({ status }: { status?: string | null }) { const normalized=(status||'unknown').toLowerCase(); const variant= normalized.includes('approve')||normalized==='active'||normalized==='success' ? 'success' : normalized.includes('pending')||normalized.includes('sync') ? 'warning' : normalized.includes('reject')||normalized.includes('ban')||normalized.includes('suspend')||normalized.includes('fail') ? 'danger' : normalized==='unknown' ? 'muted' : 'info'; return <AdminBadge variant={variant}>{status || 'Unknown'}</AdminBadge>; }
+export function PresenceBadge({ status }: { status?: 'online'|'offline'|'active'|'inactive'|'suspended'|'unknown' }) { const value=status||'unknown'; const variant=value==='online'||value==='active'?'success':value==='suspended'?'danger':value==='unknown'?'muted':'neutral'; return <AdminBadge variant={variant}>{value[0].toUpperCase()+value.slice(1)}</AdminBadge>; }

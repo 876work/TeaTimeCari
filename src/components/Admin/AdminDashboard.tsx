@@ -7,7 +7,6 @@ import {
   Clock,
   RefreshCw,
   Loader2,
-  AlertCircle,
   CheckCircle,
   Wifi,
   WifiOff,
@@ -26,6 +25,7 @@ import { AdminAuditLogs } from './AdminAuditLogs';
 import FunctionPing from '../../dev/FunctionPing';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
+import { AdminAlert, AdminButton, AdminCard, AdminMetricCard, AdminPageHeader } from './ui';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -74,32 +74,26 @@ function StatCard({
   label,
   value,
   icon,
-  iconBg,
-  iconColor,
   sub,
   loading,
+  accent,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
   sub?: string;
   loading: boolean;
+  accent: 'brand' | 'success' | 'warning' | 'danger' | 'muted' | 'info';
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-start gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <span className={iconColor}>{icon}</span>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-slate-900 mt-0.5">
-          {loading ? <Loader2 className="w-5 h-5 animate-spin text-slate-400 inline" /> : value.toLocaleString()}
-        </p>
-        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
+    <AdminMetricCard
+      title={label}
+      value={value.toLocaleString()}
+      icon={icon}
+      description={sub}
+      loading={loading}
+      accent={accent}
+    />
   );
 }
 
@@ -113,7 +107,7 @@ function RegistrationChart({
   const max = Math.max(...data.map((d) => d.count), 1);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6">
+    <AdminCard>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">New Registrations</h3>
@@ -167,7 +161,7 @@ function RegistrationChart({
           </div>
         </>
       )}
-    </div>
+    </AdminCard>
   );
 }
 
@@ -306,9 +300,9 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
   if (activePage === 'function-ping') {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <AdminCard>
           <FunctionPing />
-        </div>
+        </AdminCard>
       </AdminLayout>
     );
   }
@@ -325,34 +319,25 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
         {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Overview</h1>
-            <p className="text-sm text-slate-500 mt-0.5">System health, registrations, and moderation shortcuts</p>
-          </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <p className="text-xs font-medium text-slate-500">Last refreshed at {lastUpdated.toLocaleTimeString()}</p>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <AdminPageHeader
+          title="Overview"
+          description="System health, registrations, and moderation shortcuts"
+          actions={
+            <>
+              <p className="text-xs font-medium text-admin-muted-fg">Last refreshed at {lastUpdated.toLocaleTimeString()}</p>
+              <AdminButton onClick={fetchData} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </AdminButton>
+            </>
+          }
+        />
 
         {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
+        {error && <AdminAlert variant="error">{error}</AdminAlert>}
 
         {/* Quick links */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <AdminCard>
           <div className="mb-4">
             <h2 className="text-sm font-semibold text-slate-900">Quick Links</h2>
             <p className="mt-1 text-xs text-slate-500">
@@ -378,7 +363,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
               </button>
             ))}
           </div>
-        </div>
+        </AdminCard>
 
         {/* Primary stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -386,8 +371,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Total Users"
             value={stats.total}
             icon={<Users className="w-5 h-5" />}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-600"
+            accent="brand"
             sub="All registrations"
             loading={loading}
           />
@@ -395,8 +379,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Online Now"
             value={stats.online}
             icon={<Wifi className="w-5 h-5" />}
-            iconBg="bg-green-50"
-            iconColor="text-green-600"
+            accent="success"
             sub="Active within 15 min"
             loading={loading}
           />
@@ -404,8 +387,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Offline"
             value={stats.offline}
             icon={<WifiOff className="w-5 h-5" />}
-            iconBg="bg-slate-100"
-            iconColor="text-slate-500"
+            accent="muted"
             sub="Inactive users"
             loading={loading}
           />
@@ -413,8 +395,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Registered Today"
             value={stats.registeredToday}
             icon={<CalendarDays className="w-5 h-5" />}
-            iconBg="bg-sky-50"
-            iconColor="text-sky-600"
+            accent="info"
             sub="Since midnight"
             loading={loading}
           />
@@ -426,8 +407,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Pending Approval"
             value={stats.pending}
             icon={<Clock className="w-5 h-5" />}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-600"
+            accent="warning"
             sub="Awaiting review"
             loading={loading}
           />
@@ -435,8 +415,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Approved"
             value={stats.approved}
             icon={<UserCheck className="w-5 h-5" />}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
+            accent="success"
             sub="Access granted"
             loading={loading}
           />
@@ -444,8 +423,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Suspended"
             value={stats.suspended}
             icon={<UserX className="w-5 h-5" />}
-            iconBg="bg-orange-50"
-            iconColor="text-orange-500"
+            accent="warning"
             sub="Temporarily blocked"
             loading={loading}
           />
@@ -453,8 +431,7 @@ export function AdminDashboard({ activePage = 'dashboard', onNavigate }: AdminDa
             label="Banned"
             value={stats.banned}
             icon={<UserX className="w-5 h-5" />}
-            iconBg="bg-red-50"
-            iconColor="text-red-500"
+            accent="danger"
             sub="Restricted accounts"
             loading={loading}
           />
