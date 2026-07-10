@@ -1,22 +1,30 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Loader2, Lock } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
-import { getAdminSession } from '@/lib/adminAuth';
-import { hasPendingSso, finishDiscourseSso } from '@/lib/discourseSso';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { getAdminSession } from "@/lib/adminAuth";
+import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
+import { AdminAlert, AdminButton, AdminCard, AdminInput } from "./ui";
 
 function safeNext(value: string | null) {
-  if (!value || !value.startsWith('/admin') || value.startsWith('/admin/login')) return '/admin/dashboard';
+  if (!value || !value.startsWith("/admin") || value.startsWith("/admin/login")) {
+    return "/admin/dashboard";
+  }
+
   return value;
 }
 
 export function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const nextPath = useMemo(() => safeNext(new URLSearchParams(location.search).get('next')), [location.search]);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const nextPath = useMemo(
+    () => safeNext(new URLSearchParams(location.search).get("next")),
+    [location.search]
+  );
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +35,15 @@ export function AdminLoginPage() {
     const verifyExistingSession = async () => {
       try {
         const adminSession = await getAdminSession();
+
         if (!adminSession || cancelled) return;
 
         if (hasPendingSso()) {
-          const { data: { session } } = await supabase.auth.getSession();
-          await finishDiscourseSso(session?.access_token ?? '');
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          await finishDiscourseSso(session?.access_token ?? "");
           return;
         }
 
@@ -69,164 +81,223 @@ export function AdminLoginPage() {
 
       if (!adminSession) {
         await supabase.auth.signOut();
-        setError('This account does not have Tea Time Cari admin access.');
+        setError("This account does not have Tea Time Cari admin access.");
         return;
       }
 
       if (hasPendingSso()) {
-        const { data: { session } } = await supabase.auth.getSession();
-        await finishDiscourseSso(session?.access_token ?? '');
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        await finishDiscourseSso(session?.access_token ?? "");
         return;
       }
 
       navigate(nextPath, { replace: true });
     } catch (err: unknown) {
-      console.error('Admin login error:', err);
-      setError(err instanceof Error ? err.message : 'Admin login failed. Please check your credentials.');
+      console.error("Admin login error:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Admin login failed. Please check your credentials."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] px-4 py-10">
-      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute left-10 top-20 h-32 w-32 rounded-full bg-white/15" />
-        <div className="absolute right-20 top-40 h-24 w-24 rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-32 left-1/4 h-40 w-40 rounded-full bg-white/10" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-20 right-1/3 h-20 w-20 rounded-full bg-white/15" style={{ animationDelay: '0.5s' }} />
-      </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-admin-bg px-4 py-8 text-admin-fg sm:px-6 lg:px-8">
+      <div
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(75,158,200,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(217,110,110,0.14),transparent_32%)]"
+        aria-hidden="true"
+      />
 
-      <div className="admin-page-enter relative z-10 w-full max-w-md">
+      <div
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-blue/40 to-transparent"
+        aria-hidden="true"
+      />
+
+      <div
+        className="absolute inset-0 opacity-[0.035] [background-image:linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] [background-size:44px_44px]"
+        aria-hidden="true"
+      />
+
+      <div className="absolute left-10 top-20 h-32 w-32 rounded-full bg-brand-blue/10 blur-2xl" aria-hidden="true" />
+      <div className="absolute bottom-20 right-10 h-40 w-40 rounded-full bg-brand-coral/10 blur-2xl" aria-hidden="true" />
+
+      <main className="admin-page-enter relative z-10 w-full max-w-[1060px]">
         <button
           type="button"
-          onClick={() => navigate('/')}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-white/85 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+          onClick={() => navigate("/")}
+          className="mb-6 inline-flex items-center gap-2 rounded-admin-md px-1 text-sm font-semibold text-admin-muted-fg transition hover:text-admin-fg focus:outline-none focus:ring-2 focus:ring-admin-brand focus:ring-offset-4 focus:ring-offset-admin-bg"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Return to Tea Time Cari
         </button>
 
-        <div className="rounded-[22px] bg-gradient-to-br from-[#D6EBF5] via-[#9B6BAE] to-[#D96E6E] p-[2px] shadow-2xl transition-all duration-300 hover:shadow-[0_0_30px_1px_rgba(214,235,245,0.35)]">
-          <div className="rounded-[20px] bg-[#171717] transition-shadow duration-200">
-            <form
-              name="admin-login"
-              method="POST"
-              data-netlify="true"
-              onSubmit={handleLogin}
-              className="flex flex-col gap-4 rounded-[20px] px-8 pb-8 pt-7 text-white"
-            >
-              <input type="hidden" name="form-name" value="admin-login" readOnly />
+        <div className="grid overflow-hidden rounded-[1.5rem] border border-admin-border bg-white/80 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.65)] backdrop-blur xl:grid-cols-[0.95fr_1.05fr]">
+          <section className="hidden border-r border-admin-border bg-slate-950 px-10 py-12 text-white xl:block">
+            <div className="flex h-full flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-sm">
+                    <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                  </div>
 
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 p-2 ring-1 ring-white/15">
+                  <div>
+                    <p className="text-sm font-semibold tracking-tight">
+                      Tea Time Cari
+                    </p>
+                    <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
+                      Admin Portal
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-20 max-w-sm">
+                  <p className="mb-4 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+                    Admin access only
+                  </p>
+
+                  <h1 className="text-4xl font-semibold tracking-tight text-white">
+                    Secure management for Tea Time Cari.
+                  </h1>
+
+                  <p className="mt-5 text-sm leading-6 text-slate-300">
+                    Sign in to manage users, moderation, community roles, and
+                    system activity from the admin dashboard.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
+                <div className="flex items-start gap-3">
+                  <Lock
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-blue-light"
+                    aria-hidden="true"
+                  />
+                  <p>Use an authorized administrator account to continue.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="px-5 py-8 sm:px-10 sm:py-12">
+            <div className="mx-auto w-full max-w-md">
+              <div className="mb-7 text-center xl:text-left">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-admin-border bg-white p-2 shadow-admin-sm xl:mx-0">
                   <img
                     src="/teaLogo.png"
                     alt="Tea Time Cari"
-                    className="h-full w-full object-contain drop-shadow-lg"
+                    className="h-full w-full object-contain"
                   />
                 </div>
 
-                <p id="admin-login-heading" className="text-xl font-bold tracking-wide text-white">
-                  Tea Time Cari Admin
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-admin-muted-fg">
+                  Admin Portal
                 </p>
 
-                <p className="mt-2 text-sm text-white/65">
-                  Log in with an authorized administrator account.
+                <h2
+                  id="admin-login-heading"
+                  className="mt-2 text-2xl font-bold tracking-tight text-admin-fg"
+                >
+                  Sign in to Tea Time Cari
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-admin-muted-fg">
+                  Admin access only. Manage users, moderation, community roles,
+                  and system activity.
                 </p>
               </div>
 
-              {error && (
-                <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4" role="alert">
-                  <div className="flex gap-3">
-                    <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-300" />
-                    <p className="text-sm text-red-100">{error}</p>
+              <AdminCard className="shadow-admin">
+                <form
+                  name="admin-login"
+                  method="POST"
+                  data-netlify="true"
+                  onSubmit={handleLogin}
+                  className="space-y-5"
+                  aria-labelledby="admin-login-heading"
+                >
+                  <input
+                    type="hidden"
+                    name="form-name"
+                    value="admin-login"
+                    readOnly
+                  />
+
+                  {error && <AdminAlert variant="error">{error}</AdminAlert>}
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="admin-email"
+                      className="text-sm font-semibold text-admin-fg"
+                    >
+                      Admin email
+                    </label>
+
+                    <AdminInput
+                      type="email"
+                      id="admin-email"
+                      name="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      disabled={isLoading || checkingSession}
+                      autoComplete="email"
+                      placeholder="admin@example.com"
+                    />
                   </div>
-                </div>
-              )}
 
-              <div className="mt-2 flex items-center gap-3 rounded-full bg-[#171717] px-4 py-3 text-white shadow-[inset_2px_5px_10px_rgb(5,5,5)]">
-                <label htmlFor="admin-email" className="sr-only">
-                  Admin email
-                </label>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="admin-password"
+                      className="text-sm font-semibold text-admin-fg"
+                    >
+                      Password
+                    </label>
 
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  height={16}
-                  width={16}
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 flex-shrink-0 text-white/85"
-                  aria-hidden="true"
-                >
-                  <path d="M13.106 7.222c0-2.967-2.249-5.032-5.482-5.032-3.35 0-5.646 2.318-5.646 5.702 0 3.493 2.235 5.708 5.762 5.708.862 0 1.689-.123 2.304-.335v-.862c-.43.199-1.354.328-2.29.328-2.926 0-4.813-1.88-4.813-4.798 0-2.844 1.921-4.881 4.594-4.881 2.735 0 4.608 1.688 4.608 4.156 0 1.682-.554 2.769-1.416 2.769-.492 0-.772-.28-.772-.76V5.206H8.923v.834h-.11c-.266-.595-.881-.964-1.6-.964-1.4 0-2.378 1.162-2.378 2.823 0 1.737.957 2.906 2.379 2.906.8 0 1.415-.39 1.709-1.087h.11c.081.67.703 1.148 1.503 1.148 1.572 0 2.57-1.415 2.57-3.643zm-7.177.704c0-1.197.54-1.907 1.456-1.907.93 0 1.524.738 1.524 1.907S8.308 9.84 7.371 9.84c-.895 0-1.442-.725-1.442-1.914z" />
-                </svg>
+                    <AdminInput
+                      type="password"
+                      id="admin-password"
+                      name="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      disabled={isLoading || checkingSession}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                    />
+                  </div>
 
-                <input
-                  type="email"
-                  id="admin-email"
-                  name="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none transition-colors focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  required
-                  disabled={isLoading || checkingSession}
-                  autoComplete="email"
-                  aria-label="Admin email"
-                />
-              </div>
+                  <AdminButton
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    loading={isLoading || checkingSession}
+                    disabled={isLoading || checkingSession || !email || !password}
+                    className="w-full bg-slate-950 hover:bg-slate-800 focus-visible:ring-slate-900/20"
+                  >
+                    {checkingSession
+                      ? "Checking session…"
+                      : isLoading
+                      ? "Signing in…"
+                      : "Sign in"}
+                  </AdminButton>
+                </form>
+              </AdminCard>
 
-              <div className="flex items-center gap-3 rounded-full bg-[#171717] px-4 py-3 text-white shadow-[inset_2px_5px_10px_rgb(5,5,5)]">
-                <label htmlFor="admin-password" className="sr-only">
-                  Password
-                </label>
-
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                  height={16}
-                  width={16}
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 flex-shrink-0 text-white/85"
-                  aria-hidden="true"
-                >
-                  <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-                </svg>
-
-                <input
-                  type="password"
-                  id="admin-password"
-                  name="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="w-full bg-transparent text-sm text-[#d3d3d3] outline-none transition-colors focus:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                  required
-                  disabled={isLoading || checkingSession}
-                  autoComplete="current-password"
-                  aria-label="Password"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || checkingSession || !email || !password}
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#252525] px-5 py-3 text-sm font-semibold text-white transition-all duration-150 hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#252525]/60 disabled:text-white/45"
-              >
-                {isLoading || checkingSession ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Lock className="h-4 w-4" />
-                )}
-                {checkingSession ? 'Checking session…' : isLoading ? 'Logging in…' : 'Log In'}
-              </button>
-            </form>
-          </div>
+              <p className="mt-5 text-center text-xs leading-5 text-admin-muted-fg">
+                Tea Time Cari Admin · Unauthorized users should return to the
+                main site.
+              </p>
+            </div>
+          </section>
         </div>
-
-        <p className="mt-5 text-center text-xs text-white/75 drop-shadow-sm">
-          Admin access is role-protected and audited. Unauthorized users should return to the main site.
-        </p>
-      </div>
+      </main>
     </div>
   );
 }
