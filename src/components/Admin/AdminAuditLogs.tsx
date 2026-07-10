@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { AlertCircle, CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { AdminAlert, AdminButton, AdminEmptyState, AdminPageHeader, AdminTable } from './ui';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 
 type AdminAuditLog = {
@@ -73,42 +74,29 @@ export function AdminAuditLogs({ activePage = 'logs', onNavigate }: { activePage
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Admin Audit Logs</h1>
-            <p className="mt-0.5 text-sm text-slate-500">Recent admin access checks, user decisions, and operational actions.</p>
-          </div>
-          <button
-            type="button"
-            onClick={fetchLogs}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
+        <AdminPageHeader
+          title="Admin Audit Logs"
+          description="Recent admin access checks, user decisions, and operational actions."
+          actions={
+            <AdminButton type="button" onClick={fetchLogs} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </AdminButton>
+          }
+        />
 
-        {error && (
-          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4" role="alert">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
+        {error && <AdminAlert variant="error">{error}</AdminAlert>}
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <AdminTable>
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
               <p className="text-sm text-slate-500">Loading audit logs…</p>
             </div>
           ) : logs.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm font-medium text-slate-700">No audit logs found</p>
-              <p className="mt-1 text-xs text-slate-400">Admin actions will appear here once recorded.</p>
-            </div>
+            <AdminEmptyState title="No audit logs found" message="Admin actions will appear here once recorded." />
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="min-w-full divide-y divide-slate-100">
                 <thead className="bg-slate-50">
                   <tr>
@@ -149,7 +137,7 @@ export function AdminAuditLogs({ activePage = 'logs', onNavigate }: { activePage
               </table>
             </div>
           )}
-        </div>
+        </AdminTable>
       </div>
     </AdminLayout>
   );
