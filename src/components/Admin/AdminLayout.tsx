@@ -26,14 +26,14 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-admin-bg text-admin-fg">
       {/* Header */}
-      <header className="bg-slate-900 sticky top-0 z-40">
+      <header className="sticky top-0 z-40 bg-slate-950 shadow-admin">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 bg-admin-brand rounded-admin-md flex items-center justify-center flex-shrink-0">
                 <Shield className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -58,7 +58,7 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b border-slate-200 shadow-sm">
+      <nav className="border-b border-admin-border bg-admin-surface shadow-admin-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto scrollbar-hide">
             {navItems.map((item) => {
@@ -69,11 +69,11 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
                   onClick={() => onNavigate?.(item.id)}
                   className={`flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-all duration-150 ${
                     isActive
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                      ? 'border-admin-brand text-admin-brand'
+                      : 'border-transparent text-admin-muted-fg hover:border-slate-300 hover:text-admin-fg'
                   }`}
                 >
-                  <span className={isActive ? 'text-blue-600' : 'text-slate-400'}>{item.icon}</span>
+                  <span className={isActive ? 'text-admin-brand' : 'text-slate-400'}>{item.icon}</span>
                   <span className="hidden sm:inline">{item.label}</span>
                   <span className="sm:hidden">{item.mobileLabel ?? item.label}</span>
                 </button>
@@ -89,7 +89,7 @@ export function AdminLayout({ children, activePage = 'dashboard', onNavigate }: 
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 mt-auto">
+      <footer className="border-t border-admin-border bg-admin-surface mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-400">
