@@ -6,14 +6,12 @@ import {
   XCircle,
   Loader2,
   AlertCircle,
-  User,
   RefreshCw,
   Search,
   ChevronDown,
   ChevronUp,
   Camera,
   Users,
-  CalendarDays,
   Globe,
   MapPin,
   Clock,
@@ -22,6 +20,8 @@ import {
   X,
   AlertTriangle,
   Edit3,
+  Copy,
+  ShieldCheck,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
@@ -219,23 +219,56 @@ function SummaryCard({
   icon,
   iconBg,
   iconColor,
+  helper,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
   iconBg: string;
   iconColor: string;
+  helper?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <span className={iconColor}>{icon}</span>
-      </div>
-      <div>
-        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
-        <p className="text-xs text-slate-500">{label}</p>
+    <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{value.toLocaleString()}</p>
+          {helper && <p className="mt-1 text-xs text-slate-500">{helper}</p>}
+        </div>
+        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+          <span className={iconColor}>{icon}</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function initialsFor(user: UserRow) {
+  const name = safeDisplayName(user);
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+
+  return initials || '?';
+}
+
+function CopyButton({ value, label }: { value?: string | null; label: string }) {
+  if (!value) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigator.clipboard?.writeText(value)}
+      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      title={`Copy ${label}`}
+      aria-label={`Copy ${label}`}
+    >
+      <Copy className="h-3.5 w-3.5" />
+    </button>
   );
 }
 
@@ -718,7 +751,9 @@ export function AdminUserReview({
     pending: users.filter((u) => normalizeApprovalStatus(u.status) === 'pending').length,
     approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
     suspended: users.filter((u) => normalizeApprovalStatus(u.status) === 'suspended').length,
+    banned: users.filter((u) => normalizeApprovalStatus(u.status) === 'banned').length,
     online: users.filter(isOnline).length,
+    syncIssues: Object.values(actionMessages).filter((message) => message.canRetryDiscourse).length,
     offline: users.filter((u) => !isOnline(u)).length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
   };
@@ -753,49 +788,66 @@ export function AdminUserReview({
       }
     });
 
+  const clearFilters = () => {
+    setSearch('');
+    setFilterStatus('all');
+    setPresenceFilter('all');
+    setSortBy('registration_desc');
+  };
+
+  const hasActiveFilters = Boolean(search.trim()) || filterStatus !== 'all' || presenceFilter !== 'all' || sortBy !== 'registration_desc';
+
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">User Management</h2>
-            <p className="text-sm text-slate-500 mt-0.5">View and manage all user registrations</p>
-          </div>
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-5 py-6 text-white sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Admin access review
+                </div>
+                <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">User Review Queue & Members</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Review registrations, manage account status, inspect verification details, and monitor member access without changing approval workflows.
+                </p>
+              </div>
 
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <p className="text-xs font-medium text-slate-500">
-              Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
-            </p>
+              <div className="flex flex-col items-start gap-2 sm:items-end">
+                <p className="text-xs font-medium text-slate-300">
+                  Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
+                </p>
 
-            <div className="flex items-center gap-2">
-              {discourseBaseUrl && (
-                <button
-                  onClick={() => window.open(discourseBaseUrl, '_blank')}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span className="hidden sm:inline">Community Forum</span>
-                </button>
-              )}
+                <div className="flex items-center gap-2">
+                  {discourseBaseUrl && (
+                    <button
+                      onClick={() => window.open(discourseBaseUrl, '_blank')}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/15"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span className="hidden sm:inline">Community Forum</span>
+                    </button>
+                  )}
 
-              <button
-                onClick={fetchUsers}
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+                  <button
+                    onClick={fetchUsers}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                </div>
             </div>
           </div>
         </div>
+        </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <SummaryCard label="Total Users" value={summaryStats.total} icon={<Users className="w-4 h-4" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <SummaryCard label="Pending Approval" value={summaryStats.pending} icon={<Clock className="w-4 h-4" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
-          <SummaryCard label="Approved" value={summaryStats.approved} icon={<CheckCircle className="w-4 h-4" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-          <SummaryCard label="Suspended" value={summaryStats.suspended} icon={<Ban className="w-4 h-4" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
-          <SummaryCard label="Registered Today" value={summaryStats.today} icon={<CalendarDays className="w-4 h-4" />} iconBg="bg-sky-50" iconColor="text-sky-600" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard label="Total members" value={summaryStats.total} helper="All loaded registrations" icon={<Users className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
+          <SummaryCard label="Pending review" value={summaryStats.pending} helper="Needs admin decision" icon={<Clock className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
+          <SummaryCard label="Approved" value={summaryStats.approved} helper={`${summaryStats.online} online now`} icon={<CheckCircle className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+          <SummaryCard label="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} helper={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="w-5 h-5" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
         </div>
 
         {error && (
@@ -822,8 +874,24 @@ export function AdminUserReview({
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Find the right account quickly</h3>
+              <p className="text-xs text-slate-500">Search, filter by status or presence, and sort without changing the underlying member data.</p>
+            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
@@ -834,7 +902,7 @@ export function AdminUserReview({
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
@@ -871,9 +939,11 @@ export function AdminUserReview({
             </div>
           </div>
 
-          <div className="mt-3 space-y-1 text-xs text-slate-500">
-            <p>Search by name, username, email, or phone.</p>
-            <p>Online means active within the last 15 minutes.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={() => setFilterStatus('pending')} className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100">Pending</button>
+            <button type="button" onClick={() => setPresenceFilter('online')} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">Online</button>
+            <button type="button" onClick={() => setFilterStatus('suspended')} className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100">Suspended</button>
+            {summaryStats.syncIssues > 0 && <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">{summaryStats.syncIssues} needs sync</span>}
           </div>
 
           <p className="text-xs text-slate-400 mt-3">
@@ -917,10 +987,11 @@ export function AdminUserReview({
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-50/95 border-b border-slate-200 backdrop-blur">
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
@@ -944,13 +1015,16 @@ export function AdminUserReview({
                         <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                <User className="w-4 h-4 text-blue-500" />
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-slate-100 text-sm font-bold text-blue-700 ring-1 ring-slate-200">
+                                {initialsFor(user)}
                               </div>
 
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">{safeDisplayName(user)}</p>
-                                <p className="text-xs text-slate-400">@{user.username ?? '—'}</p>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-950" title={safeDisplayName(user)}>{safeDisplayName(user)}</p>
+                                <div className="mt-0.5 flex items-center gap-1">
+                                  <p className="truncate text-xs text-slate-400" title={user.username ?? undefined}>@{user.username ?? '—'}</p>
+                                  <CopyButton value={user.username} label="username" />
+                                </div>
                                 {actionMessages[user.id] && (
                                   <p className={`mt-1 max-w-xs text-xs ${actionMessages[user.id].type === 'success' ? 'text-emerald-600' : 'text-amber-600'}`}>
                                     {actionMessages[user.id].message}
@@ -961,7 +1035,10 @@ export function AdminUserReview({
                           </td>
 
                           <td className="px-5 py-4 hidden md:table-cell">
-                            <p className="text-sm text-slate-700">{user.email ?? <span className="text-slate-400">—</span>}</p>
+                            <div className="flex max-w-[260px] items-center gap-1">
+                              <p className="truncate text-sm text-slate-700" title={user.email ?? undefined}>{user.email ?? <span className="text-slate-400">—</span>}</p>
+                              <CopyButton value={user.email} label="email" />
+                            </div>
                             <p className="text-xs text-slate-400 mt-0.5">{user.phone ?? '—'}</p>
                           </td>
 
@@ -1132,6 +1209,47 @@ export function AdminUserReview({
                 </tbody>
               </table>
             </div>
+            <div className="divide-y divide-slate-100 md:hidden">
+              {filtered.map((user) => {
+                const online = isOnline(user);
+                const isExpanded = expandedId === user.id;
+                const isProcessing = processingId === user.id;
+                const normalizedStatus = normalizeApprovalStatus(user.status);
+
+                return (
+                  <div key={`${user.id}-mobile`} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-slate-100 text-sm font-bold text-blue-700 ring-1 ring-slate-200">
+                        {initialsFor(user)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-950">{safeDisplayName(user)}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <StatusBadge status={user.status} />
+                          <PresenceBadge online={online} />
+                        </div>
+                        <p className="mt-2 truncate text-xs text-slate-500">{user.email ?? 'No email'}</p>
+                        <p className="mt-1 text-xs text-slate-400">Registered {formatDateTime(user.created_at) ?? '—'}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button onClick={() => setExpandedId(isExpanded ? null : user.id)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">{isExpanded ? 'Hide details' : 'Details'}</button>
+                      {user.imageData && <button onClick={() => setImageModal(user.imageData!)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Photo</button>}
+                      {isOwner && <button onClick={() => openEditUser(user)} disabled={isProcessing} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">Edit</button>}
+                      {normalizedStatus === 'pending' && <button onClick={() => handleApprove(user)} disabled={isProcessing} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">Approve</button>}
+                      {normalizedStatus === 'pending' && <button onClick={() => requestConfirmation('reject', user)} disabled={isProcessing} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">Reject</button>}
+                      {actionMessages[user.id]?.canRetryDiscourse && <button onClick={() => handleRetryDiscourseSync(user)} disabled={isProcessing} className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50">Retry sync</button>}
+                      {normalizedStatus === 'approved' && <button onClick={() => requestConfirmation('suspend', user)} disabled={isProcessing} className="rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50">Suspend</button>}
+                      {normalizedStatus === 'suspended' && <button onClick={() => requestConfirmation('unsuspend', user)} disabled={isProcessing} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">Unsuspend</button>}
+                    </div>
+
+                    {isExpanded && <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200"><DetailPanel user={user} /></div>}
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
         </div>
       </div>
