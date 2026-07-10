@@ -11,7 +11,16 @@ import {
   X,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
-import { AdminAlert, AdminButton, AdminFilterBar, AdminInput, AdminMetricCard, AdminPageHeader } from './ui';
+import {
+  AdminAlert,
+  AdminBadge,
+  AdminButton,
+  AdminFilterBar,
+  AdminInput,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminTable,
+} from './ui';
 
 type DiscourseFlag = 'all' | 'active' | 'staff' | 'suspended' | 'new' | 'blocked' | 'suspect';
 type AdminAction = 'promote' | 'demote';
@@ -92,19 +101,11 @@ function Badge({
   enabled: boolean;
   tone: 'blue' | 'green' | 'red' | 'slate' | 'purple';
 }) {
-  const colors = {
-    blue: enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    green: enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    red: enabled ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    slate: enabled ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    purple: enabled ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-  };
+  const variant = enabled
+    ? ({ blue: 'info', green: 'success', red: 'danger', slate: 'neutral', purple: 'brand' } as const)[tone]
+    : 'muted';
 
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colors[tone]}`}>
-      {label}: {enabled ? 'Yes' : 'No'}
-    </span>
-  );
+  return <AdminBadge variant={variant}>{label}: {enabled ? 'Yes' : 'No'}</AdminBadge>;
 }
 
 function ConfirmationModal({
@@ -162,26 +163,19 @@ function ConfirmationModal({
         </div>
 
         <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
+          <AdminButton type="button" onClick={onCancel} disabled={loading}>
             Cancel
-          </button>
+          </AdminButton>
 
-          <button
+          <AdminButton
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-              isPromote ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'
-            }`}
+            variant={isPromote ? 'primary' : 'danger'}
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {isPromote ? 'Promote Admin' : 'Demote Admin'}
-          </button>
+          </AdminButton>
         </div>
       </div>
     </div>
@@ -373,9 +367,8 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
 
         {error && <AdminAlert variant="error">{error}</AdminAlert>}
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
+        <AdminTable>
+          <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -457,8 +450,9 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
 
                         <td className="px-4 py-4 align-top text-right">
                           {user.admin ? (
-                            <button
+                            <AdminButton
                               type="button"
+                              variant="danger"
                               onClick={() => openAction('demote', user)}
                               disabled={isSelf || adminCount <= 1}
                               title={
@@ -468,51 +462,51 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
                                     ? 'Cannot demote the last loaded admin.'
                                     : undefined
                               }
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              size="sm"
                             >
                               <ShieldOff className="h-4 w-4" />
                               Demote Admin
-                            </button>
+                            </AdminButton>
                           ) : (
-                            <button
+                            <AdminButton
                               type="button"
+                              variant="primary"
                               onClick={() => openAction('promote', user)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
+                              size="sm"
                             >
                               <Shield className="h-4 w-4" />
                               Promote Admin
-                            </button>
+                            </AdminButton>
                           )}
                         </td>
                       </tr>
                     );
                   })}
               </tbody>
-            </table>
-          </div>
+          </table>
 
           <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3">
-            <button
+            <AdminButton
               type="button"
               onClick={() => fetchUsers(Math.max(0, page - 1))}
               disabled={loading || page === 0}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              size="sm"
             >
               Previous
-            </button>
+            </AdminButton>
 
             <span className="text-sm text-slate-500">Page {page + 1}</span>
 
-            <button
+            <AdminButton
               type="button"
               onClick={() => fetchUsers(page + 1)}
               disabled={loading}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              size="sm"
             >
               Next
-            </button>
+            </AdminButton>
           </div>
-        </div>
+        </AdminTable>
       </div>
 
       {pendingAction && (
