@@ -44,9 +44,9 @@ export function AdminCard({ title, description, actions, footer, className, chil
   return (
     <section className={cn('overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50 transition-shadow duration-200 ease-out', className)}>
       {(title || description || actions) && (
-        <div className="flex items-start justify-between gap-4 border-b border-admin-border px-5 py-4">
-          <div>{title && <h2 className="text-sm font-semibold text-admin-fg">{title}</h2>}{description && <p className="mt-1 text-xs text-admin-muted-fg">{description}</p>}</div>
-          {actions}
+        <div className="flex flex-col gap-4 border-b border-admin-border px-5 py-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">{title && <h2 className="text-sm font-semibold text-admin-fg">{title}</h2>}{description && <p className="mt-1 text-xs text-admin-muted-fg">{description}</p>}</div>
+          {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
       {children && <div className="p-5">{children}</div>}
@@ -69,7 +69,7 @@ AdminSelect.displayName = 'AdminSelect';
 export function AdminAlert({ variant = 'info', children, className, role }: { variant?: 'info'|'success'|'warning'|'error'; children: React.ReactNode; className?: string; role?: string }) {
   const cfg = { info: ['border-sky-200 bg-sky-50 text-sky-800', Info], success: ['border-emerald-200 bg-emerald-50 text-emerald-800', CheckCircle], warning: ['border-amber-200 bg-amber-50 text-amber-800', AlertCircle], error: ['border-red-200 bg-red-50 text-red-800', XCircle] } as const;
   const [styles, Icon] = cfg[variant];
-  return <div className={cn('flex items-start gap-3 rounded-admin-lg border p-4 text-sm shadow-admin-sm', styles, className)} role={role ?? (variant === 'error' ? 'alert' : 'status')}><Icon className="mt-0.5 h-5 w-5 flex-shrink-0" /> <div>{children}</div></div>;
+  return <div className={cn('flex items-start gap-3 rounded-admin-lg border p-4 text-sm shadow-admin-sm', styles, className)} role={role ?? (variant === 'error' ? 'alert' : 'status')}><Icon className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" /> <div>{children}</div></div>;
 }
 
 export function AdminPageHeader({ title, description, actions, meta }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; meta?: React.ReactNode }) { return <div className="admin-page-enter flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-xl font-bold tracking-tight text-admin-fg sm:text-2xl">{title}</h1>{description && <p className="mt-1 max-w-3xl text-sm leading-6 text-admin-muted-fg">{description}</p>}{meta && <div className="mt-2 text-xs text-admin-muted-fg">{meta}</div>}</div>{actions && <div className="flex flex-col items-start gap-2 sm:items-end">{actions}</div>}</div>; }
