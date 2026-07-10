@@ -10,6 +10,8 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Camera,
   Users,
   Globe,
@@ -30,6 +32,7 @@ import { getAdminSession } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
+const USERS_PAGE_SIZE = 10;
 
 interface UserRow {
   id: string;
@@ -386,6 +389,8 @@ export function AdminUserReview({
   const session = useSession();
 
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({ trackingFieldsAvailable: true, omittedFields: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -426,7 +431,7 @@ export function AdminUserReview({
     return Number.isFinite(t) && Date.now() - t <= ONLINE_THRESHOLD_MS;
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = currentPage) => {
     setLoading(true);
     setError(null);
 
@@ -438,6 +443,7 @@ export function AdminUserReview({
       if (!s?.access_token) throw new Error('You must be logged in as an admin.');
 
       const { data, error: fnErr } = await supabase.functions.invoke('get-admin-users', {
+        body: { limit: USERS_PAGE_SIZE, offset: page * USERS_PAGE_SIZE },
         headers: { Authorization: `Bearer ${s.access_token}` },
       });
 
@@ -458,6 +464,9 @@ export function AdminUserReview({
       }));
 
       setUsers(mapped);
+      setTotalUsers(typeof data.total === 'number' ? data.total : mapped.length);
+      setCurrentPage(page);
+      setExpandedId(null);
       setTrackingStatus({
         trackingFieldsAvailable: data.trackingFieldsAvailable !== false,
         omittedFields: Array.isArray(data.omittedFields) ? data.omittedFields : [],
@@ -466,6 +475,7 @@ export function AdminUserReview({
     } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setUsers([]);
+      setTotalUsers(0);
       setTrackingStatus({ trackingFieldsAvailable: true, omittedFields: [] });
     } finally {
       setLoading(false);
@@ -479,7 +489,7 @@ export function AdminUserReview({
       return;
     }
 
-    fetchUsers();
+    fetchUsers(0);
 
     getAdminSession()
       .then((admin) => setIsOwner(admin?.role === 'owner'))
@@ -747,7 +757,7 @@ export function AdminUserReview({
   todayStart.setHours(0, 0, 0, 0);
 
   const summaryStats = {
-    total: users.length,
+    total: totalUsers,
     pending: users.filter((u) => normalizeApprovalStatus(u.status) === 'pending').length,
     approved: users.filter((u) => normalizeApprovalStatus(u.status) === 'approved').length,
     suspended: users.filter((u) => normalizeApprovalStatus(u.status) === 'suspended').length,
@@ -796,6 +806,11 @@ export function AdminUserReview({
   };
 
   const hasActiveFilters = Boolean(search.trim()) || filterStatus !== 'all' || presenceFilter !== 'all' || sortBy !== 'registration_desc';
+  const totalPages = Math.max(1, Math.ceil(totalUsers / USERS_PAGE_SIZE));
+  const canGoPrevious = currentPage > 0;
+  const canGoNext = (currentPage + 1) * USERS_PAGE_SIZE < totalUsers;
+  const pageStart = totalUsers === 0 ? 0 : currentPage * USERS_PAGE_SIZE + 1;
+  const pageEnd = currentPage * USERS_PAGE_SIZE + users.length;
 
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
@@ -830,7 +845,7 @@ export function AdminUserReview({
                   )}
 
                   <button
-                    onClick={fetchUsers}
+                    onClick={() => fetchUsers(currentPage)}
                     disabled={loading}
                     className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-100 disabled:opacity-50"
                   >
@@ -844,7 +859,7 @@ export function AdminUserReview({
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Total members" value={summaryStats.total} helper="All loaded registrations" icon={<Users className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
+          <SummaryCard label="Total members" value={summaryStats.total} helper="All registrations" icon={<Users className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
           <SummaryCard label="Pending review" value={summaryStats.pending} helper="Needs admin decision" icon={<Clock className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
           <SummaryCard label="Approved" value={summaryStats.approved} helper={`${summaryStats.online} online now`} icon={<CheckCircle className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
           <SummaryCard label="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} helper={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="w-5 h-5" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
@@ -947,8 +962,8 @@ export function AdminUserReview({
           </div>
 
           <p className="text-xs text-slate-400 mt-3">
-            Showing <span className="font-medium text-slate-600">{filtered.length}</span> of{' '}
-            <span className="font-medium text-slate-600">{users.length}</span> users
+            Showing <span className="font-medium text-slate-600">{filtered.length}</span> filtered users from accounts {pageStart}-{pageEnd} of{' '}
+            <span className="font-medium text-slate-600">{totalUsers}</span>
             {lastUpdated && <span className="ml-2">• Last refreshed at {lastUpdated.toLocaleTimeString()}</span>}
           </p>
         </div>
@@ -978,7 +993,7 @@ export function AdminUserReview({
 
               {users.length === 0 && (
                 <button
-                  onClick={fetchUsers}
+                  onClick={() => fetchUsers(currentPage)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -1248,6 +1263,36 @@ export function AdminUserReview({
                   </div>
                 );
               })}
+            </div>
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">
+                Page <span className="font-semibold text-slate-700">{currentPage + 1}</span> of{' '}
+                <span className="font-semibold text-slate-700">{totalPages}</span> · Loading {USERS_PAGE_SIZE} accounts at a time
+              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fetchUsers(currentPage - 1)}
+                  disabled={!canGoPrevious || loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Load previous 10 accounts"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fetchUsers(currentPage + 1)}
+                  disabled={!canGoNext || loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Load next 10 accounts"
+                >
+                  Next 10
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             </>
           )}
