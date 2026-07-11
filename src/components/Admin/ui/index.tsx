@@ -78,5 +78,36 @@ export function AdminMetricCard({ title, value, icon, description, loading, acce
 export function AdminEmptyState({ icon, title, message, action }: { icon?: React.ReactNode; title: React.ReactNode; message?: React.ReactNode; action?: React.ReactNode }) { return <div className="flex flex-col items-center justify-center px-6 py-14 text-center">{icon && <div className="mb-3 text-slate-400">{icon}</div>}<p className="text-sm font-semibold text-admin-fg">{title}</p>{message && <p className="mt-1 text-xs text-admin-muted-fg">{message}</p>}{action && <div className="mt-4">{action}</div>}</div>; }
 export function AdminSkeleton({ className }: { className?: string }) { return <div className={cn('admin-skeleton rounded-admin-md', className)} />; }
 export function AdminTable({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn('overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50 transition-shadow duration-200 ease-out', className)}><div className="overflow-x-auto">{children}</div></div>; }
+
+export type AdminPresenceStatus = 'online_app'|'online_community'|'online_both'|'recently_active'|'offline'|'unknown';
+export type AdminPresenceSource = 'app'|'community'|'both'|null;
+
+function relativeTime(value?: string | null) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return null;
+  const diff = Math.max(0, Date.now() - time);
+  const mins = Math.max(1, Math.round(diff / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return `${Math.round(hours / 24)} day ago`;
+}
+
+export function AdminPresenceBadge({ status = 'unknown', appLastSeenAt, discourseLastSeenAt, lastActivityAt, checkedAt, error, compact = false }: { status?: AdminPresenceStatus | null; appLastSeenAt?: string | null; discourseLastSeenAt?: string | null; lastActivityAt?: string | null; source?: AdminPresenceSource; checkedAt?: string | null; error?: string | null; compact?: boolean }) {
+  const cfg: Record<AdminPresenceStatus, { label: string; cls: string; dot: string }> = {
+    online_app: { label: 'Online in App', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+    online_community: { label: 'Online in Community', cls: 'border-indigo-200 bg-indigo-50 text-indigo-700', dot: 'bg-indigo-500' },
+    online_both: { label: 'Online in App and Community', cls: 'border-green-200 bg-green-50 text-green-700', dot: 'bg-green-500' },
+    recently_active: { label: 'Recently Active', cls: 'border-amber-200 bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
+    offline: { label: 'Offline', cls: 'border-slate-200 bg-slate-50 text-slate-600', dot: 'bg-slate-400' },
+    unknown: { label: 'Unknown', cls: 'border-gray-200 bg-gray-50 text-gray-600', dot: 'bg-gray-400' },
+  };
+  const value = status || 'unknown';
+  const c = cfg[value] || cfg.unknown;
+  const helper = error || (value === 'online_community' ? `Last active in community ${relativeTime(discourseLastSeenAt) ?? ''}`.trim() : value === 'online_app' ? `Last seen ${relativeTime(appLastSeenAt) ?? ''}`.trim() : lastActivityAt ? `Last active ${relativeTime(lastActivityAt)}` : checkedAt ? 'Last activity unknown' : 'Last activity unknown');
+  return <span className={cn('inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5', error ? 'border-red-200 bg-red-50 text-red-700' : c.cls)} title={helper}><span className={cn('h-2 w-2 flex-shrink-0 rounded-full', error ? 'bg-red-500' : c.dot)} /> <span className="truncate">{compact ? c.label.replace('Online in ', '') : c.label}</span>{!compact && <span className="hidden max-w-[12rem] truncate font-normal opacity-80 xl:inline">· {helper}</span>}</span>;
+}
+
 export function StatusBadge({ status }: { status?: string | null }) { const normalized=(status||'unknown').toLowerCase(); const variant= normalized.includes('approve')||normalized==='active'||normalized==='success' ? 'success' : normalized.includes('pending')||normalized.includes('sync') ? 'warning' : normalized.includes('reject')||normalized.includes('ban')||normalized.includes('suspend')||normalized.includes('fail') ? 'danger' : normalized==='unknown' ? 'muted' : 'info'; return <AdminBadge variant={variant}>{status || 'Unknown'}</AdminBadge>; }
 export function PresenceBadge({ status }: { status?: 'online'|'offline'|'active'|'inactive'|'suspended'|'unknown' }) { const value=status||'unknown'; const variant=value==='online'||value==='active'?'success':value==='suspended'?'danger':value==='unknown'?'muted':'neutral'; return <AdminBadge variant={variant}>{value[0].toUpperCase()+value.slice(1)}</AdminBadge>; }
