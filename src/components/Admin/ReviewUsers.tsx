@@ -427,37 +427,66 @@ export function AdminUserReview({
   const isOnline = (u: UserRow) => ['online_app', 'online_community', 'online_both'].includes(u.presence_status ?? '');
   const isOffline = (u: UserRow) => (u.presence_status ?? 'unknown') === 'offline';
 
+  const applyLocalAppPresenceFallback = (user: UserRow): UserRow => {
+    if (user.presence_status || !user.last_seen_at) return user;
+
+    const lastSeenTime = new Date(user.last_seen_at).getTime();
+    if (!Number.isFinite(lastSeenTime)) return { ...user, presence_status: 'unknown' };
+
+    const ageMs = Date.now() - lastSeenTime;
+
+    return {
+      ...user,
+      app_last_seen_at: user.last_seen_at,
+      app_last_login_at: user.last_login_at ?? null,
+      last_activity_at: user.last_seen_at,
+      last_activity_source: 'app',
+      presence_status: ageMs <= 5 * 60 * 1000 ? 'online_app' : ageMs <= 15 * 60 * 1000 ? 'recently_active' : 'offline',
+    };
+  };
+
+  type PresencePayload = { user_id: string; error?: string | null } & Partial<UserRow>;
+
+  const mergePresenceIntoUsers = (rows: UserRow[], presenceById: Map<string, PresencePayload>) => rows.map((user) => {
+    const p = presenceById.get(user.id);
+    if (!p) return applyLocalAppPresenceFallback(user);
+
+    return {
+      ...user,
+      app_last_seen_at: p.app_last_seen_at,
+      app_last_login_at: p.app_last_login_at,
+      discourse_last_seen_at: p.discourse_last_seen_at,
+      last_activity_at: p.last_activity_at,
+      last_activity_source: p.last_activity_source,
+      presence_status: p.presence_status,
+      presence_checked_at: p.presence_checked_at,
+      discourse_username: p.discourse_username,
+      discourse_user_id: p.discourse_user_id,
+      discourse_sync_status: p.discourse_sync_status,
+      presence_error: p.error,
+    };
+  });
+
+  const loadPresence = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.access_token) return new Map<string, PresencePayload>();
+
+    const { data, error: fnErr } = await supabase.functions.invoke('get-admin-presence', {
+      headers: { Authorization: `Bearer ${s.access_token}` },
+    });
+
+    if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+    if (!data?.ok) throw new Error(data?.error || 'Unable to load presence.');
+
+    setPresenceWarning(data.discourseUnavailable ? (data.error || 'Community presence unavailable') : null);
+
+    return new Map<string, PresencePayload>((data.presence ?? []).map((p: PresencePayload) => [p.user_id, p]));
+  };
 
   const fetchPresence = async () => {
     try {
-      const { data: { session: s } } = await supabase.auth.getSession();
-      if (!s?.access_token) return;
-      const { data, error: fnErr } = await supabase.functions.invoke('get-admin-presence', {
-        headers: { Authorization: `Bearer ${s.access_token}` },
-      });
-      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
-      if (!data?.ok) throw new Error(data?.error || 'Unable to load presence.');
-      type PresencePayload = { user_id: string; error?: string | null } & Partial<UserRow>;
-      const byId = new Map<string, PresencePayload>((data.presence ?? []).map((p: PresencePayload) => [p.user_id, p]));
-      setUsers((prev) => prev.map((user) => {
-        const p = byId.get(user.id);
-        if (!p) return user;
-        return {
-          ...user,
-          app_last_seen_at: p.app_last_seen_at,
-          app_last_login_at: p.app_last_login_at,
-          discourse_last_seen_at: p.discourse_last_seen_at,
-          last_activity_at: p.last_activity_at,
-          last_activity_source: p.last_activity_source,
-          presence_status: p.presence_status,
-          presence_checked_at: p.presence_checked_at,
-          discourse_username: p.discourse_username,
-          discourse_user_id: p.discourse_user_id,
-          discourse_sync_status: p.discourse_sync_status,
-          presence_error: p.error,
-        };
-      }));
-      setPresenceWarning(data.discourseUnavailable ? (data.error || 'Community presence unavailable') : null);
+      const presenceById = await loadPresence();
+      setUsers((prev) => mergePresenceIntoUsers(prev, presenceById));
     } catch {
       setPresenceWarning(`Community presence unavailable. App presence is still shown when available.`);
     }
@@ -495,7 +524,14 @@ export function AdminUserReview({
         fullName: [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || null,
       }));
 
-      setUsers(mapped);
+      let usersWithPresence = mapped;
+      try {
+        usersWithPresence = mergePresenceIntoUsers(mapped, await loadPresence());
+      } catch {
+        setPresenceWarning(`Community presence unavailable. App presence is still shown when available.`);
+      }
+
+      setUsers(usersWithPresence);
       setTotalUsers(typeof data.total === 'number' ? data.total : mapped.length);
       setCurrentPage(page);
       setExpandedId(null);
