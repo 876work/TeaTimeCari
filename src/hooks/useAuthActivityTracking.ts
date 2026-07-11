@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { APP_HEARTBEAT_INTERVAL_MS } from '@/lib/presenceConstants';
 
 type ActivityEvent = 'login' | 'heartbeat';
 
@@ -34,7 +35,7 @@ export function useAuthActivityTracking() {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !force) return;
 
       const now = Date.now();
-      if (!force && now - lastHeartbeatAt.current < 60_000) return;
+      if (!force && now - lastHeartbeatAt.current < APP_HEARTBEAT_INTERVAL_MS) return;
       lastHeartbeatAt.current = now;
 
       await invokeActivity('heartbeat').catch((error) => {
@@ -42,7 +43,7 @@ export function useAuthActivityTracking() {
       });
     };
 
-    const interval = window.setInterval(() => sendHeartbeat(), 60_000);
+    const interval = window.setInterval(() => sendHeartbeat(), APP_HEARTBEAT_INTERVAL_MS);
     const onFocus = () => sendHeartbeat();
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') void sendHeartbeat(true);

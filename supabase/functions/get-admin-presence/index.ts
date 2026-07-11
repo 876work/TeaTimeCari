@@ -3,15 +3,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { requireAdmin } from "../_shared/adminAuth.ts";
 
-type PresenceStatus =
-  | "online_app"
-  | "online_community"
-  | "online_both"
-  | "recently_active"
-  | "offline"
-  | "unknown";
-
-type ActivitySource = "app" | "community" | "both" | null;
+import { APP_TRACKING_STALE_MS, calculatePresence, toTime } from "../_shared/presence.ts";
 
 type Registration = {
   id: string;
@@ -33,54 +25,17 @@ type DiscourseUser = {
   single_sign_on_record?: { external_id?: string | null } | null;
 };
 
-const ONLINE_MS = 5 * 60 * 1000;
-const RECENT_MS = 15 * 60 * 1000;
-
-const DISCOURSE_BASE_URL = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(
-  /\/+$/,
-  ""
-);
-
-const DISCOURSE_ADMIN_API_KEY =
-  Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
-
-const DISCOURSE_ADMIN_API_USERNAME =
-  Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
-
-const USER_FLAGS = [
-  "active",
-  "staff",
-  "suspended",
-  "new",
-  "blocked",
-  "suspect",
-];
+const DISCOURSE_BASE_URL = (Deno.env.get("DISCOURSE_BASE_URL") || "").replace(/\/+$/, "");
+const DISCOURSE_ADMIN_API_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
+const DISCOURSE_ADMIN_API_USERNAME = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
+const USER_FLAGS = ["active", "staff", "suspended", "new", "blocked", "suspect"];
 
 function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
 function clean(value?: string | null) {
   return (value || "").trim().toLowerCase();
-}
-
-function toTime(value?: string | null) {
-  const time = value ? new Date(value).getTime() : NaN;
-
-  return Number.isFinite(time) ? time : null;
-}
-
-function newest(a?: string | null, b?: string | null) {
-  const at = toTime(a);
-  const bt = toTime(b);
-
-  if (at === null) return b ?? null;
-  if (bt === null) return a ?? null;
-
-  return at >= bt ? a ?? null : b ?? null;
 }
 
 function externalIds(user: DiscourseUser) {
@@ -91,83 +46,6 @@ function externalIds(user: DiscourseUser) {
   ]
     .map((value) => (value || "").trim())
     .filter(Boolean);
-}
-
-function calculate(
-  appLastSeen: string | null,
-  discourseLastSeen: string | null,
-  now: number
-) {
-  const appTime = toTime(appLastSeen);
-  const communityTime = toTime(discourseLastSeen);
-
-  if (appTime === null && communityTime === null) {
-    return {
-      status: "unknown" as PresenceStatus,
-      lastActivityAt: null,
-      source: null as ActivitySource,
-    };
-  }
-
-  const appOnline = appTime !== null && now - appTime <= ONLINE_MS;
-  const communityOnline =
-    communityTime !== null && now - communityTime <= ONLINE_MS;
-
-  const appRecent = appTime !== null && now - appTime <= RECENT_MS;
-  const communityRecent =
-    communityTime !== null && now - communityTime <= RECENT_MS;
-
-  const lastActivityAt = newest(appLastSeen, discourseLastSeen);
-
-  let source: ActivitySource = null;
-
-  if (
-    appTime !== null &&
-    communityTime !== null &&
-    Math.abs(appTime - communityTime) <= 1000
-  ) {
-    source = "both";
-  } else {
-    source = (appTime ?? 0) >= (communityTime ?? 0) ? "app" : "community";
-  }
-
-  if (appOnline && communityOnline) {
-    return {
-      status: "online_both" as PresenceStatus,
-      lastActivityAt,
-      source: "both" as ActivitySource,
-    };
-  }
-
-  if (appOnline) {
-    return {
-      status: "online_app" as PresenceStatus,
-      lastActivityAt,
-      source,
-    };
-  }
-
-  if (communityOnline) {
-    return {
-      status: "online_community" as PresenceStatus,
-      lastActivityAt,
-      source,
-    };
-  }
-
-  if (appRecent || communityRecent) {
-    return {
-      status: "recently_active" as PresenceStatus,
-      lastActivityAt,
-      source,
-    };
-  }
-
-  return {
-    status: "offline" as PresenceStatus,
-    lastActivityAt,
-    source,
-  };
 }
 
 async function discourseFetch(path: string) {
@@ -241,6 +119,38 @@ serve(async (req) => {
       });
     }
 
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      if (body?.action === "lookup_heartbeat") {
+        const rawEmail = typeof body.email === "string" && body.email.trim()
+          ? body.email.trim().toLowerCase()
+          : (adminCheck.actor.email || "").trim().toLowerCase();
+        if (!rawEmail) return json(400, { success: false, ok: false, error: "email_required" });
+        const { data: registration, error: lookupError } = await supabaseAdmin
+          .from("registrations")
+          .select("id,email,last_seen_at")
+          .ilike("email", rawEmail)
+          .maybeSingle();
+        if (lookupError) throw lookupError;
+        const lastSeenAt = registration?.last_seen_at ?? null;
+        const lastSeenTime = toTime(lastSeenAt);
+        const ageSeconds = lastSeenTime === null ? null : Math.max(0, Math.round((Date.now() - lastSeenTime) / 1000));
+        const calculated = calculatePresence(lastSeenAt, null, Date.now());
+        return json(200, {
+          success: true,
+          ok: true,
+          registrationFound: Boolean(registration),
+          registrationId: registration?.id ?? null,
+          userId: registration?.id ?? null,
+          email: registration?.email ?? rawEmail,
+          lastSeenAt,
+          heartbeatAgeSeconds: ageSeconds,
+          appPresenceState: calculated.status === "online_app" ? "online_app" : calculated.appRecent ? "recently_active" : lastSeenAt ? "offline" : "unknown",
+          checkedAt,
+        });
+      }
+    }
+
     let { data, error } = await supabaseAdmin
       .from("registrations")
       .select(
@@ -272,8 +182,8 @@ serve(async (req) => {
 
     const registrations = (data ?? []) as Registration[];
 
-    let discourseUnavailable = false;
-    let discourseError: string | null = null;
+    let communityStatus: "available" | "unavailable" | "degraded" | "unknown" = "unknown";
+    let communityMessage: string | null = null;
 
     const byId = new Map<string, DiscourseUser>();
     const byEmail = new Map<string, DiscourseUser>();
@@ -281,6 +191,7 @@ serve(async (req) => {
 
     try {
       const discourseUsers = await fetchDiscourseUsers();
+      communityStatus = "available";
 
       for (const discourseUser of discourseUsers) {
         for (const id of externalIds(discourseUser)) {
@@ -296,10 +207,10 @@ serve(async (req) => {
         }
       }
     } catch (error) {
-      discourseUnavailable = true;
-      discourseError = "Community presence unavailable";
+      communityStatus = "unavailable";
+      communityMessage = "Community activity could not be checked. App presence remains available.";
 
-      console.warn("get-admin-presence discourse lookup failed", error);
+      console.warn("get-admin-presence discourse lookup failed", error instanceof Error ? error.message : String(error));
     }
 
     const now = Date.now();
@@ -311,15 +222,11 @@ serve(async (req) => {
         byUsername.get(clean(user.username)) ||
         null;
 
-      const discourseLastSeen = discourseUnavailable
+      const discourseLastSeen = communityStatus === "unavailable"
         ? null
         : discourseUser?.last_seen_at ?? null;
 
-      const calculated = calculate(
-        user.last_seen_at ?? null,
-        discourseLastSeen,
-        now
-      );
+      const calculated = calculatePresence(user.last_seen_at ?? null, discourseLastSeen, now);
 
       return {
         user_id: user.id,
@@ -328,6 +235,8 @@ serve(async (req) => {
         app_last_seen_at: user.last_seen_at ?? null,
         app_last_login_at: user.last_login_at ?? null,
         discourse_last_seen_at: discourseLastSeen,
+        appPresence: { isOnline: calculated.appOnline, lastSeenAt: user.last_seen_at ?? null },
+        communityPresence: { isAvailable: communityStatus === "available", isOnline: communityStatus === "available" ? calculated.communityOnline : null, lastSeenAt: discourseLastSeen, matched: Boolean(discourseUser) },
         last_activity_at: calculated.lastActivityAt,
         last_activity_source: calculated.source,
         presence_status: calculated.status,
@@ -335,15 +244,45 @@ serve(async (req) => {
         discourse_username: discourseUser?.username ?? null,
         discourse_user_id: discourseUser?.id ?? null,
         discourse_sync_status: user.discourse_sync_status ?? null,
-        error: discourseUnavailable ? discourseError : null,
+        activitySource: calculated.source,
       };
     });
 
+    const latestAppActivity = registrations
+      .map((user) => user.last_seen_at ?? null)
+      .filter(Boolean)
+      .sort((a, b) => (toTime(b) ?? 0) - (toTime(a) ?? 0))[0] ?? null;
+    const latestAppTime = toTime(latestAppActivity);
+    const appStatus = latestAppTime === null ? "unknown" : now - latestAppTime <= APP_TRACKING_STALE_MS ? "healthy" : "stale";
+
     return json(200, {
+      success: true,
       ok: true,
+      generatedAt: checkedAt,
+      systemStatus: {
+        appTracking: {
+          status: appStatus,
+          lastSuccessfulActivityAt: latestAppActivity,
+          message: appStatus === "stale" ? "Recent app activity has not been recorded within the expected tracking window." : null,
+        },
+        communityTracking: {
+          status: communityStatus,
+          checkedAt,
+          message: communityMessage,
+        },
+      },
+      users: presence.map((p) => ({
+        id: p.user_id,
+        email: p.email,
+        username: p.username,
+        presenceStatus: p.presence_status,
+        activitySource: p.activitySource,
+        appPresence: p.appPresence,
+        communityPresence: p.communityPresence,
+      })),
       presence,
-      discourseUnavailable,
-      error: discourseError,
+      discourseUnavailable: communityStatus !== "available",
+      error: communityMessage,
       presence_checked_at: checkedAt,
     });
   } catch (error) {

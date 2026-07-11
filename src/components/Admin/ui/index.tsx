@@ -94,7 +94,7 @@ function relativeTime(value?: string | null) {
   return `${Math.round(hours / 24)} day ago`;
 }
 
-export function AdminPresenceBadge({ status = 'unknown', appLastSeenAt, discourseLastSeenAt, lastActivityAt, checkedAt, error, compact = false }: { status?: AdminPresenceStatus | null; appLastSeenAt?: string | null; discourseLastSeenAt?: string | null; lastActivityAt?: string | null; source?: AdminPresenceSource; checkedAt?: string | null; error?: string | null; compact?: boolean }) {
+export function AdminPresenceBadge({ status = 'unknown', appLastSeenAt, discourseLastSeenAt, lastActivityAt, checkedAt, error, communityUnavailable = false, compact = false }: { status?: AdminPresenceStatus | null; appLastSeenAt?: string | null; discourseLastSeenAt?: string | null; lastActivityAt?: string | null; source?: AdminPresenceSource; checkedAt?: string | null; error?: string | null; communityUnavailable?: boolean; compact?: boolean }) {
   const cfg: Record<AdminPresenceStatus, { label: string; cls: string; dot: string }> = {
     online_app: { label: 'Online in App', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
     online_community: { label: 'Online in Community', cls: 'border-indigo-200 bg-indigo-50 text-indigo-700', dot: 'bg-indigo-500' },
@@ -105,8 +105,9 @@ export function AdminPresenceBadge({ status = 'unknown', appLastSeenAt, discours
   };
   const value = status || 'unknown';
   const c = cfg[value] || cfg.unknown;
-  const helper = error || (value === 'online_community' ? `Last active in community ${relativeTime(discourseLastSeenAt) ?? ''}`.trim() : value === 'online_app' ? `Last seen ${relativeTime(appLastSeenAt) ?? ''}`.trim() : lastActivityAt ? `Last active ${relativeTime(lastActivityAt)}` : checkedAt ? 'Last activity unknown' : 'Last activity unknown');
-  return <span className={cn('inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5', error ? 'border-red-200 bg-red-50 text-red-700' : c.cls)} title={helper}><span className={cn('h-2 w-2 flex-shrink-0 rounded-full', error ? 'bg-red-500' : c.dot)} /> <span className="truncate">{compact ? c.label.replace('Online in ', '') : c.label}</span>{!compact && <span className="hidden max-w-[12rem] truncate font-normal opacity-80 xl:inline">· {helper}</span>}</span>;
+  const statusHelper = value === 'online_community' ? `Last active in community ${relativeTime(discourseLastSeenAt) ?? ''}`.trim() : value === 'online_app' ? `Active in app · Last seen ${relativeTime(appLastSeenAt) ?? ''}`.trim() : value === 'online_both' ? `Active in app and community · Last active ${relativeTime(lastActivityAt) ?? ''}`.trim() : lastActivityAt ? `Last active ${relativeTime(lastActivityAt)}` : checkedAt ? 'Last activity unknown' : 'Last activity unknown';
+  const helper = [statusHelper, communityUnavailable ? 'Community status unavailable' : null, error].filter(Boolean).join(' · ');
+  return <span className={cn('inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5', c.cls)} title={helper}><span className={cn('h-2 w-2 flex-shrink-0 rounded-full', c.dot)} /> <span className="truncate">{compact ? c.label.replace('Online in ', '') : c.label}</span>{!compact && <span className="hidden max-w-[12rem] truncate font-normal opacity-80 xl:inline">· {helper}</span>}</span>;
 }
 
 export function StatusBadge({ status }: { status?: string | null }) { const normalized=(status||'unknown').toLowerCase(); const variant= normalized.includes('approve')||normalized==='active'||normalized==='success' ? 'success' : normalized.includes('pending')||normalized.includes('sync') ? 'warning' : normalized.includes('reject')||normalized.includes('ban')||normalized.includes('suspend')||normalized.includes('fail') ? 'danger' : normalized==='unknown' ? 'muted' : 'info'; return <AdminBadge variant={variant}>{status || 'Unknown'}</AdminBadge>; }
