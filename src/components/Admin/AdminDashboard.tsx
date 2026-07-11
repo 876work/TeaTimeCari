@@ -30,7 +30,6 @@ import FunctionPing from "../../dev/FunctionPing";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 import { normalizeApprovalStatus } from "@/lib/auth/approvalStatus";
 
-const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -77,7 +76,12 @@ interface DailyRegistration {
 interface DashboardStats {
   total: number;
   online: number;
+  onlineApp: number;
+  onlineCommunity: number;
+  onlineBoth: number;
+  recentlyActive: number;
   offline: number;
+  unknown: number;
   registeredToday: number;
   pending: number;
   banned: number;
@@ -105,6 +109,30 @@ function formatTime(value: Date) {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+const RECENTLY_ACTIVE_THRESHOLD_MS = 15 * 60 * 1000;
+
+function getAppPresenceStatus(lastSeenAt?: string | null) {
+  if (!lastSeenAt) return "unknown";
+
+  const time = new Date(lastSeenAt).getTime();
+  if (!Number.isFinite(time)) return "unknown";
+
+  const ageMs = Date.now() - time;
+  if (ageMs <= ONLINE_THRESHOLD_MS) return "online_app";
+  if (ageMs <= RECENTLY_ACTIVE_THRESHOLD_MS) return "recently_active";
+
+  return "offline";
+}
+
+function countPresenceStatuses(rows: Array<{ presence_status?: string | null }>) {
+  return rows.reduce((acc, row) => {
+    const status = row.presence_status || "unknown";
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 }
 
 function AdminBadge({
@@ -388,7 +416,12 @@ export function AdminDashboard({
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
     online: 0,
+    onlineApp: 0,
+    onlineCommunity: 0,
+    onlineBoth: 0,
+    recentlyActive: 0,
     offline: 0,
+    unknown: 0,
     registeredToday: 0,
     pending: 0,
     banned: 0,
@@ -471,24 +504,36 @@ export function AdminDashboard({
         throw highRiskError;
       }
 
-      const now = Date.now();
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      const isOnline = (user: UserStat) => {
-        if (!user.last_seen_at) return false;
+      let presenceRows: Array<{ user_id?: string; presence_status?: string | null }> = [];
+      try {
+        const { data: presenceData, error: presenceError } = await supabase.functions.invoke("get-admin-presence", {
+          headers: { Authorization: `Bearer ${currentSession.access_token}` },
+        });
+        if (presenceError) throw new Error(await getFunctionErrorMessage(presenceError));
+        if (presenceData?.ok && Array.isArray(presenceData.presence)) presenceRows = presenceData.presence;
+      } catch (presenceError) {
+        console.warn("Community presence unavailable; dashboard totals will fall back to app activity where available.", presenceError);
+      }
 
-        const time = new Date(user.last_seen_at).getTime();
+      if (presenceRows.length === 0) {
+        presenceRows = users.map((user) => ({ presence_status: getAppPresenceStatus(user.last_seen_at) }));
+      }
 
-        return Number.isFinite(time) && now - time <= ONLINE_THRESHOLD_MS;
-      };
-
-      const online = users.filter(isOnline).length;
+      const statusCounts = countPresenceStatuses(presenceRows);
+      const online = (statusCounts.online_app || 0) + (statusCounts.online_community || 0) + (statusCounts.online_both || 0);
 
       setStats({
         total: users.length,
         online,
-        offline: users.length - online,
+        onlineApp: statusCounts.online_app || 0,
+        onlineCommunity: statusCounts.online_community || 0,
+        onlineBoth: statusCounts.online_both || 0,
+        recentlyActive: statusCounts.recently_active || 0,
+        offline: statusCounts.offline ?? Math.max(0, users.length - online),
+        unknown: statusCounts.unknown || 0,
         registeredToday: users.filter(
           (user) =>
             user.created_at && new Date(user.created_at) >= todayStart
@@ -542,6 +587,34 @@ export function AdminDashboard({
     }
   };
 
+
+  const fetchPresenceStats = async () => {
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) return;
+      const { data: presenceData, error: presenceError } = await supabase.functions.invoke("get-admin-presence", {
+        headers: { Authorization: `Bearer ${currentSession.access_token}` },
+      });
+      if (presenceError || !presenceData?.ok || !Array.isArray(presenceData.presence)) return;
+      const statusCounts = countPresenceStatuses(presenceData.presence);
+      const online = (statusCounts.online_app || 0) + (statusCounts.online_community || 0) + (statusCounts.online_both || 0);
+      setStats((current) => ({
+        ...current,
+        total: Math.max(current.total, presenceData.presence.length),
+        online,
+        onlineApp: statusCounts.online_app || 0,
+        onlineCommunity: statusCounts.online_community || 0,
+        onlineBoth: statusCounts.online_both || 0,
+        recentlyActive: statusCounts.recently_active || 0,
+        offline: statusCounts.offline || 0,
+        unknown: statusCounts.unknown || 0,
+      }));
+      setLastUpdated(new Date());
+    } catch (presenceError) {
+      console.warn("Presence stats refresh failed", presenceError);
+    }
+  };
+
   useEffect(() => {
     if (!isAdmin) {
       setError("Access denied.");
@@ -555,7 +628,9 @@ export function AdminDashboard({
   useEffect(() => {
     if (!isAdmin) return;
 
-    const id = setInterval(fetchData, 30000);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchPresenceStats();
+    }, 60_000);
 
     return () => clearInterval(id);
   }, [isAdmin]);
@@ -772,7 +847,7 @@ export function AdminDashboard({
             value={stats.online}
             icon={<Wifi className="h-5 w-5" />}
             tone="green"
-            description="Users active within the last 15 minutes."
+            description={`${stats.onlineApp + stats.onlineBoth} in app · ${stats.onlineCommunity + stats.onlineBoth} in community · ${stats.recentlyActive} recently active`}
             loading={loading}
           />
         </div>
