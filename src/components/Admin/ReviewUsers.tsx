@@ -30,8 +30,8 @@ import { approveRegistration, retryDiscourseSync } from '@/features/admin/regist
 import { getFunctionErrorMessage } from '@/lib/functionError';
 import { getAdminSession } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
+import { AdminPresenceBadge, type AdminPresenceStatus, type AdminPresenceSource } from './ui';
 
-const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 const USERS_PAGE_SIZE = 10;
 
 interface UserRow {
@@ -84,6 +84,17 @@ interface UserRow {
   last_login_operating_system?: string | null;
   last_login_user_agent?: string | null;
   last_seen_at?: string | null;
+  app_last_seen_at?: string | null;
+  app_last_login_at?: string | null;
+  discourse_last_seen_at?: string | null;
+  last_activity_at?: string | null;
+  last_activity_source?: AdminPresenceSource;
+  presence_status?: AdminPresenceStatus | null;
+  presence_checked_at?: string | null;
+  discourse_username?: string | null;
+  discourse_user_id?: number | null;
+  discourse_sync_status?: string | null;
+  presence_error?: string | null;
 }
 
 type PresenceFilter = 'all' | 'online' | 'offline';
@@ -196,25 +207,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function PresenceBadge({ online }: { online: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-        online ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'
-      }`}
-    >
-      {online ? (
-        <span className="relative flex w-2 h-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full w-2 h-2 bg-green-500"></span>
-        </span>
-      ) : (
-        <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
-      )}
-      {online ? 'Online' : 'Offline'}
-    </span>
-  );
-}
 
 function SummaryCard({
   label,
@@ -350,6 +342,13 @@ function DetailPanel({ user }: { user: UserRow }) {
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Last Login" value={formatDateTime(user.last_login_at)} />
             <Field label="Last Seen" value={formatDateTime(user.last_seen_at)} />
+            <Field label="App Last Seen" value={formatDateTime(user.app_last_seen_at ?? user.last_seen_at)} />
+            <Field label="App Last Login" value={formatDateTime(user.app_last_login_at ?? user.last_login_at)} />
+            <Field label="Discourse Last Seen" value={formatDateTime(user.discourse_last_seen_at)} />
+            <Field label="Last Activity" value={formatDateTime(user.last_activity_at)} />
+            <Field label="Activity Source" value={user.last_activity_source ?? null} />
+            <Field label="Presence Last Checked" value={formatDateTime(user.presence_checked_at)} />
+            <Field label="Discourse Sync Status" value={na(user.discourse_sync_status)} />
             <Field label="Login IP" value={na(user.last_login_ip_address)} />
             <Field label="Login IP Header" value={na(user.last_login_ip_header)} />
             <Field label="Login Location" value={loginLocationDisplay(user)} />
@@ -394,6 +393,7 @@ export function AdminUserReview({
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>({ trackingFieldsAvailable: true, omittedFields: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [presenceWarning, setPresenceWarning] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [actionMessages, setActionMessages] = useState<
     Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>
@@ -424,11 +424,43 @@ export function AdminUserReview({
 
   const isAdmin = !!session?.user?.id;
 
-  const isOnline = (u: UserRow) => {
-    if (!u.last_seen_at) return false;
-    const t = new Date(u.last_seen_at).getTime();
+  const isOnline = (u: UserRow) => ['online_app', 'online_community', 'online_both'].includes(u.presence_status ?? '');
+  const isOffline = (u: UserRow) => (u.presence_status ?? 'unknown') === 'offline';
 
-    return Number.isFinite(t) && Date.now() - t <= ONLINE_THRESHOLD_MS;
+
+  const fetchPresence = async () => {
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s?.access_token) return;
+      const { data, error: fnErr } = await supabase.functions.invoke('get-admin-presence', {
+        headers: { Authorization: `Bearer ${s.access_token}` },
+      });
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+      if (!data?.ok) throw new Error(data?.error || 'Unable to load presence.');
+      type PresencePayload = { user_id: string; error?: string | null } & Partial<UserRow>;
+      const byId = new Map<string, PresencePayload>((data.presence ?? []).map((p: PresencePayload) => [p.user_id, p]));
+      setUsers((prev) => prev.map((user) => {
+        const p = byId.get(user.id);
+        if (!p) return user;
+        return {
+          ...user,
+          app_last_seen_at: p.app_last_seen_at,
+          app_last_login_at: p.app_last_login_at,
+          discourse_last_seen_at: p.discourse_last_seen_at,
+          last_activity_at: p.last_activity_at,
+          last_activity_source: p.last_activity_source,
+          presence_status: p.presence_status,
+          presence_checked_at: p.presence_checked_at,
+          discourse_username: p.discourse_username,
+          discourse_user_id: p.discourse_user_id,
+          discourse_sync_status: p.discourse_sync_status,
+          presence_error: p.error,
+        };
+      }));
+      setPresenceWarning(data.discourseUnavailable ? (data.error || 'Community presence unavailable') : null);
+    } catch {
+      setPresenceWarning(`Community presence unavailable. App presence is still shown when available.`);
+    }
   };
 
   const fetchUsers = async (page = currentPage) => {
@@ -472,6 +504,7 @@ export function AdminUserReview({
         omittedFields: Array.isArray(data.omittedFields) ? data.omittedFields : [],
       });
       setLastUpdated(new Date());
+      void fetchPresence();
     } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setUsers([]);
@@ -494,6 +527,14 @@ export function AdminUserReview({
     getAdminSession()
       .then((admin) => setIsOwner(admin?.role === 'owner'))
       .catch(() => setIsOwner(false));
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchPresence();
+    }, 60_000);
+    return () => window.clearInterval(id);
   }, [isAdmin]);
 
   const handleApprove = async (user: UserRow) => {
@@ -764,7 +805,9 @@ export function AdminUserReview({
     banned: users.filter((u) => normalizeApprovalStatus(u.status) === 'banned').length,
     online: users.filter(isOnline).length,
     syncIssues: Object.values(actionMessages).filter((message) => message.canRetryDiscourse).length,
-    offline: users.filter((u) => !isOnline(u)).length,
+    recentlyActive: users.filter((u) => u.presence_status === 'recently_active').length,
+    offline: users.filter(isOffline).length,
+    unknown: users.filter((u) => !u.presence_status || u.presence_status === 'unknown').length,
     today: users.filter((u) => u.created_at && new Date(u.created_at) >= todayStart).length,
   };
 
@@ -780,7 +823,7 @@ export function AdminUserReview({
         (filterStatus === 'all' || normalizeApprovalStatus(u.status) === filterStatus) &&
         (presenceFilter === 'all' ||
           (presenceFilter === 'online' && isOnline(u)) ||
-          (presenceFilter === 'offline' && !isOnline(u)))
+          (presenceFilter === 'offline' && isOffline(u)))
       );
     })
     .sort((a, b) => {
@@ -861,9 +904,13 @@ export function AdminUserReview({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard label="Total members" value={summaryStats.total} helper="All registrations" icon={<Users className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
           <SummaryCard label="Pending review" value={summaryStats.pending} helper="Needs admin decision" icon={<Clock className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
-          <SummaryCard label="Approved" value={summaryStats.approved} helper={`${summaryStats.online} online now`} icon={<CheckCircle className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
+          <SummaryCard label="Approved" value={summaryStats.approved} helper={`${summaryStats.online} online · ${summaryStats.recentlyActive} recent`} icon={<CheckCircle className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
           <SummaryCard label="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} helper={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="w-5 h-5" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
         </div>
+
+        {presenceWarning && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{presenceWarning}</div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
@@ -1020,7 +1067,6 @@ export function AdminUserReview({
 
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((user) => {
-                    const online = isOnline(user);
                     const isExpanded = expandedId === user.id;
                     const isProcessing = processingId === user.id;
                     const normalizedStatus = normalizeApprovalStatus(user.status);
@@ -1060,7 +1106,7 @@ export function AdminUserReview({
                           <td className="px-5 py-4">
                             <div className="flex flex-col gap-1.5">
                               <StatusBadge status={user.status} />
-                              <PresenceBadge online={online} />
+                              <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} />
                             </div>
                           </td>
 
@@ -1226,7 +1272,6 @@ export function AdminUserReview({
             </div>
             <div className="divide-y divide-slate-100 md:hidden">
               {filtered.map((user) => {
-                const online = isOnline(user);
                 const isExpanded = expandedId === user.id;
                 const isProcessing = processingId === user.id;
                 const normalizedStatus = normalizeApprovalStatus(user.status);
@@ -1241,7 +1286,7 @@ export function AdminUserReview({
                         <p className="truncate text-sm font-semibold text-slate-950">{safeDisplayName(user)}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <StatusBadge status={user.status} />
-                          <PresenceBadge online={online} />
+                          <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} />
                         </div>
                         <p className="mt-2 truncate text-xs text-slate-500">{user.email ?? 'No email'}</p>
                         <p className="mt-1 text-xs text-slate-400">Registered {formatDateTime(user.created_at) ?? '—'}</p>
