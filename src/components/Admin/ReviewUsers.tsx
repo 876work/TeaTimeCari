@@ -540,6 +540,7 @@ export function AdminUserReview({
         omittedFields: Array.isArray(data.omittedFields) ? data.omittedFields : [],
       });
       setLastUpdated(new Date());
+      void fetchPresence();
     } catch (err) {
       setError(`Failed to fetch users: ${getErrorMessage(err)}`);
       setUsers([]);
