@@ -30,7 +30,6 @@ import FunctionPing from "../../dev/FunctionPing";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 import { normalizeApprovalStatus } from "@/lib/auth/approvalStatus";
 
-
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -111,6 +110,32 @@ function formatTime(value: Date) {
   });
 }
 
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+const RECENTLY_ACTIVE_THRESHOLD_MS = 15 * 60 * 1000;
+
+function getAppPresenceStatus(lastSeenAt?: string | null) {
+  if (!lastSeenAt) return "unknown";
+
+  const time = new Date(lastSeenAt).getTime();
+
+  if (!Number.isFinite(time)) return "unknown";
+
+  const ageMs = Date.now() - time;
+
+  if (ageMs <= ONLINE_THRESHOLD_MS) return "online_app";
+  if (ageMs <= RECENTLY_ACTIVE_THRESHOLD_MS) return "recently_active";
+
+  return "offline";
+}
+
+function countPresenceStatuses(rows: Array<{ presence_status?: string | null }>) {
+  return rows.reduce((acc, row) => {
+    const status = row.presence_status || "unknown";
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+}
+
 function AdminBadge({
   children,
   tone = "slate",
@@ -181,12 +206,7 @@ function AdminSkeleton({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  return (
-    <div
-      className={`admin-skeleton rounded-xl ${className}`}
-      style={style}
-    />
-  );
+  return <div className={`admin-skeleton rounded-xl ${className}`} style={style} />;
 }
 
 function MetricCard({
@@ -483,22 +503,45 @@ export function AdminDashboard({
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      let presenceRows: Array<{ user_id: string; presence_status?: string | null }> = [];
+      let presenceRows: Array<{
+        user_id?: string;
+        presence_status?: string | null;
+      }> = [];
+
       try {
-        const { data: presenceData, error: presenceError } = await supabase.functions.invoke("get-admin-presence", {
-          headers: { Authorization: `Bearer ${currentSession.access_token}` },
-        });
-        if (presenceError) throw new Error(await getFunctionErrorMessage(presenceError));
-        if (presenceData?.ok && Array.isArray(presenceData.presence)) presenceRows = presenceData.presence;
+        const { data: presenceData, error: presenceError } =
+          await supabase.functions.invoke("get-admin-presence", {
+            headers: {
+              Authorization: `Bearer ${currentSession.access_token}`,
+            },
+          });
+
+        if (presenceError) {
+          throw new Error(await getFunctionErrorMessage(presenceError));
+        }
+
+        if (presenceData?.ok && Array.isArray(presenceData.presence)) {
+          presenceRows = presenceData.presence;
+        }
       } catch (presenceError) {
-        console.warn("Community presence unavailable; dashboard totals will fall back to app activity where available.", presenceError);
+        console.warn(
+          "Community presence unavailable; dashboard totals will fall back to app activity where available.",
+          presenceError
+        );
       }
-      const statusCounts = presenceRows.reduce((acc, row) => {
-        const status = row.presence_status || "unknown";
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const online = (statusCounts.online_app || 0) + (statusCounts.online_community || 0) + (statusCounts.online_both || 0);
+
+      if (presenceRows.length === 0) {
+        presenceRows = users.map((user) => ({
+          presence_status: getAppPresenceStatus(user.last_seen_at),
+        }));
+      }
+
+      const statusCounts = countPresenceStatuses(presenceRows);
+
+      const online =
+        (statusCounts.online_app || 0) +
+        (statusCounts.online_community || 0) +
+        (statusCounts.online_both || 0);
 
       setStats({
         total: users.length,
@@ -562,21 +605,36 @@ export function AdminDashboard({
     }
   };
 
-
   const fetchPresenceStats = async () => {
     try {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
       if (!currentSession?.access_token) return;
-      const { data: presenceData, error: presenceError } = await supabase.functions.invoke("get-admin-presence", {
-        headers: { Authorization: `Bearer ${currentSession.access_token}` },
-      });
-      if (presenceError || !presenceData?.ok || !Array.isArray(presenceData.presence)) return;
-      const statusCounts = presenceData.presence.reduce((acc: Record<string, number>, row: { presence_status?: string | null }) => {
-        const status = row.presence_status || "unknown";
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {});
-      const online = (statusCounts.online_app || 0) + (statusCounts.online_community || 0) + (statusCounts.online_both || 0);
+
+      const { data: presenceData, error: presenceError } =
+        await supabase.functions.invoke("get-admin-presence", {
+          headers: {
+            Authorization: `Bearer ${currentSession.access_token}`,
+          },
+        });
+
+      if (
+        presenceError ||
+        !presenceData?.ok ||
+        !Array.isArray(presenceData.presence)
+      ) {
+        return;
+      }
+
+      const statusCounts = countPresenceStatuses(presenceData.presence);
+
+      const online =
+        (statusCounts.online_app || 0) +
+        (statusCounts.online_community || 0) +
+        (statusCounts.online_both || 0);
+
       setStats((current) => ({
         ...current,
         total: Math.max(current.total, presenceData.presence.length),
@@ -588,6 +646,7 @@ export function AdminDashboard({
         offline: statusCounts.offline || 0,
         unknown: statusCounts.unknown || 0,
       }));
+
       setLastUpdated(new Date());
     } catch (presenceError) {
       console.warn("Presence stats refresh failed", presenceError);
@@ -608,7 +667,7 @@ export function AdminDashboard({
     if (!isAdmin) return;
 
     const id = setInterval(() => {
-      if (document.visibilityState === 'visible') void fetchPresenceStats();
+      if (document.visibilityState === "visible") void fetchPresenceStats();
     }, 60_000);
 
     return () => clearInterval(id);
@@ -826,7 +885,11 @@ export function AdminDashboard({
             value={stats.online}
             icon={<Wifi className="h-5 w-5" />}
             tone="green"
-            description={`${stats.onlineApp + stats.onlineBoth} in app · ${stats.onlineCommunity + stats.onlineBoth} in community · ${stats.recentlyActive} recently active`}
+            description={`${
+              stats.onlineApp + stats.onlineBoth
+            } in app · ${
+              stats.onlineCommunity + stats.onlineBoth
+            } in community · ${stats.recentlyActive} recently active`}
             loading={loading}
           />
         </div>
