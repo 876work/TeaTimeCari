@@ -31,6 +31,7 @@ import { getFunctionErrorMessage } from '@/lib/functionError';
 import { getAdminSession } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 import { AdminPresenceBadge, type AdminPresenceStatus, type AdminPresenceSource } from './ui';
+import { PRESENCE_ONLINE_MS, PRESENCE_RECENT_MS } from '@/lib/presenceConstants';
 
 const USERS_PAGE_SIZE = 10;
 
@@ -117,6 +118,11 @@ interface PendingConfirmation {
 
 type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
 
+type PresenceSystemStatus = {
+  appTracking?: { status?: 'healthy' | 'stale' | 'failing' | 'unknown'; lastSuccessfulActivityAt?: string | null; message?: string | null };
+  communityTracking?: { status?: 'available' | 'unavailable' | 'degraded' | 'unknown'; checkedAt?: string | null; message?: string | null };
+};
+
 type TrackingStatus = {
   trackingFieldsAvailable: boolean;
   omittedFields: string[];
@@ -169,6 +175,8 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const na = (value?: string | null) => value?.trim() || null;
+
+const statusLabel = (value?: string | null) => value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : 'Unknown';
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -394,6 +402,7 @@ export function AdminUserReview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [presenceWarning, setPresenceWarning] = useState<string | null>(null);
+  const [presenceSystemStatus, setPresenceSystemStatus] = useState<PresenceSystemStatus | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [actionMessages, setActionMessages] = useState<
     Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>
@@ -441,7 +450,7 @@ export function AdminUserReview({
       app_last_login_at: user.last_login_at ?? null,
       last_activity_at: user.last_seen_at,
       last_activity_source: 'app',
-      presence_status: ageMs <= 5 * 60 * 1000 ? 'online_app' : ageMs <= 15 * 60 * 1000 ? 'recently_active' : 'offline',
+      presence_status: ageMs <= PRESENCE_ONLINE_MS ? 'online_app' : ageMs <= PRESENCE_RECENT_MS ? 'recently_active' : 'offline',
     };
   };
 
@@ -478,7 +487,8 @@ export function AdminUserReview({
     if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
     if (!data?.ok) throw new Error(data?.error || 'Unable to load presence.');
 
-    setPresenceWarning(data.discourseUnavailable ? (data.error || 'Community presence unavailable') : null);
+    setPresenceSystemStatus(data.systemStatus ?? null);
+    setPresenceWarning(data.systemStatus?.communityTracking?.status && data.systemStatus.communityTracking.status !== 'available' ? (data.systemStatus.communityTracking.message || 'Community presence unavailable. App presence remains available.') : null);
 
     return new Map<string, PresencePayload>((data.presence ?? []).map((p: PresencePayload) => [p.user_id, p]));
   };
@@ -944,6 +954,27 @@ export function AdminUserReview({
           <SummaryCard label="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} helper={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="w-5 h-5" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
         </div>
 
+        {presenceSystemStatus && (
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">Presence system status</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">App tracking</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{statusLabel(presenceSystemStatus.appTracking?.status)}</p>
+                <p className="mt-1 text-xs text-slate-500">Last recorded app activity: {formatDateTime(presenceSystemStatus.appTracking?.lastSuccessfulActivityAt) ?? 'Unknown'}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Community tracking</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{statusLabel(presenceSystemStatus.communityTracking?.status)}</p>
+                <p className="mt-1 text-xs text-slate-500">Latest system check: {formatDateTime(presenceSystemStatus.communityTracking?.checkedAt) ?? 'Unknown'}</p>
+                {presenceSystemStatus.communityTracking?.status && presenceSystemStatus.communityTracking.status !== 'available' && (
+                  <p className="mt-2 text-xs text-amber-700">App presence remains available. Community activity could not be checked.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {presenceWarning && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{presenceWarning}</div>
         )}
@@ -1142,7 +1173,7 @@ export function AdminUserReview({
                           <td className="px-5 py-4">
                             <div className="flex flex-col gap-1.5">
                               <StatusBadge status={user.status} />
-                              <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} />
+                              <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} communityUnavailable={presenceSystemStatus?.communityTracking?.status === 'unavailable'} />
                             </div>
                           </td>
 
@@ -1322,7 +1353,7 @@ export function AdminUserReview({
                         <p className="truncate text-sm font-semibold text-slate-950">{safeDisplayName(user)}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <StatusBadge status={user.status} />
-                          <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} />
+                          <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} communityUnavailable={presenceSystemStatus?.communityTracking?.status === 'unavailable'} />
                         </div>
                         <p className="mt-2 truncate text-xs text-slate-500">{user.email ?? 'No email'}</p>
                         <p className="mt-1 text-xs text-slate-400">Registered {formatDateTime(user.created_at) ?? '—'}</p>
