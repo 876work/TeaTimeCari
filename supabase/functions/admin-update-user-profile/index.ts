@@ -7,6 +7,8 @@ import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 type GenderDisplay = "Male" | "Female";
 type GenderNorm = "men" | "women";
 
+type PostgrestLikeError = { code?: string; message?: string; details?: string; hint?: string };
+
 type UpdateUserRequest = {
   registration_id?: string;
   user_id?: string;
@@ -34,6 +36,29 @@ function cleanText(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function errorText(error: PostgrestLikeError | null) {
+  return [error?.message, error?.details, error?.hint].filter(Boolean).join(" ").toLowerCase();
+}
+
+function isMissingColumnError(error: PostgrestLikeError | null) {
+  const text = errorText(error);
+  return (
+    error?.code === "PGRST204" ||
+    error?.code === "42703" ||
+    (text.includes("schema cache") && text.includes("could not find")) ||
+    (text.includes("column") && text.includes("does not exist"))
+  );
+}
+
+function missingColumnName(error: PostgrestLikeError | null) {
+  const text = [error?.message, error?.details, error?.hint].filter(Boolean).join(" ");
+  return (
+    text.match(/Could not find the '([^']+)' column/i)?.[1] ||
+    text.match(/column\s+((?:"?[a-zA-Z0-9_]+"?\.)?"?[a-zA-Z0-9_]+"?)\s+does not exist/i)?.[1]?.replace(/"/g, "").split(".").pop() ||
+    null
+  );
 }
 
 function fieldValue<T>(body: Record<string, unknown>, field: string, fallback: T): string | null | T {
@@ -68,6 +93,32 @@ function normalizeEmail(value: string) {
 
 function normalizeUsername(value: string) {
   return value.trim().toLowerCase();
+}
+
+async function upsertProfileWithOptionalColumns(payload: Record<string, unknown>) {
+  const nextPayload = { ...payload };
+  const omittedColumns: string[] = [];
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .upsert(nextPayload, { onConflict: "id" });
+
+    if (!error) return { error: null, omittedColumns };
+    if (error.code === "42P01") return { error, omittedColumns };
+    if (!isMissingColumnError(error)) return { error, omittedColumns };
+
+    const missing = missingColumnName(error);
+    if (!missing || !(missing in nextPayload)) return { error, omittedColumns };
+
+    delete nextPayload[missing];
+    omittedColumns.push(missing);
+  }
+
+  return {
+    error: { message: "Unable to upsert profile after removing unavailable optional columns" },
+    omittedColumns,
+  };
 }
 
 function generateUsernameSuggestions(baseUsername: string) {
@@ -298,6 +349,18 @@ Deno.serve(async (req: Request) => {
     const previousGender = normalizeGender(current.gender)?.norm ?? null;
     const profile = await maybeGetProfile(registrationId);
     const xaccess = Boolean(profile?.xaccess);
+    const fullName = nameFrom(next);
+
+    if (next.email !== current.email) {
+      const { error: authEmailUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, { email: next.email });
+      if (authEmailUpdateError) {
+        return json(409, {
+          ok: false,
+          error: "auth_email_update_failed",
+          message: authEmailUpdateError.message || "Unable to update the Supabase Auth email for this user.",
+        });
+      }
+    }
 
     const { error: regUpdateError } = await supabaseAdmin
       .from("registrations")
@@ -306,31 +369,36 @@ Deno.serve(async (req: Request) => {
 
     if (regUpdateError) return json(500, { ok: false, error: "registration update failed", detail: regUpdateError.message });
 
-    let authEmailWarning: string | null = null;
-    if (next.email !== current.email) {
-      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, { email: next.email });
-      if (authUpdateError) {
-        authEmailWarning = authUpdateError.message;
-        console.warn("auth email sync failed", authUpdateError);
-      }
+    let authWarning: string | null = null;
+    const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, {
+      user_metadata: {
+        username: next.username,
+        fullName,
+        full_name: fullName,
+        firstName: next.firstName,
+        lastName: next.lastName,
+        phone: next.phone,
+        gender: next.gender,
+      },
+    });
+    if (authUpdateError) {
+      authWarning = authUpdateError.message;
+      console.warn("auth user profile sync failed", authUpdateError);
     }
 
-    const fullName = nameFrom(next);
-    const { error: profileUpsertError } = await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: registrationId,
-          email: next.email,
-          username: next.username,
-          full_name: fullName || next.username,
-          gender: nextGender.norm,
-          xaccess,
-          kyc_status: current.status === "rejected" ? "rejected" : current.status === "pending" ? "pending" : "approved",
-          approved_at: ["approved", "verified"].includes(String(current.status)) ? new Date().toISOString() : null,
-        },
-        { onConflict: "id" },
-      );
+    const { error: profileUpsertError, omittedColumns: profileOmittedColumns } = await upsertProfileWithOptionalColumns({
+      id: registrationId,
+      email: next.email,
+      username: next.username,
+      full_name: fullName || next.username,
+      first_name: next.firstName,
+      last_name: next.lastName,
+      phone: next.phone,
+      gender: nextGender.norm,
+      xaccess,
+      kyc_status: current.status === "rejected" ? "rejected" : current.status === "pending" ? "pending" : "approved",
+      approved_at: ["approved", "verified"].includes(String(current.status)) ? new Date().toISOString() : null,
+    });
     if (profileUpsertError && profileUpsertError.code !== "42P01") console.warn("profile sync failed", profileUpsertError);
 
     const [{ error: postsError }, { error: commentsError }] = await Promise.all([
@@ -370,7 +438,8 @@ Deno.serve(async (req: Request) => {
         },
         next,
         discourse,
-        auth_email_warning: authEmailWarning,
+        auth_warning: authWarning,
+        profile_omitted_columns: profileOmittedColumns,
         synced_tables: ["registrations", "profiles", "posts", "comments", "auth.users"],
       },
       success: true,
@@ -385,7 +454,7 @@ Deno.serve(async (req: Request) => {
       user: { ...current, ...next, fullName },
       discourse,
       warnings: {
-        auth_email: authEmailWarning,
+        auth: authWarning,
         profile: profileUpsertError && profileUpsertError.code !== "42P01" ? profileUpsertError.message : null,
         posts: postsError && postsError.code !== "42P01" ? postsError.message : null,
         comments: commentsError && commentsError.code !== "42P01" ? commentsError.message : null,
