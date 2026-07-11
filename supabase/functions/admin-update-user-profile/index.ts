@@ -7,6 +7,8 @@ import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 type GenderDisplay = "Male" | "Female";
 type GenderNorm = "men" | "women";
 
+type PostgrestLikeError = { code?: string; message?: string; details?: string; hint?: string };
+
 type UpdateUserRequest = {
   registration_id?: string;
   user_id?: string;
@@ -22,6 +24,7 @@ const DISCOURSE_BASE = (Deno.env.get("DISCOURSE_BASE_URL") || "https://community
 const DISCOURSE_KEY = Deno.env.get("DISCOURSE_ADMIN_API_KEY") || "";
 const DISCOURSE_USER = Deno.env.get("DISCOURSE_ADMIN_API_USERNAME") || "system";
 const DISCOURSE_SSO_SECRET = Deno.env.get("DISCOURSE_SSO_SECRET") || "";
+const DISCOURSE_SYNC_TIMEOUT_MS = 4000;
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -34,6 +37,29 @@ function cleanText(value: unknown) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function errorText(error: PostgrestLikeError | null) {
+  return [error?.message, error?.details, error?.hint].filter(Boolean).join(" ").toLowerCase();
+}
+
+function isMissingColumnError(error: PostgrestLikeError | null) {
+  const text = errorText(error);
+  return (
+    error?.code === "PGRST204" ||
+    error?.code === "42703" ||
+    (text.includes("schema cache") && text.includes("could not find")) ||
+    (text.includes("column") && text.includes("does not exist"))
+  );
+}
+
+function missingColumnName(error: PostgrestLikeError | null) {
+  const text = [error?.message, error?.details, error?.hint].filter(Boolean).join(" ");
+  return (
+    text.match(/Could not find the '([^']+)' column/i)?.[1] ||
+    text.match(/column\s+((?:"?[a-zA-Z0-9_]+"?\.)?"?[a-zA-Z0-9_]+"?)\s+does not exist/i)?.[1]?.replace(/"/g, "").split(".").pop() ||
+    null
+  );
 }
 
 function fieldValue<T>(body: Record<string, unknown>, field: string, fallback: T): string | null | T {
@@ -68,6 +94,32 @@ function normalizeEmail(value: string) {
 
 function normalizeUsername(value: string) {
   return value.trim().toLowerCase();
+}
+
+async function upsertProfileWithOptionalColumns(payload: Record<string, unknown>) {
+  const nextPayload = { ...payload };
+  const omittedColumns: string[] = [];
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .upsert(nextPayload, { onConflict: "id" });
+
+    if (!error) return { error: null, omittedColumns };
+    if (error.code === "42P01") return { error, omittedColumns };
+    if (!isMissingColumnError(error)) return { error, omittedColumns };
+
+    const missing = missingColumnName(error);
+    if (!missing || !(missing in nextPayload)) return { error, omittedColumns };
+
+    delete nextPayload[missing];
+    omittedColumns.push(missing);
+  }
+
+  return {
+    error: { message: "Unable to upsert profile after removing unavailable optional columns" },
+    omittedColumns,
+  };
 }
 
 function generateUsernameSuggestions(baseUsername: string) {
@@ -161,6 +213,12 @@ function missingDiscourseConfig() {
   ].filter(([, value]) => !value).map(([key]) => key);
 }
 
+function timeoutSignal(ms: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(`Timed out after ${ms}ms`), ms);
+  return { signal: controller.signal, cancel: () => clearTimeout(timer) };
+}
+
 async function syncDiscourseUser(input: {
   id: string;
   email: string;
@@ -202,17 +260,28 @@ async function syncDiscourseUser(input: {
   const sig = await hmacHex(b64, DISCOURSE_SSO_SECRET);
   const form = new URLSearchParams({ sso: b64, sig });
 
-  const response = await fetch(`${DISCOURSE_BASE}/admin/users/sync_sso`, {
-    signal: AbortSignal.timeout(8000),
-    method: "POST",
-    headers: {
-      "Api-Key": DISCOURSE_KEY,
-      "Api-Username": DISCOURSE_USER,
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-    },
-    body: form.toString(),
-  });
+  const timeout = timeoutSignal(DISCOURSE_SYNC_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${DISCOURSE_BASE}/admin/users/sync_sso`, {
+      signal: timeout.signal,
+      method: "POST",
+      headers: {
+        "Api-Key": DISCOURSE_KEY,
+        "Api-Username": DISCOURSE_USER,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+      },
+      body: form.toString(),
+    });
+  } catch (error) {
+    const message = error instanceof DOMException && error.name === "AbortError"
+      ? `Discourse sync timed out after ${DISCOURSE_SYNC_TIMEOUT_MS}ms`
+      : `Discourse sync request failed: ${String((error as { message?: unknown })?.message ?? error)}`;
+    throw new Error(message);
+  } finally {
+    timeout.cancel();
+  }
 
   const text = await response.text();
   if (!response.ok) throw new Error(`Discourse sync_sso failed: ${response.status} ${text}`);
@@ -244,16 +313,20 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
 
   let actor: Awaited<ReturnType<typeof requireAdmin>>["actor"] = null;
+  let stage = "start";
   try {
+    stage = "require_admin";
     const adminCheck = await requireAdmin(req, "admin:access");
     if (!adminCheck.actor) return json(adminCheck.status, { ok: false, error: adminCheck.error });
     actor = adminCheck.actor;
     if (actor.role !== "owner") return json(403, { ok: false, error: "Forbidden: owner only" });
 
+    stage = "parse_body";
     const body = (await req.json().catch(() => ({}))) as UpdateUserRequest;
     const registrationId = body.registration_id || body.user_id;
     if (!registrationId) return json(400, { ok: false, error: "registration_id is required" });
 
+    stage = "lookup_registration";
     const { data: current, error: lookupError } = await supabaseAdmin
       .from("registrations")
       .select("id, email, phone, username, firstName, lastName, gender, status")
@@ -279,6 +352,7 @@ Deno.serve(async (req: Request) => {
     if (!next.email) return json(400, { ok: false, error: "email is required" });
     if (!next.username) return json(400, { ok: false, error: "username is required" });
 
+    stage = "check_availability";
     const conflicts = await findAvailabilityConflicts({
       registrationId,
       email: next.email,
@@ -296,9 +370,24 @@ Deno.serve(async (req: Request) => {
     }
 
     const previousGender = normalizeGender(current.gender)?.norm ?? null;
+    stage = "lookup_profile";
     const profile = await maybeGetProfile(registrationId);
     const xaccess = Boolean(profile?.xaccess);
+    const fullName = nameFrom(next);
 
+    if (next.email !== current.email) {
+      stage = "update_auth_email";
+      const { error: authEmailUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, { email: next.email });
+      if (authEmailUpdateError) {
+        return json(409, {
+          ok: false,
+          error: "auth_email_update_failed",
+          message: authEmailUpdateError.message || "Unable to update the Supabase Auth email for this user.",
+        });
+      }
+    }
+
+    stage = "update_registration";
     const { error: regUpdateError } = await supabaseAdmin
       .from("registrations")
       .update(next)
@@ -306,33 +395,41 @@ Deno.serve(async (req: Request) => {
 
     if (regUpdateError) return json(500, { ok: false, error: "registration update failed", detail: regUpdateError.message });
 
-    let authEmailWarning: string | null = null;
-    if (next.email !== current.email) {
-      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, { email: next.email });
-      if (authUpdateError) {
-        authEmailWarning = authUpdateError.message;
-        console.warn("auth email sync failed", authUpdateError);
-      }
+    let authWarning: string | null = null;
+    stage = "update_auth_metadata";
+    const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(registrationId, {
+      user_metadata: {
+        username: next.username,
+        fullName,
+        full_name: fullName,
+        firstName: next.firstName,
+        lastName: next.lastName,
+        phone: next.phone,
+        gender: next.gender,
+      },
+    });
+    if (authUpdateError) {
+      authWarning = authUpdateError.message;
+      console.warn("auth user profile sync failed", authUpdateError);
     }
 
-    const fullName = nameFrom(next);
-    const { error: profileUpsertError } = await supabaseAdmin
-      .from("profiles")
-      .upsert(
-        {
-          id: registrationId,
-          email: next.email,
-          username: next.username,
-          full_name: fullName || next.username,
-          gender: nextGender.norm,
-          xaccess,
-          kyc_status: current.status === "rejected" ? "rejected" : current.status === "pending" ? "pending" : "approved",
-          approved_at: ["approved", "verified"].includes(String(current.status)) ? new Date().toISOString() : null,
-        },
-        { onConflict: "id" },
-      );
+    stage = "upsert_profile";
+    const { error: profileUpsertError, omittedColumns: profileOmittedColumns } = await upsertProfileWithOptionalColumns({
+      id: registrationId,
+      email: next.email,
+      username: next.username,
+      full_name: fullName || next.username,
+      first_name: next.firstName,
+      last_name: next.lastName,
+      phone: next.phone,
+      gender: nextGender.norm,
+      xaccess,
+      kyc_status: current.status === "rejected" ? "rejected" : current.status === "pending" ? "pending" : "approved",
+      approved_at: ["approved", "verified"].includes(String(current.status)) ? new Date().toISOString() : null,
+    });
     if (profileUpsertError && profileUpsertError.code !== "42P01") console.warn("profile sync failed", profileUpsertError);
 
+    stage = "sync_posts_comments";
     const [{ error: postsError }, { error: commentsError }] = await Promise.all([
       supabaseAdmin.from("posts").update({ username: next.username, gender: next.gender }).eq("user_id", registrationId),
       supabaseAdmin.from("comments").update({ username: next.username, gender: next.gender }).eq("user_id", registrationId),
@@ -340,6 +437,7 @@ Deno.serve(async (req: Request) => {
     if (postsError && postsError.code !== "42P01") console.warn("post ownership sync failed", postsError);
     if (commentsError && commentsError.code !== "42P01") console.warn("comment ownership sync failed", commentsError);
 
+    stage = "sync_discourse";
     const discourse = await syncDiscourseUser({
       id: registrationId,
       email: next.email,
@@ -350,6 +448,7 @@ Deno.serve(async (req: Request) => {
       xaccess,
     }).catch((error) => ({ success: false, skipped: false, reason: "sync_error", error: String(error?.message ?? error) }));
 
+    stage = "write_success_audit";
     await writeAdminAuditLog({
       actor,
       req,
@@ -370,13 +469,16 @@ Deno.serve(async (req: Request) => {
         },
         next,
         discourse,
-        auth_email_warning: authEmailWarning,
+        auth_warning: authWarning,
+        profile_omitted_columns: profileOmittedColumns,
         synced_tables: ["registrations", "profiles", "posts", "comments", "auth.users"],
       },
       success: true,
       errorMessage: (discourse as { success?: boolean; error?: string }).success === false
         ? ((discourse as { error?: string }).error ?? "Discourse sync failed")
         : null,
+    }).catch((auditError) => {
+      console.warn("Unable to write successful profile update audit log", auditError);
     });
 
     return json(200, {
@@ -385,14 +487,14 @@ Deno.serve(async (req: Request) => {
       user: { ...current, ...next, fullName },
       discourse,
       warnings: {
-        auth_email: authEmailWarning,
+        auth: authWarning,
         profile: profileUpsertError && profileUpsertError.code !== "42P01" ? profileUpsertError.message : null,
         posts: postsError && postsError.code !== "42P01" ? postsError.message : null,
         comments: commentsError && commentsError.code !== "42P01" ? commentsError.message : null,
       },
     });
   } catch (error) {
-    console.error("admin-update-user-profile error", error);
+    console.error("admin-update-user-profile error", { stage, error });
     await writeAdminAuditLog({
       actor,
       req,
@@ -400,7 +502,10 @@ Deno.serve(async (req: Request) => {
       targetType: "registration",
       success: false,
       errorMessage: String(error),
+      metadata: { stage },
+    }).catch((auditError) => {
+      console.warn("Unable to write failed profile update audit log", auditError);
     });
-    return json(500, { ok: false, error: "internal", detail: String(error) });
+    return json(500, { ok: false, error: "internal", stage, detail: String(error) });
   }
 });

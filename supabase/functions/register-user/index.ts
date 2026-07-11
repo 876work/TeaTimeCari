@@ -243,6 +243,7 @@ serve(async (req) => {
         fullName: normalized.fullName,
         firstName: normalized.firstName,
         lastName: normalized.lastName,
+        phone: normalized.phone,
         gender: normalized.gender,
       },
     });
@@ -268,6 +269,7 @@ serve(async (req) => {
           fullName: normalized.fullName,
           firstName: normalized.firstName,
           lastName: normalized.lastName,
+          phone: normalized.phone,
           gender: normalized.gender,
         },
       });
