@@ -127,9 +127,22 @@ function withNullFields(users: Record<string, unknown>[], fields: string[]) {
   }));
 }
 
+// Discovering which optional tracking columns actually exist requires
+// removing them one at a time on schema-cache errors (PostgREST only
+// reports one missing column per failed query). That's cheap once, but
+// without caching it repeats on every single request from a cold
+// function instance. Remember the last known-good column set across
+// invocations on the same warm instance so repeat page loads/pagination
+// skip straight to a working query instead of re-probing from scratch.
+// The TTL lets it self-heal (pick up newly-added columns) without
+// needing a redeploy once a pending migration is applied.
+const COLUMN_CACHE_TTL_MS = 5 * 60 * 1000;
+let columnCache: { selectedFields: string[]; omittedFields: string[]; cachedAt: number } | null = null;
+
 async function fetchRegistrations({ limit = 10, offset = 0 }: { limit?: number; offset?: number } = {}) {
-  const selectedFields = new Set([...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
-  const omittedFields = new Set<string>();
+  const cacheIsFresh = columnCache !== null && Date.now() - columnCache.cachedAt < COLUMN_CACHE_TTL_MS;
+  const selectedFields = new Set(cacheIsFresh ? columnCache!.selectedFields : [...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
+  const omittedFields = new Set<string>(cacheIsFresh ? columnCache!.omittedFields : []);
 
   for (let attempts = 0; attempts < REGISTRATION_FIELDS.length + TRACKING_FIELDS.length + 1; attempts += 1) {
     const select = [...selectedFields].join(", ");
@@ -140,6 +153,8 @@ async function fetchRegistrations({ limit = 10, offset = 0 }: { limit?: number; 
       .range(offset, offset + limit - 1);
 
     if (!error) {
+      columnCache = { selectedFields: [...selectedFields], omittedFields: [...omittedFields], cachedAt: Date.now() };
+
       return {
         users: withNullFields((data ?? []) as Record<string, unknown>[], [...omittedFields]),
         total: count ?? 0,
