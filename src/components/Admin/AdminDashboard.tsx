@@ -2,24 +2,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
 import {
   Users,
-  UserCheck,
-  UserX,
   Clock,
   RefreshCw,
-  AlertCircle,
   CheckCircle,
   Wifi,
   CalendarDays,
   ArrowRight,
   Flag,
-  Database,
-  Shield,
   HardDrive,
-  Activity,
-  Sparkles,
   FileText,
   MessageSquare,
-  ShieldAlert,
 } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { AdminUserReview } from "./ReviewUsers";
@@ -27,6 +19,16 @@ import { ReviewFlaggedPosts } from "./ReviewFlaggedPosts";
 import { DiscourseCommunityAdmins } from "./DiscourseCommunityAdmins";
 import { AdminAuditLogs } from "./AdminAuditLogs";
 import FunctionPing from "../../dev/FunctionPing";
+import {
+  AdminAlert,
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminSectionHeader,
+  AdminSkeleton,
+} from "./ui";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 import { normalizeApprovalStatus } from "@/lib/auth/approvalStatus";
 
@@ -136,134 +138,6 @@ function countPresenceStatuses(rows: Array<{ presence_status?: string | null }>)
   }, {} as Record<string, number>);
 }
 
-function AdminBadge({
-  children,
-  tone = "slate",
-}: {
-  children: React.ReactNode;
-  tone?: "slate" | "green" | "amber" | "red" | "blue";
-}) {
-  const tones = {
-    slate: "border-slate-200 bg-slate-50 text-slate-600",
-    green: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
-    red: "border-red-200 bg-red-50 text-red-700",
-    blue: "border-blue-200 bg-blue-50 text-blue-700",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function AdminCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/50 ${className}`}
-    >
-      {children}
-    </section>
-  );
-}
-
-function AdminSectionHeader({
-  title,
-  description,
-  action,
-}: {
-  title: string;
-  description?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-        {description && (
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
-        )}
-      </div>
-
-      {action}
-    </div>
-  );
-}
-
-function AdminSkeleton({
-  className = "",
-  style,
-}: {
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  return <div className={`admin-skeleton rounded-xl ${className}`} style={style} />;
-}
-
-function MetricCard({
-  title,
-  value,
-  description,
-  icon,
-  tone,
-  loading,
-}: {
-  title: string;
-  value: number | string;
-  description: string;
-  icon: React.ReactNode;
-  tone: "blue" | "green" | "amber" | "red" | "slate" | "orange";
-  loading: boolean;
-}) {
-  const tones = {
-    blue: "bg-blue-50 text-blue-600 ring-blue-100",
-    green: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-    amber: "bg-amber-50 text-amber-600 ring-amber-100",
-    red: "bg-red-50 text-red-600 ring-red-100",
-    slate: "bg-slate-100 text-slate-600 ring-slate-200",
-    orange: "bg-orange-50 text-orange-600 ring-orange-100",
-  };
-
-  return (
-    <AdminCard className="p-5 transition hover:-translate-y-0.5 hover:shadow-md hover:shadow-slate-200/70">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            {title}
-          </p>
-
-          <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-            {loading ? (
-              <AdminSkeleton className="h-9 w-20" />
-            ) : typeof value === "number" ? (
-              formatNumber(value)
-            ) : (
-              value
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ring-1 ${tones[tone]}`}
-        >
-          {icon}
-        </div>
-      </div>
-
-      <p className="mt-4 text-sm leading-5 text-slate-500">{description}</p>
-    </AdminCard>
-  );
-}
-
 function RegistrationChart({
   data,
   loading,
@@ -275,12 +149,12 @@ function RegistrationChart({
   const total = data.reduce((sum, day) => sum + day.count, 0);
 
   return (
-    <AdminCard className="p-6">
+    <AdminCard>
       <AdminSectionHeader
         title="Registration activity"
         description="New account registrations over the last 7 days."
         action={
-          <AdminBadge tone="blue">
+          <AdminBadge variant="brand">
             {loading ? "Loading" : `${formatNumber(total)} this week`}
           </AdminBadge>
         }
@@ -313,7 +187,7 @@ function RegistrationChart({
         </div>
       ) : (
         <div className="mt-8">
-          <div className="grid h-52 grid-cols-7 items-end gap-3 rounded-2xl border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-4">
+          <div className="grid h-52 grid-cols-7 items-end gap-3 rounded-admin-xl border border-slate-100 bg-slate-50/60 p-4">
             {data.map((day) => {
               const heightPct = (day.count / max) * 100;
 
@@ -340,7 +214,7 @@ function RegistrationChart({
 
                   <div className="flex w-full flex-1 items-end">
                     <div
-                      className="w-full rounded-t-xl bg-blue-600/85 shadow-sm shadow-blue-200 transition-colors hover:bg-blue-700"
+                      className="w-full rounded-t-md bg-admin-brand transition-colors hover:bg-admin-brand-hover"
                       title={`${day.count} registrations on ${dateLabel}`}
                       style={{
                         height: `${Math.max(
@@ -678,8 +552,6 @@ export function AdminDashboard({
     [stats.pending, moderationStats.flaggedPosts]
   );
 
-  const inactiveRestricted = stats.suspended + stats.banned;
-
   const statusRows = [
     {
       label: "Approved",
@@ -728,7 +600,7 @@ export function AdminDashboard({
   if (activePage === "function-ping") {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <AdminCard className="p-6">
+        <AdminCard>
           <FunctionPing />
         </AdminCard>
       </AdminLayout>
@@ -737,165 +609,44 @@ export function AdminDashboard({
 
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-      <div className="space-y-8">
-        <AdminCard className="overflow-hidden">
-          <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8fafc_100%)] p-6 sm:p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <AdminBadge tone="blue">
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Tea Time Cari Admin
-                  </AdminBadge>
+      <div className="space-y-6">
+        <AdminPageHeader
+          title="Overview"
+          description="Users, moderation, and system status at a glance — highest-priority queues first."
+          meta={`Last synced ${formatTime(lastUpdated)}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminBadge
+                variant={
+                  error ? "danger" : totalAttentionItems > 0 ? "warning" : "success"
+                }
+              >
+                {error
+                  ? "Needs retry"
+                  : totalAttentionItems > 0
+                  ? `${formatNumber(totalAttentionItems)} need attention`
+                  : "No urgent items"}
+              </AdminBadge>
 
-                  <AdminBadge
-                    tone={
-                      error
-                        ? "red"
-                        : totalAttentionItems > 0
-                        ? "amber"
-                        : "green"
-                    }
-                  >
-                    {error
-                      ? "Needs retry"
-                      : totalAttentionItems > 0
-                      ? `${formatNumber(totalAttentionItems)} need attention`
-                      : "No urgent items"}
-                  </AdminBadge>
-                </div>
-
-                <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Dashboard Overview
-                </h1>
-
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                  Executive summary for users, moderation, system status, and
-                  recent admin operations so the team can decide what needs
-                  attention first.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
-                <AdminBadge tone="slate">
-                  Last synced {formatTime(lastUpdated)}
-                </AdminBadge>
-
-                <button
-                  type="button"
-                  onClick={fetchData}
-                  disabled={loading}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                  />
-                  Refresh
-                </button>
-              </div>
+              <AdminButton type="button" onClick={fetchData} disabled={loading}>
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </AdminButton>
             </div>
-          </div>
-        </AdminCard>
+          }
+        />
 
         {error && (
-          <div
-            className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4"
-            role="alert"
-          >
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-
-            <div>
-              <p className="text-sm font-semibold text-red-800">
-                Dashboard data could not be refreshed
-              </p>
-
-              <p className="mt-1 text-sm text-red-700">{error}</p>
-            </div>
-          </div>
+          <AdminAlert variant="error">
+            <p className="font-semibold">Dashboard data could not be refreshed</p>
+            <p className="mt-1">{error}</p>
+          </AdminAlert>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Total users"
-            value={stats.total}
-            icon={<Users className="h-5 w-5" />}
-            tone="blue"
-            description="All known admin-visible registrations."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="Pending reviews"
-            value={stats.pending}
-            icon={<Clock className="h-5 w-5" />}
-            tone="amber"
-            description="Accounts waiting for an admin decision."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="Flagged posts"
-            value={moderationStats.flaggedPosts}
-            icon={<Flag className="h-5 w-5" />}
-            tone="red"
-            description="Posts with one or more red flags."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="System health"
-            value="Available"
-            icon={<Activity className="h-5 w-5" />}
-            tone="green"
-            description="Health checks remain available in the admin health page."
-            loading={loading}
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            title="Approved users"
-            value={stats.approved}
-            icon={<UserCheck className="h-5 w-5" />}
-            tone="green"
-            description="Members with approved access."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="Restricted users"
-            value={inactiveRestricted}
-            icon={<UserX className="h-5 w-5" />}
-            tone="orange"
-            description="Suspended and banned accounts combined."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="Registered today"
-            value={stats.registeredToday}
-            icon={<CalendarDays className="h-5 w-5" />}
-            tone="blue"
-            description="New registrations since local midnight."
-            loading={loading}
-          />
-
-          <MetricCard
-            title="Online now"
-            value={stats.online}
-            icon={<Wifi className="h-5 w-5" />}
-            tone="green"
-            description={`${
-              stats.onlineApp + stats.onlineBoth
-            } in app · ${
-              stats.onlineCommunity + stats.onlineBoth
-            } in community · ${stats.recentlyActive} recently active`}
-            loading={loading}
-          />
-        </div>
-
         <div className="grid gap-6 xl:grid-cols-3">
-          <AdminCard className="p-6 xl:col-span-2">
+          <AdminCard className="xl:col-span-2">
             <AdminSectionHeader
               title="Needs attention"
               description="The highest-priority queues based on existing dashboard data."
@@ -985,7 +736,7 @@ export function AdminDashboard({
             </div>
           </AdminCard>
 
-          <AdminCard className="p-6">
+          <AdminCard>
             <AdminSectionHeader
               title="Quick actions"
               description="Shortcuts to existing admin destinations."
@@ -1035,12 +786,52 @@ export function AdminDashboard({
           </AdminCard>
         </div>
 
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AdminMetricCard
+            title="Total users"
+            value={loading ? "" : formatNumber(stats.total)}
+            icon={<Users className="h-5 w-5" />}
+            accent="brand"
+            description="All admin-visible registrations"
+            loading={loading}
+          />
+
+          <AdminMetricCard
+            title="Pending reviews"
+            value={loading ? "" : formatNumber(stats.pending)}
+            icon={<Clock className="h-5 w-5" />}
+            accent="warning"
+            description="Waiting for an admin decision"
+            loading={loading}
+          />
+
+          <AdminMetricCard
+            title="Flagged posts"
+            value={loading ? "" : formatNumber(moderationStats.flaggedPosts)}
+            icon={<Flag className="h-5 w-5" />}
+            accent={moderationStats.flaggedPosts > 0 ? "danger" : "muted"}
+            description={`${formatNumber(moderationStats.highRiskPosts)} high risk (5+ red flags)`}
+            loading={loading}
+          />
+
+          <AdminMetricCard
+            title="Online now"
+            value={loading ? "" : formatNumber(stats.online)}
+            icon={<Wifi className="h-5 w-5" />}
+            accent="success"
+            description={`${stats.onlineApp + stats.onlineBoth} in app · ${
+              stats.onlineCommunity + stats.onlineBoth
+            } in community · ${stats.recentlyActive} recent`}
+            loading={loading}
+          />
+        </div>
+
         <div className="grid gap-6 xl:grid-cols-5">
           <div className="xl:col-span-3">
             <RegistrationChart data={dailyRegs} loading={loading} />
           </div>
 
-          <AdminCard className="p-6 xl:col-span-2">
+          <AdminCard className="xl:col-span-2">
             <AdminSectionHeader
               title="User status overview"
               description="Current account approval and restriction mix."
@@ -1080,138 +871,6 @@ export function AdminDashboard({
           </AdminCard>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <AdminCard className="p-6">
-            <AdminSectionHeader
-              title="Moderation summary"
-              description="Visible content signals from flagged posts."
-            />
-
-            <div className="mt-5 space-y-4">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Unresolved flagged posts
-                </p>
-
-                <p className="mt-2 text-3xl font-semibold text-slate-950">
-                  {loading ? "—" : formatNumber(moderationStats.flaggedPosts)}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-red-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-600">
-                  High risk posts
-                </p>
-
-                <p className="mt-2 text-3xl font-semibold text-red-900">
-                  {loading ? "—" : formatNumber(moderationStats.highRiskPosts)}
-                </p>
-
-                <p className="mt-1 text-xs text-red-700">
-                  Posts with 5+ red flags.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigate?.("flagged-posts")}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 ease-out hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
-              >
-                Review moderation queue
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </AdminCard>
-
-          <AdminCard className="p-6">
-            <AdminSectionHeader
-              title="Recent activity"
-              description="Open the full audit trail for admin actions and access checks."
-            />
-
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center">
-              <FileText className="mx-auto h-8 w-8 text-slate-400" />
-
-              <p className="mt-3 text-sm font-semibold text-slate-800">
-                Audit log preview is available in Audit Logs
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-slate-500">
-                No extra audit-log fetch is added on the overview page, keeping
-                existing log loading behavior isolated.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => onNavigate?.("logs")}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                View audit logs
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </AdminCard>
-
-          <AdminCard className="p-6">
-            <AdminSectionHeader
-              title="System health"
-              description="Health checks remain available without changing ping logic."
-            />
-
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <Database className="h-5 w-5 text-emerald-600" />
-
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Dashboard data
-                  </p>
-
-                  <p className="text-xs text-emerald-700">
-                    {error ? "Issue loading latest data" : "Loaded from existing sources"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <Shield className="h-5 w-5 text-slate-600" />
-
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Authentication
-                  </p>
-
-                  <p className="text-xs text-slate-600">
-                    Session check unchanged
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <ShieldAlert className="h-5 w-5 text-slate-600" />
-
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Health page
-                  </p>
-
-                  <p className="text-xs text-slate-600">
-                    Existing system checks
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigate?.("function-ping")}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Open system health
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </AdminCard>
-        </div>
       </div>
     </AdminLayout>
   );

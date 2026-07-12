@@ -192,12 +192,12 @@ export function AdminLayout({
               </button>
 
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-400">
-                  Admin / {activeItem.label}
-                </p>
                 <h1 className="truncate text-base font-semibold tracking-tight text-slate-950 sm:text-lg">
                   {activeItem.label}
                 </h1>
+                <p className="truncate text-xs text-slate-400">
+                  {activeItem.description}
+                </p>
               </div>
             </div>
 
