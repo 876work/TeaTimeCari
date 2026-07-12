@@ -40,6 +40,35 @@ export function AdminButton({ className, variant = 'secondary', size = 'md', loa
   );
 }
 
+export function AdminIconButton({ className, label, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      className={cn(
+        'inline-flex h-8 w-8 items-center justify-center rounded-admin-md text-admin-muted-fg transition-colors duration-150 hover:bg-admin-muted hover:text-admin-fg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20 disabled:cursor-not-allowed disabled:opacity-50',
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function AdminSectionHeader({ title, description, action }: { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 className="text-base font-semibold text-admin-fg">{title}</h2>
+        {description && <p className="mt-1 text-sm text-admin-muted-fg">{description}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
 export function AdminCard({ title, description, actions, footer, className, children }: { title?: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; footer?: React.ReactNode; className?: string; children?: React.ReactNode }) {
   return (
     <section className={cn('overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50 transition-shadow duration-200 ease-out', className)}>
@@ -76,7 +105,7 @@ export function AdminPageHeader({ title, description, actions, meta }: { title: 
 export function AdminFilterBar({ className, children }: { className?: string; children: React.ReactNode }) { return <div className={cn('rounded-admin-xl border border-admin-border/80 bg-admin-surface p-4 shadow-admin-sm shadow-slate-200/50', className)}>{children}</div>; }
 export function AdminMetricCard({ title, value, icon, description, loading, accent = 'brand' }: { title: React.ReactNode; value: React.ReactNode; icon?: React.ReactNode; description?: React.ReactNode; loading?: boolean; accent?: 'brand'|'success'|'warning'|'danger'|'muted'|'info' }) { const accents={brand:'bg-blue-50 text-blue-600',success:'bg-emerald-50 text-emerald-600',warning:'bg-amber-50 text-amber-600',danger:'bg-red-50 text-red-600',muted:'bg-slate-100 text-slate-500',info:'bg-sky-50 text-sky-600'}; return <AdminCard className="p-0"><div className="flex items-start gap-4 p-5">{icon && <div className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-admin-lg', accents[accent])}>{icon}</div>}<div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">{title}</p><p className="mt-0.5 text-2xl font-bold text-admin-fg">{loading ? <Loader2 className="inline h-5 w-5 animate-spin text-slate-400" /> : value}</p>{description && <p className="mt-0.5 text-xs text-admin-muted-fg">{description}</p>}</div></div></AdminCard>; }
 export function AdminEmptyState({ icon, title, message, action }: { icon?: React.ReactNode; title: React.ReactNode; message?: React.ReactNode; action?: React.ReactNode }) { return <div className="flex flex-col items-center justify-center px-6 py-14 text-center">{icon && <div className="mb-3 text-slate-400">{icon}</div>}<p className="text-sm font-semibold text-admin-fg">{title}</p>{message && <p className="mt-1 text-xs text-admin-muted-fg">{message}</p>}{action && <div className="mt-4">{action}</div>}</div>; }
-export function AdminSkeleton({ className }: { className?: string }) { return <div className={cn('admin-skeleton rounded-admin-md', className)} />; }
+export function AdminSkeleton({ className, style }: { className?: string; style?: React.CSSProperties }) { return <div className={cn('admin-skeleton rounded-admin-md', className)} style={style} />; }
 export function AdminTable({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn('overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50 transition-shadow duration-200 ease-out', className)}><div className="overflow-x-auto">{children}</div></div>; }
 
 export type AdminPresenceStatus = 'online_app'|'online_community'|'online_both'|'recently_active'|'offline'|'unknown';

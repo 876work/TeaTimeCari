@@ -234,7 +234,7 @@ function ConfirmationModal({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+            className="rounded-admin-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20 disabled:opacity-50"
             aria-label="Close confirmation"
           >
             <X className="h-5 w-5" />
@@ -523,16 +523,9 @@ export function DiscourseCommunityAdmins({
         <AdminFilterBar>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-admin-fg">
-                  Find community members
-                </h2>
-
-                <p className="text-xs text-admin-muted-fg">
-                  Filter loaded community records without changing role or sync
-                  behavior.
-                </p>
-              </div>
+              <h2 className="text-sm font-semibold text-admin-fg">
+                Find community members
+              </h2>
 
               {hasActiveFilters && (
                 <AdminButton
@@ -553,10 +546,10 @@ export function DiscourseCommunityAdmins({
                     key={item.id}
                     type="button"
                     onClick={() => setFilter(item.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20 ${
                       filter === item.id
-                        ? "border-blue-600 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        ? "border-admin-brand bg-blue-50 text-blue-700"
+                        : "border-admin-border bg-white text-slate-600 hover:bg-slate-50"
                     }`}
                   >
                     {item.label}

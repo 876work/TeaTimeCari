@@ -3,9 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import {
   CheckCircle,
-  XCircle,
-  Loader2,
-  AlertCircle,
   RefreshCw,
   Search,
   ChevronDown,
@@ -15,22 +12,33 @@ import {
   Camera,
   Users,
   Globe,
-  MapPin,
   Clock,
-  Ban,
   ExternalLink,
   X,
   AlertTriangle,
-  Edit3,
   Copy,
-  ShieldCheck,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
 import { getAdminSession } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
-import { AdminPresenceBadge, type AdminPresenceStatus, type AdminPresenceSource } from './ui';
+import {
+  AdminAlert,
+  AdminBadge,
+  AdminButton,
+  AdminEmptyState,
+  AdminFilterBar,
+  AdminIconButton,
+  AdminInput,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminPresenceBadge,
+  AdminSelect,
+  AdminSkeleton,
+  type AdminPresenceStatus,
+  type AdminPresenceSource,
+} from './ui';
 import { PRESENCE_ONLINE_MS, PRESENCE_RECENT_MS } from '@/lib/presenceConstants';
 
 const USERS_PAGE_SIZE = 10;
@@ -176,8 +184,6 @@ const formatDateTime = (value?: string | null) => {
 
 const na = (value?: string | null) => value?.trim() || null;
 
-const statusLabel = (value?: string | null) => value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : 'Unknown';
-
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
@@ -196,54 +202,21 @@ function genderAccessGroupLabel(gender?: UserRow['gender']) {
   return null;
 }
 
+const statusBadgeVariants: Record<string, 'success' | 'warning' | 'danger' | 'muted'> = {
+  approved: 'success',
+  pending: 'warning',
+  suspended: 'warning',
+  banned: 'danger',
+  rejected: 'muted',
+};
+
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    rejected: 'bg-slate-100 text-slate-600 border-slate-200',
-    banned: 'bg-red-50 text-red-700 border-red-200',
-    suspended: 'bg-orange-50 text-orange-700 border-orange-200',
-  };
-
   const displayStatus = normalizeApprovalStatus(status);
-  const cls = map[displayStatus] ?? 'bg-slate-100 text-slate-600 border-slate-200';
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
+    <AdminBadge variant={statusBadgeVariants[displayStatus] ?? 'muted'}>
       {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1).replace('_', ' ')}
-    </span>
-  );
-}
-
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  iconBg,
-  iconColor,
-  helper,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  helper?: string;
-}) {
-  return (
-    <div className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-950">{value.toLocaleString()}</p>
-          {helper && <p className="mt-1 text-xs text-slate-500">{helper}</p>}
-        </div>
-        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-          <span className={iconColor}>{icon}</span>
-        </div>
-      </div>
-    </div>
+    </AdminBadge>
   );
 }
 
@@ -895,6 +868,22 @@ export function AdminUserReview({
   };
 
   const hasActiveFilters = Boolean(search.trim()) || filterStatus !== 'all' || presenceFilter !== 'all' || sortBy !== 'registration_desc';
+
+  const appTrackingHealth = presenceSystemStatus?.appTracking?.status;
+  const communityHealth = presenceSystemStatus?.communityTracking?.status;
+  const communityDown = Boolean(communityHealth && communityHealth !== 'available' && communityHealth !== 'unknown');
+  const systemNotices = [
+    appTrackingHealth && appTrackingHealth !== 'healthy' && appTrackingHealth !== 'unknown'
+      ? `App activity tracking is ${appTrackingHealth} — last recorded activity ${formatDateTime(presenceSystemStatus?.appTracking?.lastSuccessfulActivityAt) ?? 'unknown'}.`
+      : null,
+    communityDown
+      ? 'Community activity could not be checked. App presence is still shown.'
+      : null,
+    presenceWarning && !communityDown ? presenceWarning : null,
+    !trackingStatus.trackingFieldsAvailable
+      ? `Some tracking columns are missing from the database${trackingStatus.omittedFields.length > 0 ? ` (${trackingStatus.omittedFields.join(', ')})` : ''}, so affected fields may be empty.`
+      : null,
+  ].filter((notice): notice is string => Boolean(notice));
   const totalPages = Math.max(1, Math.ceil(totalUsers / USERS_PAGE_SIZE));
   const canGoPrevious = currentPage > 0;
   const canGoNext = (currentPage + 1) * USERS_PAGE_SIZE < totalUsers;
@@ -904,217 +893,152 @@ export function AdminUserReview({
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
       <div className="space-y-6">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-5 py-6 text-white sm:px-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Admin access review
-                </div>
-                <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">User Review Queue & Members</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Review registrations, manage account status, inspect verification details, and monitor member access without changing approval workflows.
-                </p>
-              </div>
+        <AdminPageHeader
+          title="Users"
+          description="Review registrations, manage account status, and monitor member access."
+          meta={lastUpdated ? `Last refreshed ${lastUpdated.toLocaleTimeString()}` : undefined}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {discourseBaseUrl && (
+                <AdminButton
+                  type="button"
+                  variant="ghost"
+                  onClick={() => window.open(discourseBaseUrl, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Community forum
+                </AdminButton>
+              )}
 
-              <div className="flex flex-col items-start gap-2 sm:items-end">
-                <p className="text-xs font-medium text-slate-300">
-                  Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not loaded yet'}
-                </p>
-
-                <div className="flex items-center gap-2">
-                  {discourseBaseUrl && (
-                    <button
-                      onClick={() => window.open(discourseBaseUrl, '_blank')}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/15"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span className="hidden sm:inline">Community Forum</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => fetchUsers(currentPage)}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button>
-                </div>
+              <AdminButton
+                type="button"
+                onClick={() => fetchUsers(currentPage)}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </AdminButton>
             </div>
-          </div>
-        </div>
-        </div>
+          }
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Total members" value={summaryStats.total} helper="All registrations" icon={<Users className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" />
-          <SummaryCard label="Pending review" value={summaryStats.pending} helper="Needs admin decision" icon={<Clock className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" />
-          <SummaryCard label="Approved" value={summaryStats.approved} helper={`${summaryStats.online} online · ${summaryStats.recentlyActive} recent`} icon={<CheckCircle className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" />
-          <SummaryCard label="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} helper={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="w-5 h-5" />} iconBg="bg-orange-50" iconColor="text-orange-600" />
+          <AdminMetricCard title="Total members" value={summaryStats.total} description="All registrations" icon={<Users className="h-5 w-5" />} accent="brand" />
+          <AdminMetricCard title="Pending review" value={summaryStats.pending} description="Needs an admin decision" icon={<Clock className="h-5 w-5" />} accent="warning" />
+          <AdminMetricCard title="Approved" value={summaryStats.approved} description={`${summaryStats.online} online · ${summaryStats.recentlyActive} recent`} icon={<CheckCircle className="h-5 w-5" />} accent="success" />
+          <AdminMetricCard title="Access issues" value={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues} description={`${summaryStats.suspended} suspended · ${summaryStats.banned} banned · ${summaryStats.syncIssues} sync`} icon={<AlertTriangle className="h-5 w-5" />} accent={summaryStats.suspended + summaryStats.banned + summaryStats.syncIssues > 0 ? 'danger' : 'muted'} />
         </div>
 
-        {presenceSystemStatus && (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold text-slate-900">Presence system status</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">App tracking</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{statusLabel(presenceSystemStatus.appTracking?.status)}</p>
-                <p className="mt-1 text-xs text-slate-500">Last recorded app activity: {formatDateTime(presenceSystemStatus.appTracking?.lastSuccessfulActivityAt) ?? 'Unknown'}</p>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Community tracking</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{statusLabel(presenceSystemStatus.communityTracking?.status)}</p>
-                <p className="mt-1 text-xs text-slate-500">Latest system check: {formatDateTime(presenceSystemStatus.communityTracking?.checkedAt) ?? 'Unknown'}</p>
-                {presenceSystemStatus.communityTracking?.status && presenceSystemStatus.communityTracking.status !== 'available' && (
-                  <p className="mt-2 text-xs text-amber-700">App presence remains available. Community activity could not be checked.</p>
-                )}
-              </div>
-            </div>
-          </div>
+        {error && <AdminAlert variant="error">{error}</AdminAlert>}
+
+        {systemNotices.length > 0 && (
+          <AdminAlert variant="warning">
+            {systemNotices.map((notice) => (
+              <p key={notice}>{notice}</p>
+            ))}
+          </AdminAlert>
         )}
 
-        {presenceWarning && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{presenceWarning}</div>
-        )}
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3" role="alert">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        {!trackingStatus.trackingFieldsAvailable && (
-          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-            <p className="text-sm font-semibold text-orange-900">Tracking schema warning</p>
-            <p className="mt-1 text-sm text-orange-800">
-              Some login tracking columns are missing from the active database, so affected fields may show troubleshooting placeholders instead of saved values.
-              {trackingStatus.omittedFields.length > 0 ? ` Missing: ${trackingStatus.omittedFields.join(', ')}.` : ''}
-            </p>
-          </div>
-        )}
-
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm font-semibold text-amber-900">Discourse sync note</p>
-          <p className="mt-1 text-sm text-amber-800">
-            If approval succeeded but Discourse access failed, retry sync after checking Discourse settings.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Find the right account quickly</h3>
-              <p className="text-xs text-slate-500">Search, filter by status or presence, and sort without changing the underlying member data.</p>
-            </div>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 lg:flex-row">
+        <AdminFilterBar>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <AdminInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, phone, or username..."
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search by name, email, phone, or username…"
+                className="pl-9"
               />
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="all">All Statuses</option>
+              <AdminSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
+                <option value="all">All statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
                 <option value="suspended">Suspended</option>
-              </select>
+              </AdminSelect>
 
-              <select
-                value={presenceFilter}
-                onChange={(e) => setPresenceFilter(e.target.value as PresenceFilter)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="all">All Users</option>
+              <AdminSelect value={presenceFilter} onChange={(e) => setPresenceFilter(e.target.value as PresenceFilter)}>
+                <option value="all">All users</option>
                 <option value="online">Online</option>
                 <option value="offline">Offline</option>
-              </select>
+              </AdminSelect>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
+              <AdminSelect value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
                 <option value="registration_desc">Newest registrations</option>
                 <option value="registration_asc">Oldest registrations</option>
                 <option value="last_login_desc">Recent login first</option>
                 <option value="last_login_asc">Oldest login first</option>
-              </select>
+              </AdminSelect>
             </div>
+
+            {hasActiveFilters && (
+              <AdminButton type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                Clear filters
+              </AdminButton>
+            )}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setFilterStatus('pending')} className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100">Pending</button>
-            <button type="button" onClick={() => setPresenceFilter('online')} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">Online</button>
-            <button type="button" onClick={() => setFilterStatus('suspended')} className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100">Suspended</button>
-            {summaryStats.syncIssues > 0 && <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-200">{summaryStats.syncIssues} needs sync</span>}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {(
+              [
+                { label: 'Pending', apply: () => setFilterStatus('pending') },
+                { label: 'Online', apply: () => setPresenceFilter('online') },
+                { label: 'Suspended', apply: () => setFilterStatus('suspended') },
+              ] as const
+            ).map(({ label, apply }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={apply}
+                className="rounded-full border border-admin-border bg-white px-3 py-1 text-xs font-semibold text-admin-muted-fg transition-colors hover:bg-admin-muted hover:text-admin-fg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20"
+              >
+                {label}
+              </button>
+            ))}
+            {summaryStats.syncIssues > 0 && (
+              <AdminBadge variant="danger">{summaryStats.syncIssues} needs sync</AdminBadge>
+            )}
           </div>
 
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="mt-3 text-xs text-slate-400">
             Showing <span className="font-medium text-slate-600">{filtered.length}</span> filtered users from accounts {pageStart}-{pageEnd} of{' '}
             <span className="font-medium text-slate-600">{totalUsers}</span>
-            {lastUpdated && <span className="ml-2">• Last refreshed at {lastUpdated.toLocaleTimeString()}</span>}
           </p>
-        </div>
+        </AdminFilterBar>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-              <p className="text-sm text-slate-500">Loading users...</p>
+            <div className="space-y-3 p-5">
+              {[0, 1, 2, 3, 4].map((item) => (
+                <AdminSkeleton key={item} className="h-14 w-full" />
+              ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center">
-                <Users className="w-7 h-7 text-slate-400" />
-              </div>
-
-              <div className="text-center">
-                <p className="text-sm font-medium text-slate-700">
-                  {users.length === 0 ? 'No users found' : 'No users match your filters'}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {users.length === 0
-                    ? 'User registrations will appear here.'
-                    : 'Try adjusting your search or filter criteria.'}
-                </p>
-              </div>
-
-              {users.length === 0 && (
-                <button
-                  onClick={() => fetchUsers(currentPage)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Retry
-                </button>
-              )}
-            </div>
+            <AdminEmptyState
+              icon={<Users className="h-8 w-8" />}
+              title={users.length === 0 ? 'No users found' : 'No users match your filters'}
+              message={
+                users.length === 0
+                  ? 'User registrations will appear here.'
+                  : 'Try adjusting your search or filter criteria.'
+              }
+              action={
+                users.length === 0 ? (
+                  <AdminButton type="button" variant="primary" onClick={() => fetchUsers(currentPage)}>
+                    <RefreshCw className="h-4 w-4" />
+                    Retry
+                  </AdminButton>
+                ) : (
+                  <AdminButton type="button" variant="secondary" onClick={clearFilters}>
+                    Clear filters
+                  </AdminButton>
+                )
+              }
+            />
           ) : (
             <>
             <div className="hidden overflow-x-auto md:block">
@@ -1126,8 +1050,6 @@ export function AdminUserReview({
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Gender</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">Last Login</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden xl:table-cell">IP / Browser</th>
                     <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -1143,7 +1065,7 @@ export function AdminUserReview({
                         <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-slate-100 text-sm font-bold text-blue-700 ring-1 ring-slate-200">
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
                                 {initialsFor(user)}
                               </div>
 
@@ -1178,145 +1100,101 @@ export function AdminUserReview({
                           </td>
 
                           <td className="px-5 py-4 hidden lg:table-cell">
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${user.gender === 'Male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}`}>
-                              {user.gender ?? '—'}
-                            </span>
+                            <AdminBadge variant="neutral">{user.gender ?? '—'}</AdminBadge>
                           </td>
 
                           <td className="px-5 py-4 hidden lg:table-cell">
                             <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
-                            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {registrationLocationDisplay(user)}
-                            </p>
-                          </td>
-
-                          <td className="px-5 py-4 hidden xl:table-cell">
-                            <p className="text-xs text-slate-700">{formatDateTime(user.last_login_at) ?? '—'}</p>
-                            {user.last_login_ip_location && (
-                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {user.last_login_ip_location}
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="px-5 py-4 hidden xl:table-cell">
-                            {user.registration_ip_address && (
-                              <p className="text-xs text-slate-600 font-mono">{user.registration_ip_address}</p>
-                            )}
-
-                            {(user.registration_browser || user.registration_operating_system) && (
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {[user.registration_browser, user.registration_operating_system]
-                                  .filter(Boolean)
-                                  .join(' · ')}
-                              </p>
-                            )}
-
-                            {!user.registration_ip_address && !user.registration_browser && (
-                              <span className="text-xs text-slate-300">—</span>
-                            )}
                           </td>
 
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
+                              <AdminIconButton
                                 onClick={() => setExpandedId(isExpanded ? null : user.id)}
-                                title={isExpanded ? 'Hide details' : 'View details'}
-                                aria-label={`${isExpanded ? 'Hide' : 'View'} details for ${user.username || user.email}`}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                label={`${isExpanded ? 'Hide' : 'View'} details for ${user.username || user.email}`}
                               >
-                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </button>
+                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </AdminIconButton>
 
                               {user.imageData && (
-                                <button
+                                <AdminIconButton
                                   onClick={() => setImageModal(user.imageData!)}
-                                  title="View restricted verification photo"
-                                  aria-label={`View registration photo for ${user.username || user.email}`}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                  label={`View verification photo for ${user.username || user.email}`}
                                 >
-                                  <Camera className="w-4 h-4" />
-                                </button>
+                                  <Camera className="h-4 w-4" />
+                                </AdminIconButton>
                               )}
 
                               {isOwner && (
-                                <button
+                                <AdminButton
+                                  size="sm"
+                                  variant="secondary"
                                   onClick={() => openEditUser(user)}
                                   disabled={isProcessing}
-                                  title="Edit user profile"
                                   aria-label={`Edit ${user.username || user.email}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
                                 >
-                                  <Edit3 className="w-4 h-4" />
-                                  <span>Edit</span>
-                                </button>
+                                  Edit
+                                </AdminButton>
                               )}
 
                               {normalizedStatus === 'pending' && (
                                 <>
-                                  <button
+                                  <AdminButton
+                                    size="sm"
+                                    variant="success"
                                     onClick={() => handleApprove(user)}
-                                    disabled={isProcessing}
-                                    title="Approve user"
+                                    loading={isProcessing}
                                     aria-label={`Approve ${user.username || user.email}`}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                   >
-                                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                    <span>Approve</span>
-                                  </button>
+                                    Approve
+                                  </AdminButton>
 
-                                  <button
+                                  <AdminButton
+                                    size="sm"
+                                    variant="danger"
                                     onClick={() => requestConfirmation('reject', user)}
                                     disabled={isProcessing}
-                                    title="Reject user"
                                     aria-label={`Reject ${user.username || user.email}`}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
                                   >
-                                    <XCircle className="w-4 h-4" />
-                                    <span>Reject</span>
-                                  </button>
+                                    Reject
+                                  </AdminButton>
                                 </>
                               )}
 
                               {actionMessages[user.id]?.canRetryDiscourse && (
-                                <button
+                                <AdminButton
+                                  size="sm"
+                                  variant="secondary"
                                   onClick={() => handleRetryDiscourseSync(user)}
-                                  disabled={isProcessing}
-                                  title="Retry Discourse sync"
+                                  loading={isProcessing}
                                   aria-label={`Retry Discourse sync for ${user.username || user.email}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
                                 >
-                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                                  <span>Retry sync</span>
-                                </button>
+                                  Retry sync
+                                </AdminButton>
                               )}
 
                               {normalizedStatus === 'approved' && (
-                                <button
+                                <AdminButton
+                                  size="sm"
+                                  variant="secondary"
                                   onClick={() => requestConfirmation('suspend', user)}
                                   disabled={isProcessing}
-                                  title="Suspend user"
                                   aria-label={`Suspend ${user.username || user.email}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-50 text-xs font-medium text-orange-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
                                 >
-                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-                                  <span>Suspend</span>
-                                </button>
+                                  Suspend
+                                </AdminButton>
                               )}
 
                               {normalizedStatus === 'suspended' && (
-                                <button
+                                <AdminButton
+                                  size="sm"
+                                  variant="secondary"
                                   onClick={() => requestConfirmation('unsuspend', user)}
                                   disabled={isProcessing}
-                                  title="Remove suspension"
                                   aria-label={`Remove suspension for ${user.username || user.email}`}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
                                 >
-                                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                  <span>Unsuspend</span>
-                                </button>
+                                  Unsuspend
+                                </AdminButton>
                               )}
                             </div>
                           </td>
@@ -1324,7 +1202,7 @@ export function AdminUserReview({
 
                         {isExpanded && (
                           <tr>
-                            <td colSpan={8} className="p-0">
+                            <td colSpan={6} className="p-0">
                               <div className="transition-all duration-200 animate-in slide-in-from-top-1">
                                 <DetailPanel user={user} />
                               </div>
@@ -1346,7 +1224,7 @@ export function AdminUserReview({
                 return (
                   <div key={`${user.id}-mobile`} className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-slate-100 text-sm font-bold text-blue-700 ring-1 ring-slate-200">
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
                         {initialsFor(user)}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1361,14 +1239,14 @@ export function AdminUserReview({
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button onClick={() => setExpandedId(isExpanded ? null : user.id)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">{isExpanded ? 'Hide details' : 'Details'}</button>
-                      {user.imageData && <button onClick={() => setImageModal(user.imageData!)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Photo</button>}
-                      {isOwner && <button onClick={() => openEditUser(user)} disabled={isProcessing} className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50">Edit</button>}
-                      {normalizedStatus === 'pending' && <button onClick={() => handleApprove(user)} disabled={isProcessing} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">Approve</button>}
-                      {normalizedStatus === 'pending' && <button onClick={() => requestConfirmation('reject', user)} disabled={isProcessing} className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">Reject</button>}
-                      {actionMessages[user.id]?.canRetryDiscourse && <button onClick={() => handleRetryDiscourseSync(user)} disabled={isProcessing} className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-50">Retry sync</button>}
-                      {normalizedStatus === 'approved' && <button onClick={() => requestConfirmation('suspend', user)} disabled={isProcessing} className="rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50">Suspend</button>}
-                      {normalizedStatus === 'suspended' && <button onClick={() => requestConfirmation('unsuspend', user)} disabled={isProcessing} className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">Unsuspend</button>}
+                      <AdminButton size="sm" variant="secondary" onClick={() => setExpandedId(isExpanded ? null : user.id)}>{isExpanded ? 'Hide details' : 'Details'}</AdminButton>
+                      {user.imageData && <AdminButton size="sm" variant="secondary" onClick={() => setImageModal(user.imageData!)}>Photo</AdminButton>}
+                      {isOwner && <AdminButton size="sm" variant="secondary" onClick={() => openEditUser(user)} disabled={isProcessing}>Edit</AdminButton>}
+                      {normalizedStatus === 'pending' && <AdminButton size="sm" variant="success" onClick={() => handleApprove(user)} loading={isProcessing}>Approve</AdminButton>}
+                      {normalizedStatus === 'pending' && <AdminButton size="sm" variant="danger" onClick={() => requestConfirmation('reject', user)} disabled={isProcessing}>Reject</AdminButton>}
+                      {actionMessages[user.id]?.canRetryDiscourse && <AdminButton size="sm" variant="secondary" onClick={() => handleRetryDiscourseSync(user)} loading={isProcessing}>Retry sync</AdminButton>}
+                      {normalizedStatus === 'approved' && <AdminButton size="sm" variant="secondary" onClick={() => requestConfirmation('suspend', user)} disabled={isProcessing}>Suspend</AdminButton>}
+                      {normalizedStatus === 'suspended' && <AdminButton size="sm" variant="secondary" onClick={() => requestConfirmation('unsuspend', user)} disabled={isProcessing}>Unsuspend</AdminButton>}
                     </div>
 
                     {isExpanded && <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200"><DetailPanel user={user} /></div>}
@@ -1383,27 +1261,29 @@ export function AdminUserReview({
               </p>
 
               <div className="flex items-center gap-2">
-                <button
+                <AdminButton
                   type="button"
+                  size="sm"
+                  variant="secondary"
                   onClick={() => fetchUsers(currentPage - 1)}
                   disabled={!canGoPrevious || loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Load previous 10 accounts"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Previous
-                </button>
+                </AdminButton>
 
-                <button
+                <AdminButton
                   type="button"
+                  size="sm"
+                  variant="primary"
                   onClick={() => fetchUsers(currentPage + 1)}
                   disabled={!canGoNext || loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Load next 10 accounts"
                 >
-                  Next 10
+                  Next
                   <ChevronRight className="h-4 w-4" />
-                </button>
+                </AdminButton>
               </div>
             </div>
             </>
@@ -1422,42 +1302,40 @@ export function AdminUserReview({
                 </p>
               </div>
 
-              <button
-                type="button"
+              <AdminIconButton
                 onClick={closeEditUser}
                 disabled={Boolean(processingId)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
-                aria-label="Close edit user dialog"
+                label="Close edit user dialog"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </AdminIconButton>
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-slate-700">
                 First name
-                <input
+                <AdminInput
                   value={editForm.firstName ?? ''}
                   onChange={(event) => handleEditFormChange('firstName', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                 />
               </label>
 
               <label className="block text-sm font-semibold text-slate-700">
                 Last name
-                <input
+                <AdminInput
                   value={editForm.lastName ?? ''}
                   onChange={(event) => handleEditFormChange('lastName', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                 />
               </label>
 
               <label className="block text-sm font-semibold text-slate-700">
                 Username
-                <input
+                <AdminInput
                   value={editForm.username ?? ''}
                   onChange={(event) => handleEditFormChange('username', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                   required
                 />
                 {editConflicts
@@ -1485,11 +1363,11 @@ export function AdminUserReview({
 
               <label className="block text-sm font-semibold text-slate-700">
                 Email
-                <input
+                <AdminInput
                   type="email"
                   value={editForm.email ?? ''}
                   onChange={(event) => handleEditFormChange('email', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                   required
                 />
                 {editConflicts
@@ -1503,23 +1381,23 @@ export function AdminUserReview({
 
               <label className="block text-sm font-semibold text-slate-700">
                 Phone
-                <input
+                <AdminInput
                   value={editForm.phone ?? ''}
                   onChange={(event) => handleEditFormChange('phone', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                 />
               </label>
 
               <label className="block text-sm font-semibold text-slate-700">
                 Gender category
-                <select
+                <AdminSelect
                   value={editForm.gender ?? 'Male'}
                   onChange={(event) => handleEditFormChange('gender', event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2"
                 >
                   <option value="Male">Male / men category</option>
                   <option value="Female">Female / women category</option>
-                </select>
+                </AdminSelect>
               </label>
             </div>
 
@@ -1528,24 +1406,19 @@ export function AdminUserReview({
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeEditUser}
-                disabled={Boolean(processingId)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
+              <AdminButton type="button" variant="secondary" onClick={closeEditUser} disabled={Boolean(processingId)}>
                 Cancel
-              </button>
+              </AdminButton>
 
-              <button
+              <AdminButton
                 type="button"
+                variant="primary"
                 onClick={handleSaveUserProfile}
+                loading={processingId === editingUser.id}
                 disabled={Boolean(processingId) || !editForm.email?.trim() || !editForm.username?.trim()}
-                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {processingId === editingUser.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
                 Save and sync
-              </button>
+              </AdminButton>
             </div>
           </div>
         </div>
@@ -1599,41 +1472,30 @@ export function AdminUserReview({
                     )
                   }
                   rows={3}
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-2 w-full rounded-admin-md border border-admin-border bg-white px-3 py-2 text-sm text-admin-fg shadow-admin-sm outline-none transition-all duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-admin-brand focus:ring-4 focus:ring-admin-brand/10"
                   placeholder="Add a short reason for the rejection email"
                 />
               </div>
             )}
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeConfirmation}
-                disabled={Boolean(processingId)}
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
+              <AdminButton type="button" variant="secondary" onClick={closeConfirmation} disabled={Boolean(processingId)}>
                 Cancel
-              </button>
+              </AdminButton>
 
-              <button
+              <AdminButton
                 type="button"
+                variant={pendingConfirmation.action === 'unsuspend' ? 'success' : 'danger'}
                 onClick={confirmPendingAction}
+                loading={processingId === pendingConfirmation.user.id}
                 disabled={Boolean(processingId)}
-                className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
-                  pendingConfirmation.action === 'reject'
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : pendingConfirmation.action === 'suspend'
-                      ? 'bg-orange-600 hover:bg-orange-700'
-                      : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
               >
-                {processingId === pendingConfirmation.user.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
                 {pendingConfirmation.action === 'reject'
                   ? 'Reject application'
                   : pendingConfirmation.action === 'suspend'
                     ? 'Suspend user'
                     : 'Remove suspension'}
-              </button>
+              </AdminButton>
             </div>
           </div>
         </div>
@@ -1647,7 +1509,8 @@ export function AdminUserReview({
           <div className="relative max-w-2xl max-h-full" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setImageModal(null)}
-              className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-slate-100 transition-colors z-10"
+              className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/30"
+              aria-label="Close photo preview"
             >
               <X className="w-4 h-4 text-slate-700" />
             </button>
