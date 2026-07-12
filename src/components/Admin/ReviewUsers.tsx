@@ -393,6 +393,7 @@ export function AdminUserReview({
   const [isOwner, setIsOwner] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [editConflicts, setEditConflicts] = useState<AvailabilityConflict[]>([]);
+  const [editSaveError, setEditSaveError] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditableUser>({
     firstName: '',
     lastName: '',
@@ -629,6 +630,7 @@ export function AdminUserReview({
   const openEditUser = (user: UserRow) => {
     setEditingUser(user);
     setEditConflicts([]);
+    setEditSaveError(null);
     setEditForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
@@ -643,6 +645,7 @@ export function AdminUserReview({
     if (processingId) return;
     setEditingUser(null);
     setEditConflicts([]);
+    setEditSaveError(null);
   };
 
   const handleEditFormChange = (field: keyof EditableUser, value: string) => {
@@ -657,7 +660,7 @@ export function AdminUserReview({
     if (!editingUser) return;
 
     setProcessingId(editingUser.id);
-    setError(null);
+    setEditSaveError(null);
     setEditConflicts([]);
 
     try {
@@ -713,7 +716,7 @@ export function AdminUserReview({
 
       setEditingUser(null);
     } catch (err) {
-      setError(`Failed to update user profile: ${getErrorMessage(err)}`);
+      setEditSaveError(getErrorMessage(err));
     } finally {
       setProcessingId(null);
     }
@@ -1309,6 +1312,12 @@ export function AdminUserReview({
                 <X className="h-5 w-5" />
               </AdminIconButton>
             </div>
+
+            {editSaveError && (
+              <AdminAlert variant="error" className="mt-4">
+                {editSaveError}
+              </AdminAlert>
+            )}
 
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-slate-700">
