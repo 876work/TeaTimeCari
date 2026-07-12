@@ -1,12 +1,17 @@
 import React, { useState } from "react";
 import * as Sentry from "@sentry/react";
+import { useSession } from "@supabase/auth-helpers-react";
 import { supabase } from '@/lib/supabaseClient';
 
 export default function FunctionPing() {
+  const session = useSession();
   const [approvalResp, setApprovalResp] = useState<unknown>(null);
   const [rejectionResp, setRejectionResp] = useState<unknown>(null);
   const [errA, setErrA] = useState<unknown>(null);
   const [errR, setErrR] = useState<unknown>(null);
+  const [backfillResp, setBackfillResp] = useState<unknown>(null);
+  const [errB, setErrB] = useState<unknown>(null);
+  const [backfillRunning, setBackfillRunning] = useState(false);
 
   const url = import.meta.env.VITE_SUPABASE_URL as string;
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -63,6 +68,31 @@ export default function FunctionPing() {
       return { error: e instanceof Error ? e.message : String(e) };
     }
   }
+
+  const runLocationBackfill = async () => {
+    setErrB(null);
+    setBackfillResp(null);
+
+    if (!session?.access_token) {
+      setErrB({ message: "You must be logged in as an admin to run this." });
+      return;
+    }
+
+    setBackfillRunning(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-location-tracking", {
+        body: { limit: 25 },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) setErrB(error);
+      setBackfillResp({ data, error });
+    } catch (e: unknown) {
+      setErrB({ message: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBackfillRunning(false);
+    }
+  };
 
   async function rawFetchRejection() {
     try {
@@ -121,8 +151,23 @@ export default function FunctionPing() {
         Send Sentry test event
       </button>
 
+      <div style={{ marginTop: 16 }}>
+        <button
+          onClick={runLocationBackfill}
+          disabled={backfillRunning}
+          style={{ padding: 8, background: '#0a6', color: '#fff', border: 'none', cursor: backfillRunning ? 'default' : 'pointer' }}
+        >
+          {backfillRunning ? 'Backfilling location data…' : 'Backfill IP location (25 users)'}
+        </button>
+        <p style={{ fontSize: 12, color: '#666', marginTop: 4, maxWidth: 480 }}>
+          Fills in city/region/country/timezone for existing users who already have an IP address
+          on file but never got a location lookup. Uses their own admin login, not the anon key.
+          Safe to click repeatedly — each run picks up the next 25 not-yet-looked-up rows.
+        </p>
+      </div>
+
       <pre style={{ background: "#111", color: "#0f0", padding: 12, marginTop: 12 }}>
-{JSON.stringify({ headers, approvalResp, errA, rejectionResp, errR }, null, 2)}
+{JSON.stringify({ headers, approvalResp, errA, rejectionResp, errR, backfillResp, errB }, null, 2)}
       </pre>
     </div>
   );

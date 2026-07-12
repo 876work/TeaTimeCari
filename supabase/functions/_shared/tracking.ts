@@ -105,7 +105,7 @@ const emptyLocation = (status: TrackingMetadata['ip_location_status']): IpLocati
   ip_location_status: status,
 });
 
-async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
+export async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
   if (!ip) return emptyLocation('not_attempted');
 
   const ipinfoToken = Deno.env.get('IPINFO_TOKEN') || '';
