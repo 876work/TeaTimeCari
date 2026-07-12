@@ -68,30 +68,42 @@ async function discourseFetch(path: string) {
   return await res.json();
 }
 
+async function fetchUsersForFlag(flag: string) {
+  const collected: DiscourseUser[] = [];
+
+  for (let page = 0; page < 3; page += 1) {
+    const params = new URLSearchParams({
+      page: String(page),
+      show_emails: "true",
+      order: "last_seen",
+    });
+
+    const body = await discourseFetch(
+      `/admin/users/list/${flag}.json?${params}`
+    );
+
+    const users = Array.isArray(body) ? (body as DiscourseUser[]) : [];
+    collected.push(...users);
+
+    if (users.length === 0) break;
+  }
+
+  return collected;
+}
+
 async function fetchDiscourseUsers() {
   const merged = new Map<number, DiscourseUser>();
 
-  for (const flag of USER_FLAGS) {
-    for (let page = 0; page < 3; page += 1) {
-      const params = new URLSearchParams({
-        page: String(page),
-        show_emails: "true",
-        order: "last_seen",
-      });
+  // Each flag's pages are fetched in sequence (page N depends on page N-1
+  // not being empty), but the flags themselves are independent, so fetch
+  // all of them concurrently instead of one after another.
+  const usersByFlag = await Promise.all(USER_FLAGS.map(fetchUsersForFlag));
 
-      const body = await discourseFetch(
-        `/admin/users/list/${flag}.json?${params}`
-      );
-
-      const users = Array.isArray(body) ? (body as DiscourseUser[]) : [];
-
-      for (const user of users) {
-        if (typeof user.id === "number") {
-          merged.set(user.id, { ...merged.get(user.id), ...user });
-        }
+  for (const users of usersByFlag) {
+    for (const user of users) {
+      if (typeof user.id === "number") {
+        merged.set(user.id, { ...merged.get(user.id), ...user });
       }
-
-      if (users.length === 0) break;
     }
   }
 
