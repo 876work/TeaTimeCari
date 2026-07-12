@@ -4,8 +4,6 @@ import { APP_HEARTBEAT_INTERVAL_MS } from '@/lib/presenceConstants';
 
 type ActivityEvent = 'login' | 'heartbeat';
 
-const ACTIVITY_TRACKING_KEY = 'ttc-auth-activity-tracking';
-
 async function invokeActivity(event: ActivityEvent) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) return;
@@ -27,9 +25,6 @@ export function useAuthActivityTracking() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    if (window.sessionStorage.getItem(ACTIVITY_TRACKING_KEY)) return;
-    window.sessionStorage.setItem(ACTIVITY_TRACKING_KEY, 'true');
 
     const sendHeartbeat = async (force = false) => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !force) return;
@@ -64,7 +59,6 @@ export function useAuthActivityTracking() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       listener.subscription.unsubscribe();
-      window.sessionStorage.removeItem(ACTIVITY_TRACKING_KEY);
     };
   }, []);
 }
