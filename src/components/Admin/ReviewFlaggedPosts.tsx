@@ -211,8 +211,8 @@ function FlaggedPostCard({ post, processingPostId, onViewImage, onDeletePost, on
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Red flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-rose-300"><Flag className="h-4 w-4" />{post.red_flag_count}</p></div>
-            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Green flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-emerald-300"><CheckCircle className="h-4 w-4" />{post.green_flag_count}</p></div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Red flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-rose-300" aria-label={`Red flags: ${post.red_flag_count}`}><Flag className="h-4 w-4" aria-hidden="true" />{post.red_flag_count}</p></div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Green flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-emerald-300" aria-label={`Green flags: ${post.green_flag_count}`}><CheckCircle className="h-4 w-4" aria-hidden="true" />{post.green_flag_count}</p></div>
             <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Risk signal</p><p className={`mt-1 text-sm font-bold ${isHighPriority(post) ? 'text-rose-300' : 'text-amber-300'}`}>{isHighPriority(post) ? 'Escalated' : 'Standard review'}</p></div>
           </div>
         </div>
@@ -266,7 +266,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
-  const isAdmin = session?.user?.email?.includes('admin') || true;
+  const isAdmin = session?.user?.email?.includes('admin');
 
   const fetchFlaggedPosts = async () => {
     setLoading(true);

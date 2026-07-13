@@ -41,7 +41,7 @@ export function NotificationBell() {
         {isLoading ? (
           <Loader2 className="w-6 h-6 animate-spin" />
         ) : (
-          <Bell className={`w-6 h-6 ${unreadCount > 0 ? 'animate-pulse' : ''}`} />
+          <Bell className="w-6 h-6" />
         )}
         
         {/* Unread count badge */}

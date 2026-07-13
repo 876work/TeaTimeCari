@@ -264,5 +264,12 @@ export default function CommunityRedirect() {
     );
   }
 
-  return <p className="p-6 text-center text-sm text-slate-500">Opening your community category…</p>;
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-sky-50 via-white to-rose-50 px-4">
+      <div className="text-center">
+        <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#4B9EC8]" aria-hidden="true" />
+        <p className="text-sm text-slate-500">Opening your community category…</p>
+      </div>
+    </main>
+  );
 }

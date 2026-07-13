@@ -183,7 +183,7 @@ Tea Time Cari Team`;
 
     // Send rejection email
     try {
-      const emailResult = await sendRejectionEmail(email, actualFirstName);
+      const emailResult = await sendRejectionEmail(email, actualFirstName, rejectionReason);
       if (!emailResult.success) {
         throw new Error(emailResult.error || "Failed to send rejection email");
       }
@@ -272,8 +272,7 @@ Tea Time Cari Team`;
         success: false,
         error: `Unexpected error: ${err?.message || err}`,
         details: {
-          errorType: err?.constructor?.name || 'Unknown',
-          stack: err?.stack
+          errorType: err?.constructor?.name || 'Unknown'
         }
       } as EmailResponse),
       {

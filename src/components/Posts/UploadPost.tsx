@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { Image, Upload, X, CheckCircle, AlertCircle, Loader2, Camera, ArrowRight } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
@@ -15,7 +16,8 @@ interface UserData {
 export function UploadPost() {
   const supabase = useSupabaseClient();
   const session = useSession();
-  
+  const navigate = useNavigate();
+
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [userLoading, setUserLoading] = useState(true);
@@ -213,7 +215,7 @@ export function UploadPost() {
 
   // Navigate to feed
   const goToFeed = () => {
-    window.location.href = '/feed';
+    navigate('/feed');
   };
 
   // Loading state for user verification
@@ -243,7 +245,7 @@ export function UploadPost() {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 import { FormField, PageSection, PrimaryButton, StatusAlert } from "../components/Form";
 import { supabase } from "@/lib/supabaseClient";
@@ -38,6 +38,8 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [checkingLink, setCheckingLink] = useState(true);
   const [hasRecoverySession, setHasRecoverySession] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -247,34 +249,64 @@ export default function ResetPassword() {
         <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
           <input type="hidden" name="form-name" value="reset-password" readOnly />
           <FormField id="password" label="New password" required>
-            <input
-              id="password"
-              type="password"
-              name="password"
-              required
-              minLength={10}
-              placeholder="New password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoComplete="new-password"
-              disabled={checkingLink || loading}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                minLength={10}
+                placeholder="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-12 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="new-password"
+                disabled={checkingLink || loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
           </FormField>
           <FormField id="confirm" label="Confirm new password" required>
-            <input
-              id="confirm"
-              type="password"
-              name="confirm"
-              required
-              minLength={10}
-              placeholder="Confirm new password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoComplete="new-password"
-              disabled={checkingLink || loading}
-            />
+            <div className="relative">
+              <input
+                id="confirm"
+                type={showConfirm ? "text" : "password"}
+                name="confirm"
+                required
+                minLength={10}
+                placeholder="Confirm new password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-12 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="new-password"
+                disabled={checkingLink || loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+              >
+                {showConfirm ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
           </FormField>
           <PrimaryButton
             type="submit"

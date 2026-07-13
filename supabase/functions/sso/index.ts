@@ -141,7 +141,11 @@ Deno.serve(async (req) => {
       returnSsoUrl = incomingParams.get("return_sso_url");
 
       if (!nonce || !returnSsoUrl) {
-        return new Response("Missing required SSO parameters", { status: 400, headers: corsHeaders });
+        const html = `<!doctype html><html><head><meta charset="utf-8" /><title>Sign-in link issue | Tea Time Cari</title></head><body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#F4FBFF; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh;"><div style="max-width:420px; padding:32px; text-align:center;"><h1 style="font-size:20px; margin:0 0 12px;">This sign-in link isn't valid</h1><p style="color:#4b5563; line-height:1.6; margin:0 0 24px;">The community sign-in link is missing required details. Please return to Tea Time Cari and try again.</p><a href="${SITE_BASE_URL}/community" style="display:inline-block; background:#4B9EC8; color:#ffffff; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:600;">Return to Tea Time Cari</a></div></body></html>`;
+        return new Response(html, {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+        });
       }
     }
 

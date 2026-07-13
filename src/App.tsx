@@ -39,6 +39,7 @@ const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const ResetPasswordVerify = React.lazy(() => import('./pages/ResetPasswordVerify'));
 const Logout = React.lazy(() => import('./pages/Logout'));
 const CommunityRedirect = React.lazy(() => import('./pages/CommunityRedirect'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function PostHogPageviewTracker() {
   const location = useLocation();
@@ -279,7 +280,7 @@ function App() {
                     }
                   />
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
                 </Routes>
               </React.Suspense>
             </Router>

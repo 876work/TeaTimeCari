@@ -424,6 +424,6 @@ Deno.serve(async (req) => {
     const err = e as { message?: string; stack?: string };
     console.error("approve-and-sync error:", err?.message, err?.stack);
 
-    return jerr(headers, 500, err?.message ?? "Unknown error");
+    return jerr(headers, 500, "Unable to complete approval and sync. Please try again or check server logs.");
   }
 });

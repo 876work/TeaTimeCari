@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import {
+  Check,
   CheckCircle,
   RefreshCw,
   Search,
@@ -233,17 +234,29 @@ function initialsFor(user: UserRow) {
 }
 
 function CopyButton({ value, label }: { value?: string | null; label: string }) {
+  const [copied, setCopied] = useState(false);
+
   if (!value) return null;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard?.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard write failed (e.g. permissions); no confirmation to show.
+    }
+  };
 
   return (
     <button
       type="button"
-      onClick={() => navigator.clipboard?.writeText(value)}
+      onClick={handleCopy}
       className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
-      title={`Copy ${label}`}
-      aria-label={`Copy ${label}`}
+      title={copied ? 'Copied!' : `Copy ${label}`}
+      aria-label={copied ? `${label} copied` : `Copy ${label}`}
     >
-      <Copy className="h-3.5 w-3.5" />
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
@@ -380,6 +393,13 @@ export function AdminUserReview({
   const [actionMessages, setActionMessages] = useState<
     Record<string, { type: 'success' | 'warning'; message: string; canRetryDiscourse?: boolean }>
   >({});
+  const [toast, setToast] = useState<{ type: 'success' | 'warning'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [toast]);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
@@ -571,27 +591,26 @@ export function AdminUserReview({
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'approved' } : u)));
 
       if (status === 'approved_with_sync_error') {
+        const message = `Approved, but Discourse sync needs attention: ${syncError}`;
         setActionMessages((prev) => ({
           ...prev,
-          [user.id]: {
-            type: 'warning',
-            message: `Approved, but Discourse sync needs attention: ${syncError}`,
-            canRetryDiscourse: true,
-          },
+          [user.id]: { type: 'warning', message, canRetryDiscourse: true },
         }));
+        setToast({ type: 'warning', message: `@${user.username ?? safeDisplayName(user)}: ${message}` });
       } else if (status === 'approved_with_email_error') {
+        const message = `Approved, but the approval email needs attention: ${emailError}`;
         setActionMessages((prev) => ({
           ...prev,
-          [user.id]: {
-            type: 'warning',
-            message: `Approved, but the approval email needs attention: ${emailError}`,
-          },
+          [user.id]: { type: 'warning', message },
         }));
+        setToast({ type: 'warning', message: `@${user.username ?? safeDisplayName(user)}: ${message}` });
       } else {
+        const message = 'Approved, emailed, and synced to Discourse.';
         setActionMessages((prev) => ({
           ...prev,
-          [user.id]: { type: 'success', message: 'Approved, emailed, and synced to Discourse.' },
+          [user.id]: { type: 'success', message },
         }));
+        setToast({ type: 'success', message: `@${user.username ?? safeDisplayName(user)} — ${message}` });
       }
     } catch (err) {
       setError(`Failed to approve: ${getErrorMessage(err)}`);
@@ -894,6 +913,15 @@ export function AdminUserReview({
 
   return (
     <AdminLayout activePage={activePage} onNavigate={onNavigate}>
+      {toast && (
+        <div className="fixed inset-x-0 top-4 z-50 flex justify-center px-4 sm:justify-end sm:pr-8" role="status">
+          <div className="w-full max-w-sm">
+            <AdminAlert variant={toast.type === 'success' ? 'success' : 'warning'}>
+              <p>{toast.message}</p>
+            </AdminAlert>
+          </div>
+        </div>
+      )}
       <div className="space-y-6">
         <AdminPageHeader
           title="Users"

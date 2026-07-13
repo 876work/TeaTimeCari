@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff } from 'lucide-react';
+import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff, Loader2 } from 'lucide-react';
 import { useNotifications, type Notification as AppNotification } from '../../contexts/NotificationContext';
 
 interface NotificationDropdownProps {
@@ -142,7 +142,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                className={`relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
                   !notification.is_read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                 }`}
               >
