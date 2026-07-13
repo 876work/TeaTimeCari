@@ -217,19 +217,23 @@ export function RegisterStep3({
 
   return (
     <div className="max-w-lg mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]" aria-hidden="true" />
+
         <RegistrationProgress currentStep={3} className="mb-6" />
 
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF6FC] to-[#D6EBF5] shadow-md ring-4 ring-white">
             <Camera className="w-8 h-8 text-[#4B9EC8]" />
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <span className="inline-flex items-center rounded-full bg-[#F5FBFE] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#3382AA] ring-1 ring-[#D6EBF5]">
+            Step 3 of 3 · Identity Verification
+          </span>
+
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Photo Verification
           </h1>
-
-          <p className="text-gray-600">Step 3 of 3: Identity Verification</p>
 
           <p className="mt-2 text-sm text-slate-500">
             After submission, a team member usually reviews applications within 24–48 hours.
@@ -266,7 +270,7 @@ export function RegisterStep3({
               <button
                 type="button"
                 onClick={() => handleStartCapture('selfie')}
-                className="rounded-lg bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#3382AA]"
+                className="rounded-xl bg-gradient-to-r from-[#4B9EC8] to-[#3382AA] px-4 py-3 text-sm font-semibold text-white shadow-md shadow-[#4B9EC8]/25 transition-all hover:shadow-lg hover:shadow-[#4B9EC8]/30 hover:-translate-y-0.5"
               >
                 Start selfie
               </button>
@@ -275,7 +279,7 @@ export function RegisterStep3({
                 <button
                   type="button"
                   onClick={() => handleStartCapture('id')}
-                  className="flex flex-1 items-center justify-center rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-blue-50"
+                  className="flex flex-1 items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-[#4B9EC8] hover:bg-blue-50"
                 >
                   <CreditCard className="mr-2 h-4 w-4 text-[#D96E6E]" />
                   Use ID instead
@@ -284,7 +288,7 @@ export function RegisterStep3({
                 <Link
                   to="/privacy-policy"
                   state={{ returnTo: '/signup/photo-verification', fromSignup: true }}
-                  className="flex-1 rounded-lg border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:bg-blue-50"
+                  className="flex-1 rounded-xl border border-blue-200 bg-white px-4 py-3 text-center text-sm font-semibold text-[#3382AA] transition-colors hover:border-[#4B9EC8] hover:bg-blue-50"
                 >
                   Privacy details
                 </Link>
@@ -408,7 +412,7 @@ export function RegisterStep3({
                 <button
                   type="button"
                   onClick={retakePhoto}
-                  className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                  className="flex items-center px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl font-medium shadow-md transition-colors"
                 >
                   <RotateCcw className="w-5 h-5 mr-2" />
                   Retake Photo
@@ -418,9 +422,9 @@ export function RegisterStep3({
                   type="button"
                   onClick={capturePhoto}
                   disabled={cameraState !== 'active'}
-                  className={`flex items-center px-8 py-4 rounded-lg font-medium transition-all ${
+                  className={`flex items-center px-8 py-4 rounded-xl font-semibold transition-all ${
                     cameraState === 'active'
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                      ? 'bg-gradient-to-r from-[#4B9EC8] to-[#3382AA] text-white shadow-lg shadow-[#4B9EC8]/30 hover:shadow-xl hover:shadow-[#4B9EC8]/40 transform hover:-translate-y-0.5'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
@@ -452,7 +456,7 @@ export function RegisterStep3({
         )}
 
         {isReadyToContinue && (
-          <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900">Looks good?</h2>
             <p className="mt-1 text-sm text-slate-600">
               Submit your application for review, or retake the photo if needed.
@@ -522,7 +526,7 @@ export function RegisterStep3({
             <button
               type="button"
               onClick={onBack}
-              className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-medium text-slate-700 bg-white hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
               Back
             </button>
@@ -533,10 +537,10 @@ export function RegisterStep3({
             onClick={handleContinue}
             disabled={!isReadyToContinue || isSubmitting}
             className={`
-              ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
+              ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-xl font-semibold transition-all duration-200 ease-in-out
               ${
                 isReadyToContinue && !isSubmitting
-                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}

@@ -18,8 +18,8 @@ const genderOptions = [
     label: 'Male',
     icon: '♂️',
     groupLabel: 'men’s private community space',
-    selectedClasses: 'bg-gradient-to-br from-[#4B9EC8] to-[#3382AA] text-white border-[#4B9EC8] shadow-lg scale-105',
-    unselectedClasses: 'bg-white text-gray-700 border-gray-300 hover:border-[#4B9EC8] hover:text-[#4B9EC8] hover:shadow-md',
+    selectedClasses: 'bg-gradient-to-br from-[#4B9EC8] to-[#3382AA] text-white border-[#4B9EC8] shadow-lg shadow-[#4B9EC8]/30 scale-105',
+    unselectedClasses: 'bg-white text-gray-700 border-gray-200 hover:border-[#4B9EC8] hover:text-[#4B9EC8] hover:shadow-md',
     iconClasses: 'text-[#B0B0B0]',
   },
   {
@@ -27,8 +27,8 @@ const genderOptions = [
     label: 'Female',
     icon: '♀️',
     groupLabel: 'women’s private community space',
-    selectedClasses: 'bg-gradient-to-br from-[#D96E6E] to-[#BC5050] text-white border-[#D96E6E] shadow-lg scale-105',
-    unselectedClasses: 'bg-white text-gray-700 border-gray-300 hover:border-[#D96E6E] hover:text-[#D96E6E] hover:shadow-md',
+    selectedClasses: 'bg-gradient-to-br from-[#D96E6E] to-[#BC5050] text-white border-[#D96E6E] shadow-lg shadow-[#D96E6E]/30 scale-105',
+    unselectedClasses: 'bg-white text-gray-700 border-gray-200 hover:border-[#D96E6E] hover:text-[#D96E6E] hover:shadow-md',
     iconClasses: 'text-[#B36B6B]',
   },
 ];
@@ -50,15 +50,19 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
 
   return (
     <div className="max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]" aria-hidden="true" />
+
         <RegistrationProgress currentStep={2} className="mb-6" />
 
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF6FC] to-[#D6EBF5] shadow-md ring-4 ring-white">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Choose your access group</h1>
-          <p className="text-gray-600">Step 2 of 3: Private community access</p>
+          <span className="inline-flex items-center rounded-full bg-[#F5FBFE] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#3382AA] ring-1 ring-[#D6EBF5]">
+            Step 2 of 3 · Private community access
+          </span>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Choose your access group</h1>
           <p className="mt-2 text-sm text-slate-500">
             Select the gender group you identify with so we can place your approved account in the matching private space.
           </p>
@@ -135,7 +139,7 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
             <button
               type="button"
               onClick={onBack}
-              className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-medium text-slate-700 bg-white hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
               Back
             </button>
@@ -145,9 +149,9 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
             onClick={handleContinue}
             disabled={!selectedGender}
             className={`
-              ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ease-in-out
+              ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-xl font-semibold transition-all duration-200 ease-in-out
               ${selectedGender
-                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
             `}

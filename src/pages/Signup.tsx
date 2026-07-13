@@ -231,15 +231,15 @@ export default function Signup() {
         />
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl p-4 text-center">
-        <p className="text-sm text-gray-600">
+      <div className="rounded-2xl border border-white/60 bg-white/90 p-4 text-center shadow-lg shadow-black/10 backdrop-blur-md">
+        <p className="text-sm text-slate-600">
           Already have an account?{' '}
           <Link to="/login" className="font-semibold text-[#4B9EC8] hover:text-[#3382AA] transition-colors">
             Sign in instead
           </Link>
         </p>
 
-        <Link to="/" className="mt-3 inline-flex text-sm text-gray-600 hover:text-gray-800 transition-colors">
+        <Link to="/" className="mt-3 inline-flex text-sm text-slate-600 hover:text-slate-800 transition-colors">
           ← Back to Home
         </Link>
       </div>

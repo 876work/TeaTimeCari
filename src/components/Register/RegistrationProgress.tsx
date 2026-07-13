@@ -13,10 +13,12 @@ interface RegistrationProgressProps {
 
 export function RegistrationProgress({ currentStep, className = '' }: RegistrationProgressProps) {
   return (
-    <div className={`rounded-2xl border border-[#D6EBF5] bg-gradient-to-r from-blue-50 to-rose-50 p-4 ${className}`} aria-label="Registration progress">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className={`rounded-2xl border border-[#D6EBF5] bg-gradient-to-r from-blue-50 to-rose-50 p-4 shadow-sm ${className}`} aria-label="Registration progress">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-bold text-slate-800">Application progress</p>
-        <p className="text-xs font-semibold text-slate-500">Review usually takes 24–48 hours</p>
+        <p className="inline-flex w-fit items-center rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold text-[#3382AA] ring-1 ring-[#D6EBF5]">
+          Review usually takes 24–48 hours
+        </p>
       </div>
       <ol className="grid gap-2 sm:grid-cols-5">
         {steps.map((step, index) => {
@@ -27,11 +29,11 @@ export function RegistrationProgress({ currentStep, className = '' }: Registrati
           return (
             <li key={step} className="flex items-center gap-2 sm:flex-col sm:items-start">
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${
                   isComplete
-                    ? 'bg-emerald-500 text-white'
+                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/40'
                     : isCurrent
-                      ? 'bg-[#4B9EC8] text-white ring-4 ring-[#D6EBF5]'
+                      ? 'bg-gradient-to-br from-[#4B9EC8] to-[#3382AA] text-white shadow-md shadow-[#4B9EC8]/40 ring-4 ring-[#D6EBF5]'
                       : 'bg-white text-slate-500 ring-1 ring-slate-200'
                 }`}
               >
