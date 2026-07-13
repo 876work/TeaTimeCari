@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
 import { supabase } from '@/lib/supabaseClient';
 import { AuthLayout } from "@/components/AuthLayout";
+import { getFunctionErrorMessage } from "@/lib/functionError";
 
 function useQuery() {
   const { search } = useLocation();
@@ -39,9 +40,17 @@ export default function Sso() {
       });
 
       if (error) {
-        console.error("sso-complete error:", error);
+        const detail = await getFunctionErrorMessage(error);
+        console.error("sso-complete error:", detail);
         setHasError(true);
-        setMsg("Your community sign-in session may have expired. Please start again from the Community link, or contact support if this keeps happening.");
+
+        if (detail.includes("unrecognized_gender")) {
+          setMsg("We couldn't confirm your community access group. Please contact support so we can fix this for you.");
+        } else if (detail.includes("unauthorized") || detail.includes("missing token") || detail.includes("missing nonce")) {
+          setMsg("Your community sign-in session may have expired. Please start again from the Community link.");
+        } else {
+          setMsg("We ran into a problem finishing your community sign-in. Please try again, or contact support if this keeps happening.");
+        }
         return;
       }
 

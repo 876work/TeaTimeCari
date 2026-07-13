@@ -427,7 +427,10 @@ export function GenderFeed() {
             <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
               Be the first to share something with the {currentUser?.gender} community.
             </p>
-            <button className="px-8 py-4 bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+            <button
+              onClick={() => navigate('/upload')}
+              className="px-8 py-4 bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
               Create First Post
             </button>
           </div>

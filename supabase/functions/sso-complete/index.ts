@@ -137,7 +137,13 @@ Deno.serve(async (req: Request) => {
       return json(200, { redirectUrl: pendingUrl });
     }
 
-    const communityGender = normalizeCommunityGender(profile.gender) || "women";
+    const communityGender = normalizeCommunityGender(profile.gender);
+
+    if (!communityGender) {
+      console.error("[sso-complete] Unrecognized gender on approved profile:", profile.id);
+      return json(422, { error: "unrecognized_gender" });
+    }
+
     const addGroups = buildDiscourseGroups(communityGender, /* xaccess */ false);
     const returnPath = getReturnPathForGender(profile.gender);
 
@@ -145,18 +151,15 @@ Deno.serve(async (req: Request) => {
       profile.username ||
       sanitizeUsername((user.email ?? "").split("@")[0] || "");
 
-    const name =
-      profile.fullName ||
-      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-      derivedUsername;
-
     // Keep external_id stable forever: DiscourseConnect associates users by this value.
+    // Do not sync legal/full names into Discourse display fields; the public
+    // community identity is the member-selected username.
     const payload = {
       nonce,
       external_id: profile.id,
       email: profile.email,
       username: derivedUsername,
-      name,
+      name: derivedUsername,
       add_groups: addGroups,
       require_activation: "false",
     };

@@ -20,6 +20,17 @@ function redirect(location: string) {
   });
 }
 
+function errorPage(status: number, title: string, message: string, opts?: { supportLink?: boolean }) {
+  const supportHref = `${SITE_BASE_URL}/contact-us?topic=account-status`;
+  const primaryHref = `${SITE_BASE_URL}/community`;
+  const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${title} | Tea Time Cari</title></head><body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#F4FBFF; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh;"><div style="max-width:420px; padding:32px; text-align:center;"><h1 style="font-size:20px; margin:0 0 12px;">${title}</h1><p style="color:#4b5563; line-height:1.6; margin:0 0 24px;">${message}</p><p style="margin:0;"><a href="${primaryHref}" style="display:inline-block; background:#4B9EC8; color:#ffffff; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:600;">Return to Tea Time Cari</a>${opts?.supportLink ? ` <a href="${supportHref}" style="display:inline-block; margin-left:8px; color:#4B9EC8; padding:12px 4px; text-decoration:underline; font-weight:600;">Contact support</a>` : ""}</p></div></body></html>`;
+
+  return new Response(html, {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 function normalizeReturnPath(pathOrUrl: string) {
   try {
     const base = new URL(DISCOURSE_BASE_URL);
@@ -119,14 +130,14 @@ Deno.serve(async (req) => {
 
   try {
     if (req.method !== "GET") {
-      return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+      return errorPage(405, "This link can't be opened directly", "This sign-in link only works when it's opened by the community forum. Please start from the Community link inside Tea Time Cari.");
     }
 
     const discourseSsoSecret = Deno.env.get("DISCOURSE_SSO_SECRET");
 
     if (!discourseSsoSecret) {
       console.error("Missing DISCOURSE_SSO_SECRET");
-      return new Response("Server configuration error", { status: 500, headers: corsHeaders });
+      return errorPage(500, "Community sign-in is temporarily unavailable", "We're having trouble connecting to the community right now. Please try again shortly.", { supportLink: true });
     }
 
     const url = new URL(req.url);
@@ -141,11 +152,7 @@ Deno.serve(async (req) => {
       returnSsoUrl = incomingParams.get("return_sso_url");
 
       if (!nonce || !returnSsoUrl) {
-        const html = `<!doctype html><html><head><meta charset="utf-8" /><title>Sign-in link issue | Tea Time Cari</title></head><body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#F4FBFF; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh;"><div style="max-width:420px; padding:32px; text-align:center;"><h1 style="font-size:20px; margin:0 0 12px;">This sign-in link isn't valid</h1><p style="color:#4b5563; line-height:1.6; margin:0 0 24px;">The community sign-in link is missing required details. Please return to Tea Time Cari and try again.</p><a href="${SITE_BASE_URL}/community" style="display:inline-block; background:#4B9EC8; color:#ffffff; padding:12px 20px; border-radius:10px; text-decoration:none; font-weight:600;">Return to Tea Time Cari</a></div></body></html>`;
-        return new Response(html, {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-        });
+        return errorPage(400, "This sign-in link isn't valid", "The community sign-in link is missing required details. Please return to Tea Time Cari and try again.");
       }
     }
 
@@ -160,7 +167,18 @@ Deno.serve(async (req) => {
     if (response) return response;
     if (!profile) return redirect(`${SITE_BASE_URL}/kyc-pending`);
 
-    const communityGender = normalizeCommunityGender(profile.gender) || "women";
+    const communityGender = normalizeCommunityGender(profile.gender);
+
+    if (!communityGender) {
+      console.error("[sso] Unrecognized gender on approved profile:", profile.id);
+      return errorPage(
+        422,
+        "We couldn't confirm your community access group",
+        "Something is off with your account's community access group, so we can't sign you into the forum safely. Please contact support so we can fix this for you.",
+        { supportLink: true },
+      );
+    }
+
     const returnPath = getReturnPathForGender(profile.gender);
     const groups = buildDiscourseGroups(communityGender, false);
     const username = profile.username || (profile.email || "user").split("@")[0];
@@ -189,12 +207,6 @@ Deno.serve(async (req) => {
     return redirect(discourseLoginUrl.toString());
   } catch (err) {
     console.error("[sso] Error:", err instanceof Error ? err.message : err);
-    return new Response(
-      JSON.stringify({ error: "SSO processing failed" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return errorPage(500, "Community sign-in ran into a problem", "Something went wrong while connecting you to the community. Please try again, or contact support if this keeps happening.", { supportLink: true });
   }
 });
