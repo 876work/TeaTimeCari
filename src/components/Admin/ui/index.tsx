@@ -12,6 +12,7 @@ const buttonVariants = {
   danger: 'border-admin-danger bg-admin-danger text-white shadow-admin-sm hover:bg-red-700 focus-visible:ring-admin-danger/25',
   success: 'border-admin-success bg-admin-success text-white shadow-admin-sm hover:bg-emerald-700 focus-visible:ring-admin-success/25',
   subtle: 'border-admin-border bg-admin-muted text-admin-fg hover:bg-slate-200/70 focus-visible:ring-admin-brand/20',
+  glass: 'border-white/25 bg-white/10 text-white shadow-none hover:bg-white/20 focus-visible:ring-white/40',
 };
 
 const buttonSizes = { sm: 'h-8 px-3 text-xs', md: 'h-10 px-4 text-sm', lg: 'h-11 px-5 text-sm' };
@@ -57,15 +58,20 @@ export function AdminIconButton({ className, label, children, ...props }: React.
   );
 }
 
-export function AdminSectionHeader({ title, description, action }: { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode }) {
+export function AdminGlassCard({ title, description, actions, className, children }: { title?: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; className?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h2 className="text-base font-semibold text-admin-fg">{title}</h2>
-        {description && <p className="mt-1 text-sm text-admin-muted-fg">{description}</p>}
-      </div>
-      {action}
-    </div>
+    <section className={cn('admin-glass overflow-hidden rounded-3xl p-5 sm:p-6', className)}>
+      {(title || description || actions) && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            {title && <h2 className="text-sm font-semibold text-white">{title}</h2>}
+            {description && <p className="mt-1 text-xs text-white/60">{description}</p>}
+          </div>
+          {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        </div>
+      )}
+      {children}
+    </section>
   );
 }
 
@@ -89,6 +95,11 @@ const badgeVariants = {
 };
 export function AdminBadge({ variant = 'neutral', className, children }: { variant?: keyof typeof badgeVariants; className?: string; children: React.ReactNode }) { return <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-5 transition-colors duration-150', badgeVariants[variant], className)}>{children}</span>; }
 
+const glassBadgeVariants = {
+  success: 'border-emerald-300/40 bg-emerald-400/20 text-white', warning: 'border-amber-300/40 bg-amber-400/20 text-white', danger: 'border-rose-300/40 bg-rose-400/20 text-white', neutral: 'border-white/25 bg-white/10 text-white',
+};
+export function AdminGlassBadge({ variant = 'neutral', className, children }: { variant?: keyof typeof glassBadgeVariants; className?: string; children: React.ReactNode }) { return <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold leading-5', glassBadgeVariants[variant], className)}>{children}</span>; }
+
 const control = 'w-full rounded-admin-md border border-admin-border bg-white px-3 py-2 text-sm text-admin-fg shadow-admin-sm outline-none transition-all duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-admin-brand focus:ring-4 focus:ring-admin-brand/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400';
 export const AdminInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => <input ref={ref} className={cn(control, className)} {...props} />);
 AdminInput.displayName = 'AdminInput';
@@ -101,9 +112,38 @@ export function AdminAlert({ variant = 'info', children, className, role }: { va
   return <div className={cn('flex items-start gap-3 rounded-admin-lg border p-4 text-sm shadow-admin-sm', styles, className)} role={role ?? (variant === 'error' ? 'alert' : 'status')}><Icon className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" /> <div>{children}</div></div>;
 }
 
-export function AdminPageHeader({ title, description, actions, meta }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; meta?: React.ReactNode }) { return <div className="admin-page-enter flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-xl font-bold tracking-tight text-admin-fg sm:text-2xl">{title}</h1>{description && <p className="mt-1 max-w-3xl text-sm leading-6 text-admin-muted-fg">{description}</p>}{meta && <div className="mt-2 text-xs text-admin-muted-fg">{meta}</div>}</div>{actions && <div className="flex flex-col items-start gap-2 sm:items-end">{actions}</div>}</div>; }
+export function AdminPageHeader({ title, description, actions, meta }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; meta?: React.ReactNode }) { return <div className="admin-glass admin-page-enter flex flex-col gap-4 rounded-3xl p-6 sm:flex-row sm:items-start sm:justify-between sm:p-8"><div className="min-w-0"><h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">{title}</h1>{description && <p className="mt-1 max-w-3xl text-sm leading-6 text-white/70">{description}</p>}{meta && <div className="mt-2 text-xs text-white/60">{meta}</div>}</div>{actions && <div className="flex flex-col items-start gap-2 sm:items-end">{actions}</div>}</div>; }
 export function AdminFilterBar({ className, children }: { className?: string; children: React.ReactNode }) { return <div className={cn('rounded-admin-xl border border-admin-border/80 bg-admin-surface p-4 shadow-admin-sm shadow-slate-200/50', className)}>{children}</div>; }
 export function AdminMetricCard({ title, value, icon, description, loading, accent = 'brand' }: { title: React.ReactNode; value: React.ReactNode; icon?: React.ReactNode; description?: React.ReactNode; loading?: boolean; accent?: 'brand'|'success'|'warning'|'danger'|'muted'|'info' }) { const accents={brand:'bg-blue-50 text-blue-600',success:'bg-emerald-50 text-emerald-600',warning:'bg-amber-50 text-amber-600',danger:'bg-red-50 text-red-600',muted:'bg-slate-100 text-slate-500',info:'bg-sky-50 text-sky-600'}; return <AdminCard className="p-0"><div className="flex items-start gap-4 p-5">{icon && <div className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-admin-lg', accents[accent])}>{icon}</div>}<div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">{title}</p><p className="mt-0.5 text-2xl font-bold text-admin-fg">{loading ? <Loader2 className="inline h-5 w-5 animate-spin text-slate-400" /> : value}</p>{description && <p className="mt-0.5 text-xs text-admin-muted-fg">{description}</p>}</div></div></AdminCard>; }
+
+const glassMetricAccents = {
+  blue: 'bg-brand-blue/25 text-white ring-1 ring-white/20',
+  purple: 'bg-brand-purple/30 text-white ring-1 ring-white/20',
+  rose: 'bg-brand-rose/30 text-white ring-1 ring-white/20',
+  success: 'bg-emerald-400/25 text-white ring-1 ring-white/20',
+  muted: 'bg-white/10 text-white/70 ring-1 ring-white/15',
+};
+
+export function AdminGlassMetricCard({ title, value, icon, description, loading, accent = 'blue' }: { title: React.ReactNode; value: React.ReactNode; icon?: React.ReactNode; description?: React.ReactNode; loading?: boolean; accent?: keyof typeof glassMetricAccents }) {
+  return (
+    <div className="admin-glass rounded-3xl p-5">
+      <div className="flex items-start gap-4">
+        {icon && (
+          <div className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl', glassMetricAccents[accent])}>
+            {icon}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-white/60">{title}</p>
+          <p className="mt-0.5 text-2xl font-bold text-white">
+            {loading ? <Loader2 className="inline h-5 w-5 animate-spin text-white/60" /> : value}
+          </p>
+          {description && <p className="mt-0.5 text-xs text-white/50">{description}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 export function AdminEmptyState({ icon, title, message, action }: { icon?: React.ReactNode; title: React.ReactNode; message?: React.ReactNode; action?: React.ReactNode }) { return <div className="flex flex-col items-center justify-center px-6 py-14 text-center">{icon && <div className="mb-3 text-slate-400">{icon}</div>}<p className="text-sm font-semibold text-admin-fg">{title}</p>{message && <p className="mt-1 text-xs text-admin-muted-fg">{message}</p>}{action && <div className="mt-4">{action}</div>}</div>; }
 export function AdminSkeleton({ className, style }: { className?: string; style?: React.CSSProperties }) { return <div className={cn('admin-skeleton rounded-admin-md', className)} style={style} />; }
 export function AdminTable({ children, className }: { children: React.ReactNode; className?: string }) { return <div className={cn('overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50 transition-shadow duration-200 ease-out', className)}><div className="overflow-x-auto">{children}</div></div>; }

@@ -764,7 +764,7 @@ export function AdminAuditLogs({
               : undefined
           }
           actions={
-            <AdminButton type="button" onClick={fetchLogs} disabled={loading}>
+            <AdminButton type="button" variant="glass" onClick={fetchLogs} disabled={loading}>
               <RefreshCw
                 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
               />

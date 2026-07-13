@@ -52,6 +52,23 @@
     background-size: 220% 100%;
     animation: admin-skeleton-shimmer 1.35s ease-in-out infinite;
   }
+
+  .admin-glass {
+    position: relative;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.05));
+    border: 1px solid rgb(255 255 255 / 0.18);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px -12px rgb(15 23 42 / 0.45);
+  }
+
+  .admin-skeleton-glass {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.08));
+    background-size: 220% 100%;
+    animation: admin-skeleton-shimmer 1.35s ease-in-out infinite;
+  }
 }
 
 @keyframes admin-page-enter {

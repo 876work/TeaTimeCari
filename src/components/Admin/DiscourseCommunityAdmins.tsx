@@ -462,6 +462,7 @@ export function DiscourseCommunityAdmins({
           actions={
             <AdminButton
               type="button"
+              variant="glass"
               onClick={() => fetchUsers(page)}
               disabled={loading}
             >
