@@ -187,9 +187,9 @@ const na = (value?: string | null) => value?.trim() || null;
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
-      <dt className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">{label}</dt>
-      <dd className="text-sm text-slate-800 font-medium break-all">
-        {value?.trim() ? value.trim() : <span className="text-slate-400 font-normal">Not available</span>}
+      <dt className="text-xs text-white/50 uppercase tracking-wide mb-0.5">{label}</dt>
+      <dd className="text-sm text-white font-medium break-all">
+        {value?.trim() ? value.trim() : <span className="text-white/40 font-normal">Not available</span>}
       </dd>
     </div>
   );
@@ -239,7 +239,7 @@ function CopyButton({ value, label }: { value?: string | null; label: string }) 
     <button
       type="button"
       onClick={() => navigator.clipboard?.writeText(value)}
-      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
       title={`Copy ${label}`}
       aria-label={`Copy ${label}`}
     >
@@ -274,12 +274,12 @@ function loginLocationDisplay(user: UserRow) {
 
 function DetailPanel({ user }: { user: UserRow }) {
   return (
-    <div className="bg-slate-50 border-t border-slate-200 px-6 py-5">
+    <div className="border-t border-white/15 bg-white/5 px-6 py-5">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-sky-200 p-5 lg:col-span-2">
+        <div className="rounded-xl border border-white/15 bg-white/5 p-5 lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="w-4 h-4 text-sky-500" />
-            <h4 className="text-sm font-semibold text-slate-900">Gender Access Review</h4>
+            <Users className="w-4 h-4 text-brand-purple-light" />
+            <h4 className="text-sm font-semibold text-white">Gender Access Review</h4>
           </div>
 
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -287,16 +287,16 @@ function DetailPanel({ user }: { user: UserRow }) {
             <Field label="Access controlled" value={genderAccessGroupLabel(user.gender)} />
           </dl>
 
-          <p className="mt-4 rounded-lg bg-sky-50 px-3 py-2 text-xs leading-relaxed text-sky-900">
+          <p className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-xs leading-relaxed text-white/80">
             This selection controls the user's default private category, community feed visibility, and Discourse group sync.
             If the applicant reports a wrong selection, update access through the approved support/admin process without asking them to start over.
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl border border-white/15 bg-white/5 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Globe className="w-4 h-4 text-slate-400" />
-            <h4 className="text-sm font-semibold text-slate-900">Registration Tracking</h4>
+            <Globe className="w-4 h-4 text-white/40" />
+            <h4 className="text-sm font-semibold text-white">Registration Tracking</h4>
           </div>
 
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -314,10 +314,10 @@ function DetailPanel({ user }: { user: UserRow }) {
           </dl>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="rounded-xl border border-white/15 bg-white/5 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <h4 className="text-sm font-semibold text-slate-900">Login & Activity</h4>
+            <Clock className="w-4 h-4 text-white/40" />
+            <h4 className="text-sm font-semibold text-white">Login & Activity</h4>
           </div>
 
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -945,7 +945,7 @@ export function AdminUserReview({
         <AdminFilterBar>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               <AdminInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -997,7 +997,7 @@ export function AdminUserReview({
                 key={label}
                 type="button"
                 onClick={apply}
-                className="rounded-full border border-admin-border bg-white px-3 py-1 text-xs font-semibold text-admin-muted-fg transition-colors hover:bg-admin-muted hover:text-admin-fg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/60 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
               >
                 {label}
               </button>
@@ -1007,13 +1007,13 @@ export function AdminUserReview({
             )}
           </div>
 
-          <p className="mt-3 text-xs text-slate-400">
-            Showing <span className="font-medium text-slate-600">{filtered.length}</span> filtered users from accounts {pageStart}-{pageEnd} of{' '}
-            <span className="font-medium text-slate-600">{totalUsers}</span>
+          <p className="mt-3 text-xs text-white/50">
+            Showing <span className="font-medium text-white/80">{filtered.length}</span> filtered users from accounts {pageStart}-{pageEnd} of{' '}
+            <span className="font-medium text-white/80">{totalUsers}</span>
           </p>
         </AdminFilterBar>
 
-        <div className="overflow-hidden rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm shadow-slate-200/50">
+        <div className="admin-glass overflow-hidden rounded-3xl">
           {loading ? (
             <div className="space-y-3 p-5">
               {[0, 1, 2, 3, 4].map((item) => (
@@ -1047,17 +1047,17 @@ export function AdminUserReview({
             <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full">
                 <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-50/95 border-b border-slate-200 backdrop-blur">
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Contact</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Gender</th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Registered</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                  <tr className="border-b border-white/15 bg-white/10 backdrop-blur">
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider">User</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider hidden md:table-cell">Contact</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider hidden lg:table-cell">Gender</th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider hidden lg:table-cell">Registered</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold text-white/50 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-white/10">
                   {filtered.map((user) => {
                     const isExpanded = expandedId === user.id;
                     const isProcessing = processingId === user.id;
@@ -1065,17 +1065,17 @@ export function AdminUserReview({
 
                     return (
                       <React.Fragment key={user.id}>
-                        <tr className={`hover:bg-slate-50 transition-colors ${isExpanded ? 'bg-slate-50' : ''}`}>
+                        <tr className={`hover:bg-white/5 transition-colors ${isExpanded ? 'bg-white/5' : ''}`}>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+                              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15">
                                 {initialsFor(user)}
                               </div>
 
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-950" title={safeDisplayName(user)}>{safeDisplayName(user)}</p>
+                                <p className="truncate text-sm font-semibold text-white" title={safeDisplayName(user)}>{safeDisplayName(user)}</p>
                                 <div className="mt-0.5 flex items-center gap-1">
-                                  <p className="truncate text-xs text-slate-400" title={user.username ?? undefined}>@{user.username ?? '—'}</p>
+                                  <p className="truncate text-xs text-white/50" title={user.username ?? undefined}>@{user.username ?? '—'}</p>
                                   <CopyButton value={user.username} label="username" />
                                 </div>
                                 {actionMessages[user.id] && (
@@ -1089,10 +1089,10 @@ export function AdminUserReview({
 
                           <td className="px-5 py-4 hidden md:table-cell">
                             <div className="flex max-w-[260px] items-center gap-1">
-                              <p className="truncate text-sm text-slate-700" title={user.email ?? undefined}>{user.email ?? <span className="text-slate-400">—</span>}</p>
+                              <p className="truncate text-sm text-white/80" title={user.email ?? undefined}>{user.email ?? <span className="text-white/40">—</span>}</p>
                               <CopyButton value={user.email} label="email" />
                             </div>
-                            <p className="text-xs text-slate-400 mt-0.5">{user.phone ?? '—'}</p>
+                            <p className="text-xs text-white/50 mt-0.5">{user.phone ?? '—'}</p>
                           </td>
 
                           <td className="px-5 py-4">
@@ -1107,7 +1107,7 @@ export function AdminUserReview({
                           </td>
 
                           <td className="px-5 py-4 hidden lg:table-cell">
-                            <p className="text-xs text-slate-700">{formatDateTime(user.created_at) ?? '—'}</p>
+                            <p className="text-xs text-white/70">{formatDateTime(user.created_at) ?? '—'}</p>
                           </td>
 
                           <td className="px-5 py-4">
@@ -1227,17 +1227,17 @@ export function AdminUserReview({
                 return (
                   <div key={`${user.id}-mobile`} className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15">
                         {initialsFor(user)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-950">{safeDisplayName(user)}</p>
+                        <p className="truncate text-sm font-semibold text-white">{safeDisplayName(user)}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <StatusBadge status={user.status} />
                           <AdminPresenceBadge status={user.presence_status} appLastSeenAt={user.app_last_seen_at ?? user.last_seen_at} discourseLastSeenAt={user.discourse_last_seen_at} lastActivityAt={user.last_activity_at} source={user.last_activity_source} checkedAt={user.presence_checked_at} error={user.presence_error} communityUnavailable={presenceSystemStatus?.communityTracking?.status === 'unavailable'} />
                         </div>
-                        <p className="mt-2 truncate text-xs text-slate-500">{user.email ?? 'No email'}</p>
-                        <p className="mt-1 text-xs text-slate-400">Registered {formatDateTime(user.created_at) ?? '—'}</p>
+                        <p className="mt-2 truncate text-xs text-white/60">{user.email ?? 'No email'}</p>
+                        <p className="mt-1 text-xs text-white/50">Registered {formatDateTime(user.created_at) ?? '—'}</p>
                       </div>
                     </div>
 
@@ -1252,15 +1252,15 @@ export function AdminUserReview({
                       {normalizedStatus === 'suspended' && <AdminButton size="sm" variant="secondary" onClick={() => requestConfirmation('unsuspend', user)} disabled={isProcessing}>Unsuspend</AdminButton>}
                     </div>
 
-                    {isExpanded && <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200"><DetailPanel user={user} /></div>}
+                    {isExpanded && <div className="mt-4 overflow-hidden rounded-2xl border border-white/15"><DetailPanel user={user} /></div>}
                   </div>
                 );
               })}
             </div>
-            <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">
-                Page <span className="font-semibold text-slate-700">{currentPage + 1}</span> of{' '}
-                <span className="font-semibold text-slate-700">{totalPages}</span> · Loading {USERS_PAGE_SIZE} accounts at a time
+            <div className="flex flex-col gap-3 border-t border-white/15 bg-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-white/50">
+                Page <span className="font-semibold text-white/80">{currentPage + 1}</span> of{' '}
+                <span className="font-semibold text-white/80">{totalPages}</span> · Loading {USERS_PAGE_SIZE} accounts at a time
               </p>
 
               <div className="flex items-center gap-2">

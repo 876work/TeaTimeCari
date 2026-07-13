@@ -125,12 +125,12 @@ function ModerationSummaryCards({ posts }: { posts: FlaggedPost[] }) {
 
 function FlaggedPostFilters({ filters, onChange, onReset }: { filters: FilterState; onChange: (key: keyof FilterState, value: string | number) => void; onReset: () => void }) {
   const active = hasActiveFilters(filters);
-  const labelClass = 'mb-2 block text-xs font-semibold uppercase tracking-wide text-admin-muted-fg';
+  const labelClass = 'mb-2 block text-xs font-semibold uppercase tracking-wide text-white/60';
 
   return (
     <AdminFilterBar>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="flex items-center gap-2 text-base font-semibold text-admin-fg"><Filter className="h-4 w-4 text-slate-500" /> Queue filters</h3>
+        <h3 className="flex items-center gap-2 text-base font-semibold text-white"><Filter className="h-4 w-4 text-white/50" /> Queue filters</h3>
         <AdminButton type="button" variant="ghost" size="sm" onClick={onReset} disabled={!active}>
           Clear filters
         </AdminButton>
@@ -140,7 +140,7 @@ function FlaggedPostFilters({ filters, onChange, onReset }: { filters: FilterSta
         <div className="xl:col-span-2">
           <label htmlFor="search" className={labelClass}>Search username</label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
             <AdminInput type="text" id="search" value={filters.searchTerm} onChange={(e) => onChange('searchTerm', e.target.value)} placeholder="Search by username…" className="pl-10" />
           </div>
         </div>
@@ -169,7 +169,7 @@ function FlaggedPostFilters({ filters, onChange, onReset }: { filters: FilterSta
       </div>
 
       {active && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-admin-border pt-4">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/15 pt-4">
           {filters.searchTerm && <AdminBadge variant="neutral">Search: {filters.searchTerm}</AdminBadge>}
           {filters.gender !== 'all' && <AdminBadge variant="neutral">Gender: {filters.gender}</AdminBadge>}
           {filters.redFlagThreshold !== 1 && <AdminBadge variant="neutral">Minimum flags: {filters.redFlagThreshold}</AdminBadge>}
@@ -187,9 +187,9 @@ function FlaggedPostCard({ post, processingPostId, onViewImage, onDeletePost, on
   const isBanning = processingPostId === post.user_id;
 
   return (
-    <article className={`group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5 ${isHighPriority(post) ? 'border-red-200 ring-1 ring-red-100' : 'border-slate-200'}`}>
+    <article className={`admin-glass group rounded-2xl p-4 transition hover:-translate-y-0.5 sm:p-5 ${isHighPriority(post) ? 'ring-2 ring-rose-400/50' : ''}`}>
       <div className="grid gap-5 lg:grid-cols-[140px_1fr_auto] lg:items-start">
-        <button type="button" onClick={() => onViewImage(post.photo_url)} className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-500/20 sm:aspect-square lg:h-32 lg:w-32" aria-label={`View full image for post by @${post.username}`}>
+        <button type="button" onClick={() => onViewImage(post.photo_url)} className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/15 bg-white/5 focus:outline-none focus:ring-4 focus:ring-white/30 sm:aspect-square lg:h-32 lg:w-32" aria-label={`View full image for post by @${post.username}`}>
           <img src={post.photo_url} alt="Post thumbnail" className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
           <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur"><Eye className="h-3 w-3" /> Preview</span>
         </button>
@@ -197,23 +197,23 @@ function FlaggedPostCard({ post, processingPostId, onViewImage, onDeletePost, on
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge post={post} />
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"><User className="h-3.5 w-3.5" /> {post.gender}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white"><User className="h-3.5 w-3.5" /> {post.gender}</span>
           </div>
 
           <div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="truncate text-lg font-semibold text-slate-950">@{post.username}</h3>
-                <p className="mt-1 text-sm text-slate-500">User ID: <span className="font-mono text-xs">{post.user_id}</span></p>
+                <h3 className="truncate text-lg font-semibold text-white">@{post.username}</h3>
+                <p className="mt-1 text-sm text-white/60">User ID: <span className="font-mono text-xs">{post.user_id}</span></p>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500"><Calendar className="h-4 w-4" /><span>{posted.date}</span><span className="text-slate-300">•</span><span>{posted.time}</span></div>
+              <div className="flex items-center gap-2 text-sm text-white/60"><Calendar className="h-4 w-4" /><span>{posted.date}</span><span className="text-white/30">•</span><span>{posted.time}</span></div>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Red flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-red-600"><Flag className="h-4 w-4" />{post.red_flag_count}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Green flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-emerald-600"><CheckCircle className="h-4 w-4" />{post.green_flag_count}</p></div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Risk signal</p><p className={`mt-1 text-sm font-bold ${isHighPriority(post) ? 'text-red-700' : 'text-amber-700'}`}>{isHighPriority(post) ? 'Escalated' : 'Standard review'}</p></div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Red flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-rose-300"><Flag className="h-4 w-4" />{post.red_flag_count}</p></div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Green flags</p><p className="mt-1 flex items-center gap-2 text-xl font-bold text-emerald-300"><CheckCircle className="h-4 w-4" />{post.green_flag_count}</p></div>
+            <div className="rounded-xl border border-white/15 bg-white/5 p-3"><p className="text-xs font-semibold uppercase tracking-wide text-white/50">Risk signal</p><p className={`mt-1 text-sm font-bold ${isHighPriority(post) ? 'text-rose-300' : 'text-amber-300'}`}>{isHighPriority(post) ? 'Escalated' : 'Standard review'}</p></div>
           </div>
         </div>
 
@@ -237,7 +237,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       {[0, 1, 2].map((item) => (
-        <div key={item} className="rounded-admin-xl border border-admin-border/80 bg-admin-surface p-5 shadow-admin-sm">
+        <div key={item} className="admin-glass rounded-3xl p-5">
           <div className="flex gap-5">
             <AdminSkeleton className="h-28 w-28 rounded-admin-xl" />
             <div className="flex-1 space-y-3">
@@ -376,7 +376,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
   const totalRedFlags = useMemo(() => flaggedPosts.reduce((sum, post) => sum + post.red_flag_count, 0), [flaggedPosts]);
 
   if (!isAdmin) {
-    return <AdminLayout activePage={activePage} onNavigate={onNavigate}><div className="rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm"><AlertCircle className="mx-auto mb-4 h-16 w-16 text-red-500" /><h2 className="mb-4 text-2xl font-bold text-red-600">Access Denied</h2><p className="text-slate-700">You do not have administrative privileges to view this page.</p></div></AdminLayout>;
+    return <AdminLayout activePage={activePage} onNavigate={onNavigate}><div className="rounded-3xl border border-rose-300/30 bg-rose-500/15 p-8 text-center backdrop-blur-xl"><AlertCircle className="mx-auto mb-4 h-16 w-16 text-rose-300" /><h2 className="mb-4 text-2xl font-bold text-white">Access Denied</h2><p className="text-white/70">You do not have administrative privileges to view this page.</p></div></AdminLayout>;
   }
 
   return (
@@ -410,7 +410,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
             <p className="mt-1 text-sm text-white/70">Ordered by red flag count, highest first.</p>
           </div>
           {loading ? <LoadingSkeleton /> : flaggedPosts.length === 0 ? (
-            <div className="rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm">
+            <div className="admin-glass rounded-3xl">
               <AdminEmptyState
                 icon={<CheckCircle className="h-8 w-8" />}
                 title="No flagged posts need review right now"
@@ -430,7 +430,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
         {isImageModalOpen && selectedImage && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Post image preview">
             <div className="relative max-h-full w-full max-w-5xl rounded-3xl border border-white/10 bg-slate-900 p-3 shadow-2xl sm:p-4">
-              <div className="mb-3 flex items-center justify-between gap-4 px-1"><div><p className="text-sm font-semibold text-white">Post image preview</p><p className="text-xs text-slate-400">Review media without changing image access behavior.</p></div><button type="button" onClick={closeImageModal} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/20" aria-label="Close image preview"><X className="h-5 w-5" /></button></div>
+              <div className="mb-3 flex items-center justify-between gap-4 px-1"><div><p className="text-sm font-semibold text-white">Post image preview</p><p className="text-xs text-white/50">Review media without changing image access behavior.</p></div><button type="button" onClick={closeImageModal} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/20" aria-label="Close image preview"><X className="h-5 w-5" /></button></div>
               <div className="flex max-h-[78vh] items-center justify-center overflow-hidden rounded-2xl bg-black"><img src={selectedImage} alt="Full size post" className="max-h-[78vh] max-w-full object-contain" /></div>
             </div>
           </div>

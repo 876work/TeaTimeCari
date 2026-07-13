@@ -524,7 +524,7 @@ export function DiscourseCommunityAdmins({
         <AdminFilterBar>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-sm font-semibold text-admin-fg">
+              <h2 className="text-sm font-semibold text-white">
                 Find community members
               </h2>
 
@@ -547,10 +547,10 @@ export function DiscourseCommunityAdmins({
                     key={item.id}
                     type="button"
                     onClick={() => setFilter(item.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20 ${
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 ${
                       filter === item.id
-                        ? "border-admin-brand bg-blue-50 text-blue-700"
-                        : "border-admin-border bg-white text-slate-600 hover:bg-slate-50"
+                        ? "border-white/40 bg-white/25 text-white"
+                        : "border-white/15 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -573,7 +573,7 @@ export function DiscourseCommunityAdmins({
                 />
 
                 <div className="relative flex-1 lg:w-80">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
 
                   <AdminInput
                     type="search"
@@ -592,7 +592,7 @@ export function DiscourseCommunityAdmins({
             </div>
 
             {hasActiveFilters && (
-              <div className="flex flex-wrap gap-2 border-t border-admin-border pt-3">
+              <div className="flex flex-wrap gap-2 border-t border-white/15 pt-3">
                 {filter !== "all" && (
                   <AdminBadge variant="info">
                     Filter: {FILTERS.find((item) => item.id === filter)?.label}
@@ -614,14 +614,14 @@ export function DiscourseCommunityAdmins({
         {error && <AdminAlert variant="error">{error}</AdminAlert>}
 
         <AdminTable>
-          <table className="hidden min-w-full divide-y divide-admin-border md:table">
-            <thead className="bg-admin-muted/70">
+          <table className="hidden min-w-full divide-y divide-white/10 md:table">
+            <thead className="bg-white/10">
               <tr>
                 {["User", "Role", "Status", "Activity", "Actions"].map(
                   (heading) => (
                     <th
                       key={heading}
-                      className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-admin-muted-fg ${
+                      className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-white/50 ${
                         heading === "Actions" ? "text-right" : "text-left"
                       }`}
                     >
@@ -632,7 +632,7 @@ export function DiscourseCommunityAdmins({
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-admin-border bg-admin-surface">
+            <tbody className="divide-y divide-white/10">
               {loading && <CommunityAdminSkeletonRows />}
 
               {!loading && users.length === 0 && (
@@ -668,11 +668,11 @@ export function DiscourseCommunityAdmins({
                   return (
                     <tr
                       key={user.id}
-                      className="transition-colors hover:bg-admin-muted/40"
+                      className="transition-colors hover:bg-white/5"
                     >
                       <td className="px-5 py-5 align-top">
                         <div className="flex items-start gap-3">
-                          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-admin-border bg-admin-muted text-admin-muted-fg">
+                          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/70">
                             {user.admin ? (
                               <Crown className="h-5 w-5 text-amber-500" />
                             ) : (
@@ -681,15 +681,15 @@ export function DiscourseCommunityAdmins({
                           </div>
 
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-admin-fg">
+                            <p className="truncate text-sm font-semibold text-white">
                               {displayName(user)}
                             </p>
 
-                            <p className="mt-0.5 text-xs text-admin-muted-fg">
+                            <p className="mt-0.5 text-xs text-white/60">
                               @{user.username || "unknown"} · ID {user.id}
                             </p>
 
-                            <p className="mt-1 text-xs text-admin-muted-fg">
+                            <p className="mt-1 text-xs text-white/60">
                               {user.email || "No email returned"}
                             </p>
                           </div>
@@ -732,7 +732,7 @@ export function DiscourseCommunityAdmins({
                         </div>
                       </td>
 
-                      <td className="px-5 py-5 align-top text-sm text-admin-muted-fg">
+                      <td className="px-5 py-5 align-top text-sm text-white/60">
                         <div>Joined {formatDate(user.created_at)}</div>
                         <div className="mt-1">
                           Last seen {formatDate(user.last_seen_at)}
@@ -806,7 +806,7 @@ export function DiscourseCommunityAdmins({
                   <AdminCard key={user.id} className="shadow-none">
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-admin-muted text-admin-muted-fg">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
                           {user.admin ? (
                             <Crown className="h-5 w-5 text-amber-500" />
                           ) : (
@@ -815,15 +815,15 @@ export function DiscourseCommunityAdmins({
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-admin-fg">
+                          <p className="truncate text-sm font-semibold text-white">
                             {displayName(user)}
                           </p>
 
-                          <p className="text-xs text-admin-muted-fg">
+                          <p className="text-xs text-white/60">
                             @{user.username || "unknown"} · ID {user.id}
                           </p>
 
-                          <p className="mt-1 break-words text-xs text-admin-muted-fg">
+                          <p className="mt-1 break-words text-xs text-white/60">
                             {user.email || "No email returned"}
                           </p>
                         </div>
@@ -840,7 +840,7 @@ export function DiscourseCommunityAdmins({
                         />
                       </div>
 
-                      <div className="rounded-admin-lg bg-admin-muted p-3 text-xs text-admin-muted-fg">
+                      <div className="rounded-admin-lg bg-white/5 p-3 text-xs text-white/60">
                         <p>Joined {formatDate(user.created_at)}</p>
                         <p className="mt-1">
                           Last seen {formatDate(user.last_seen_at)}
@@ -885,7 +885,7 @@ export function DiscourseCommunityAdmins({
               })}
           </div>
 
-          <div className="flex items-center justify-between border-t border-admin-border bg-admin-muted px-4 py-3">
+          <div className="flex items-center justify-between border-t border-white/15 bg-white/5 px-4 py-3">
             <AdminButton
               type="button"
               onClick={() => fetchUsers(Math.max(0, page - 1))}
@@ -896,7 +896,7 @@ export function DiscourseCommunityAdmins({
               Previous
             </AdminButton>
 
-            <span className="text-sm font-medium text-admin-muted-fg">
+            <span className="text-sm font-medium text-white/60">
               Page {page + 1}
             </span>
 

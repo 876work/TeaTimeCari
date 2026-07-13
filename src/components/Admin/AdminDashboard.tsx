@@ -37,9 +37,8 @@ import FunctionPing from "../../dev/FunctionPing";
 import {
   AdminButton,
   AdminCard,
-  AdminGlassBadge,
-  AdminGlassCard,
-  AdminGlassMetricCard,
+  AdminBadge,
+  AdminMetricCard,
 } from "./ui";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 import { normalizeApprovalStatus } from "@/lib/auth/approvalStatus";
@@ -220,13 +219,13 @@ function RegistrationTrendChart({ data, loading }: { data: DailyCount[]; loading
   const chartData = data.map((day) => ({ ...day, label: dayLabel(day.date) }));
 
   return (
-    <AdminGlassCard
+    <AdminCard
       title="Registration activity"
       description="New account registrations over the last 7 days"
       actions={
-        <AdminGlassBadge>
+        <AdminBadge>
           {loading ? "Loading" : `${formatNumber(total)} this week`}
-        </AdminGlassBadge>
+        </AdminBadge>
       }
     >
       {loading ? (
@@ -276,7 +275,7 @@ function RegistrationTrendChart({ data, loading }: { data: DailyCount[]; loading
           </ResponsiveContainer>
         </div>
       )}
-    </AdminGlassCard>
+    </AdminCard>
   );
 }
 
@@ -285,13 +284,13 @@ function ModerationTrendChart({ data, loading }: { data: DailyCount[]; loading: 
   const chartData = data.map((day) => ({ ...day, label: dayLabel(day.date) }));
 
   return (
-    <AdminGlassCard
+    <AdminCard
       title="Moderation activity"
       description="Newly flagged posts over the last 7 days"
       actions={
-        <AdminGlassBadge variant="danger">
+        <AdminBadge variant="danger">
           {loading ? "Loading" : `${formatNumber(total)} this week`}
-        </AdminGlassBadge>
+        </AdminBadge>
       }
     >
       {loading ? (
@@ -327,7 +326,7 @@ function ModerationTrendChart({ data, loading }: { data: DailyCount[]; loading: 
           </ResponsiveContainer>
         </div>
       )}
-    </AdminGlassCard>
+    </AdminCard>
   );
 }
 
@@ -350,7 +349,7 @@ function GlassDonut({
   const visibleSlices = data.filter((slice) => slice.value > 0);
 
   return (
-    <AdminGlassCard title={title} description={description}>
+    <AdminCard title={title} description={description}>
       {loading ? (
         <div className="admin-skeleton-glass h-48 w-full rounded-2xl" />
       ) : total === 0 ? (
@@ -397,7 +396,7 @@ function GlassDonut({
           </ul>
         </div>
       )}
-    </AdminGlassCard>
+    </AdminCard>
   );
 }
 
@@ -768,7 +767,7 @@ export function AdminDashboard({
 
             <div className="flex flex-col items-start gap-3 sm:items-end">
               <div className="flex flex-wrap items-center gap-2">
-                <AdminGlassBadge
+                <AdminBadge
                   variant={
                     error ? "danger" : totalAttentionItems > 0 ? "warning" : "success"
                   }
@@ -778,9 +777,9 @@ export function AdminDashboard({
                     : totalAttentionItems > 0
                     ? `${formatNumber(totalAttentionItems)} need attention`
                     : "No urgent items"}
-                </AdminGlassBadge>
+                </AdminBadge>
 
-                <AdminGlassBadge>Last synced {formatTime(lastUpdated)}</AdminGlassBadge>
+                <AdminBadge>Last synced {formatTime(lastUpdated)}</AdminBadge>
               </div>
 
               <AdminButton type="button" variant="glass" onClick={fetchData} disabled={loading}>
@@ -809,34 +808,34 @@ export function AdminDashboard({
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <AdminGlassMetricCard
+          <AdminMetricCard
             title="Total users"
             value={loading ? "" : formatNumber(stats.total)}
             icon={<Users className="h-5 w-5" />}
-            accent="blue"
+            accent="brand"
             description="All admin-visible registrations"
             loading={loading}
           />
 
-          <AdminGlassMetricCard
+          <AdminMetricCard
             title="Pending reviews"
             value={loading ? "" : formatNumber(stats.pending)}
             icon={<Clock className="h-5 w-5" />}
-            accent="purple"
+            accent="info"
             description="Waiting for an admin decision"
             loading={loading}
           />
 
-          <AdminGlassMetricCard
+          <AdminMetricCard
             title="Flagged posts"
             value={loading ? "" : formatNumber(moderationStats.flaggedPosts)}
             icon={<Flag className="h-5 w-5" />}
-            accent="rose"
+            accent="danger"
             description={`${formatNumber(moderationStats.highRiskPosts)} high risk (5+ red flags)`}
             loading={loading}
           />
 
-          <AdminGlassMetricCard
+          <AdminMetricCard
             title="Online now"
             value={loading ? "" : formatNumber(stats.online)}
             icon={<Wifi className="h-5 w-5" />}
@@ -849,7 +848,7 @@ export function AdminDashboard({
         </div>
 
         <div className="grid gap-6 xl:grid-cols-3">
-          <AdminGlassCard
+          <AdminCard
             title="Needs attention"
             description="The highest-priority queues based on existing dashboard data."
             className="xl:col-span-2"
@@ -931,9 +930,9 @@ export function AdminDashboard({
                 </>
               )}
             </div>
-          </AdminGlassCard>
+          </AdminCard>
 
-          <AdminGlassCard title="Quick actions" description="Shortcuts to existing admin destinations.">
+          <AdminCard title="Quick actions" description="Shortcuts to existing admin destinations.">
             <div className="space-y-3">
               <GlassShortcutButton
                 label="Users"
@@ -975,7 +974,7 @@ export function AdminDashboard({
                 onNavigate={onNavigate}
               />
             </div>
-          </AdminGlassCard>
+          </AdminCard>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-5">

@@ -113,7 +113,7 @@ export default function FunctionPing() {
   }
 
   return (
-    <div style={{ padding: 16, fontFamily: "system-ui" }}>
+    <div style={{ padding: 16, fontFamily: "system-ui", color: "#fff" }}>
       <h2>Function Ping</h2>
       <div style={{ marginBottom: 8 }}>
         <div><b>VITE_SUPABASE_URL</b>: {url}</div>
@@ -159,7 +159,7 @@ export default function FunctionPing() {
         >
           {backfillRunning ? 'Backfilling location data…' : 'Backfill IP location (25 users)'}
         </button>
-        <p style={{ fontSize: 12, color: '#666', marginTop: 4, maxWidth: 480 }}>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4, maxWidth: 480 }}>
           Fills in city/region/country/timezone for existing users who already have an IP address
           on file but never got a location lookup. Uses their own admin login, not the anon key.
           Safe to click repeatedly — each run picks up the next 25 not-yet-looked-up rows.
