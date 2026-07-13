@@ -184,13 +184,13 @@ function DetailField({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-admin-lg border border-admin-border bg-white px-3 py-2">
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-admin-muted-fg">
+    <div className="rounded-admin-lg border border-white/15 bg-white/5 px-3 py-2">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
         {label}
       </dt>
 
       <dd
-        className={`mt-1 break-words text-sm text-admin-fg ${
+        className={`mt-1 break-words text-sm text-white ${
           mono ? "font-mono text-xs" : ""
         }`}
       >
@@ -202,7 +202,7 @@ function DetailField({
 
 function AuditLogDetailPanel({ log }: { log: AdminAuditLog }) {
   return (
-    <div className="rounded-admin-xl border border-admin-border bg-admin-muted/60 p-4">
+    <div className="rounded-admin-xl border border-white/15 bg-white/5 p-4">
       <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <DetailField label="Log ID" value={log.id} mono />
         <DetailField label="Action" value={log.action} mono />
@@ -247,11 +247,11 @@ function AuditLogFilters({
   return (
     <AdminFilterBar>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label className="flex-1 text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">
+        <label className="flex-1 text-xs font-semibold uppercase tracking-wide text-white/60">
           Search logs
 
           <div className="relative mt-1.5">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
 
             <AdminInput
               value={search}
@@ -262,7 +262,7 @@ function AuditLogFilters({
           </div>
         </label>
 
-        <label className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg lg:w-44">
+        <label className="text-xs font-semibold uppercase tracking-wide text-white/60 lg:w-44">
           Result
 
           <AdminSelect
@@ -278,7 +278,7 @@ function AuditLogFilters({
           </AdminSelect>
         </label>
 
-        <label className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg lg:w-48">
+        <label className="text-xs font-semibold uppercase tracking-wide text-white/60 lg:w-48">
           Category
 
           <AdminSelect
@@ -305,7 +305,7 @@ function AuditLogFilters({
       </div>
 
       {hasFilters && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-admin-border pt-3">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/15 pt-3">
           <AdminBadge variant="muted" className="gap-1">
             <SlidersHorizontal className="h-3 w-3" />
             Active filters
@@ -402,12 +402,12 @@ function AuditLogRow({
 }) {
   return (
     <>
-      <tr className="align-top transition-colors hover:bg-admin-muted/70">
+      <tr className="align-top transition-colors hover:bg-white/5">
         <td className="px-4 py-4">
           <button
             type="button"
             onClick={onToggle}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-admin-md text-admin-muted-fg transition hover:bg-white hover:text-admin-fg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-admin-md text-white/60 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
             aria-expanded={expanded}
             aria-label={`${expanded ? "Hide" : "Show"} details for ${formatAction(
               log.action
@@ -427,7 +427,7 @@ function AuditLogRow({
 
         <td className="px-4 py-4">
           <div className="space-y-1.5">
-            <p className="text-sm font-semibold text-admin-fg">
+            <p className="text-sm font-semibold text-white">
               {formatAction(log.action)}
             </p>
 
@@ -440,7 +440,7 @@ function AuditLogRow({
             )}
 
             {log.reason && (
-              <p className="max-w-sm text-xs text-admin-muted-fg">
+              <p className="max-w-sm text-xs text-white/60">
                 Reason: {log.reason}
               </p>
             )}
@@ -448,30 +448,30 @@ function AuditLogRow({
         </td>
 
         <td className="px-4 py-4">
-          <p className="text-sm font-medium text-admin-fg">
+          <p className="text-sm font-medium text-white">
             {log.actor_email || "System"}
           </p>
 
-          <p className="mt-1 text-xs text-admin-muted-fg">
+          <p className="mt-1 text-xs text-white/60">
             {log.actor_role || "—"}
           </p>
         </td>
 
         <td className="px-4 py-4">
-          <p className="text-sm font-medium text-admin-fg">
+          <p className="text-sm font-medium text-white">
             {log.target_email || log.target_id || "—"}
           </p>
 
-          <p className="mt-1 text-xs text-admin-muted-fg">
+          <p className="mt-1 text-xs text-white/60">
             {log.target_type || "—"}
           </p>
         </td>
 
-        <td className="px-4 py-4 text-sm text-admin-muted-fg">
+        <td className="px-4 py-4 text-sm text-white/60">
           {getStatusTransition(log)}
         </td>
 
-        <td className="whitespace-nowrap px-4 py-4 text-sm text-admin-muted-fg">
+        <td className="whitespace-nowrap px-4 py-4 text-sm text-white/60">
           {formatDate(log.created_at)}
         </td>
       </tr>
@@ -480,7 +480,7 @@ function AuditLogRow({
         <tr>
           <td
             colSpan={7}
-            className="border-t border-admin-border bg-admin-muted/30 px-4 py-4"
+            className="border-t border-white/10 bg-white/5 px-4 py-4"
           >
             <AuditLogDetailPanel log={log} />
           </td>
@@ -509,11 +509,11 @@ function AuditLogMobileCard({
               <AuditLogActionBadge log={log} />
             </div>
 
-            <h3 className="text-sm font-semibold text-admin-fg">
+            <h3 className="text-sm font-semibold text-white">
               {formatAction(log.action)}
             </h3>
 
-            <p className="text-xs text-admin-muted-fg">
+            <p className="text-xs text-white/60">
               <Clock className="mr-1 inline h-3.5 w-3.5" />
               {formatDate(log.created_at)}
             </p>
@@ -522,7 +522,7 @@ function AuditLogMobileCard({
           <button
             type="button"
             onClick={onToggle}
-            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-admin-md border border-admin-border bg-white text-admin-muted-fg shadow-admin-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20"
+            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-admin-md border border-white/20 bg-white/10 text-white/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
             aria-expanded={expanded}
             aria-label={`${expanded ? "Hide" : "Show"} details for ${formatAction(
               log.action
@@ -538,39 +538,39 @@ function AuditLogMobileCard({
 
         <div className="grid gap-3 text-sm">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
               Actor
             </p>
 
-            <p className="font-medium text-admin-fg">
+            <p className="font-medium text-white">
               {log.actor_email || "System"}
             </p>
 
-            <p className="text-xs text-admin-muted-fg">
+            <p className="text-xs text-white/60">
               {log.actor_role || "—"}
             </p>
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
               Target
             </p>
 
-            <p className="font-medium text-admin-fg">
+            <p className="font-medium text-white">
               {log.target_email || log.target_id || "—"}
             </p>
 
-            <p className="text-xs text-admin-muted-fg">
+            <p className="text-xs text-white/60">
               {log.target_type || "—"}
             </p>
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-admin-muted-fg">
+            <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
               Status
             </p>
 
-            <p className="text-admin-muted-fg">{getStatusTransition(log)}</p>
+            <p className="text-white/60">{getStatusTransition(log)}</p>
           </div>
         </div>
 
@@ -581,7 +581,7 @@ function AuditLogMobileCard({
         )}
 
         {log.reason && (
-          <p className="rounded-admin-lg bg-admin-muted px-3 py-2 text-xs text-admin-muted-fg">
+          <p className="rounded-admin-lg bg-white/5 px-3 py-2 text-xs text-white/60">
             Reason: {log.reason}
           </p>
         )}
@@ -600,33 +600,33 @@ function AuditLogTable({ logs }: { logs: AdminAuditLog[] }) {
       <div className="hidden lg:block">
         <AdminTable>
           <table className="min-w-full divide-y divide-admin-border">
-            <thead className="bg-admin-muted/80">
+            <thead className="bg-white/10">
               <tr>
-                <th className="w-12 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="w-12 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Details
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Result
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Action
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Actor
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Target
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-admin-muted-fg">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/50">
                   Time
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-admin-border bg-white">
+            <tbody className="divide-y divide-white/10">
               {logs.map((log) => (
                 <AuditLogRow
                   key={log.id}
@@ -666,7 +666,7 @@ function AuditLogLoadingState() {
           <AdminSkeleton key={item} className="h-14 w-full" />
         ))}
 
-        <div className="flex items-center justify-center gap-3 py-6 text-sm text-admin-muted-fg">
+        <div className="flex items-center justify-center gap-3 py-6 text-sm text-white/60">
           <Loader2 className="h-5 w-5 animate-spin text-admin-brand" />
           Loading audit logs…
         </div>
