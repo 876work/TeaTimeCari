@@ -17,7 +17,6 @@ import {
   Lock,
   Mail,
   KeyRound,
-  Sparkles,
   FileText,
   Clock,
   ExternalLink,
@@ -73,58 +72,6 @@ interface DiscourseActivityResponse {
   recentComments?: DiscourseComment[];
   stats?: Partial<UserStats>;
   error?: string;
-}
-
-type VisibilityAudience = "only-you" | "admins" | "community";
-
-interface VisibilityIndicatorProps {
-  audience: VisibilityAudience;
-  isOwnProfile?: boolean;
-  className?: string;
-}
-
-const visibilityStyles: Record<VisibilityAudience, string> = {
-  "only-you": "border-slate-200 bg-slate-50 text-slate-700",
-  admins: "border-amber-200 bg-amber-50 text-amber-800",
-  community: "border-emerald-200 bg-emerald-50 text-emerald-800",
-};
-
-const visibilityIcons = {
-  "only-you": Lock,
-  admins: Shield,
-  community: Users,
-};
-
-function getVisibilityLabel(
-  audience: VisibilityAudience,
-  isOwnProfile = true,
-): string {
-  if (audience === "only-you")
-    return isOwnProfile
-      ? "Visible to: only you"
-      : "Visible to: this member only";
-  if (audience === "admins")
-    return isOwnProfile
-      ? "Visible to: you + admins"
-      : "Visible to: this member + admins";
-  return "Visible to: community";
-}
-
-function VisibilityIndicator({
-  audience,
-  isOwnProfile = true,
-  className = "",
-}: VisibilityIndicatorProps) {
-  const Icon = visibilityIcons[audience];
-
-  return (
-    <span
-      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${visibilityStyles[audience]} ${className}`}
-    >
-      <Icon className="mr-1.5 h-3.5 w-3.5" />
-      {getVisibilityLabel(audience, isOwnProfile)}
-    </span>
-  );
 }
 
 interface UserProfileProps {
@@ -540,31 +487,31 @@ export function UserProfile({ userId }: UserProfileProps) {
       <div className="max-w-4xl mx-auto space-y-6">
         <button
           onClick={goBackToFeed}
-          className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+          className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Feed
         </button>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center mb-4 sm:mb-0">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center mr-4 ${
+                className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${
                   isBanned
                     ? "bg-red-100"
                     : profileUser.gender === "Male"
-                      ? "bg-blue-100"
-                      : "bg-pink-100"
+                      ? "bg-brand-blue-muted"
+                      : "bg-brand-rose-muted"
                 }`}
               >
                 <User
-                  className={`w-8 h-8 ${
+                  className={`h-8 w-8 ${
                     isBanned
                       ? "text-red-600"
                       : profileUser.gender === "Male"
-                        ? "text-blue-600"
-                        : "text-pink-600"
+                        ? "text-brand-blue"
+                        : "text-brand-rose"
                   }`}
                 />
               </div>
@@ -573,47 +520,29 @@ export function UserProfile({ userId }: UserProfileProps) {
                   <h1 className="text-2xl font-bold text-gray-900">
                     {profileUser.fullName}
                   </h1>
-                  <VisibilityIndicator
-                    audience="admins"
-                    isOwnProfile={isOwnProfile}
-                  />
                   {isBanned && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      <ShieldOff className="w-3 h-3 mr-1" />
+                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-800">
+                      <ShieldOff className="mr-1 h-3 w-3" />
                       Banned
                     </span>
                   )}
                   {isOwnProfile && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center rounded-full bg-brand-blue-muted px-2 py-1 text-xs font-medium text-brand-blue-dark">
                       You
                     </span>
                   )}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-gray-600">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
                   <span>@{profileUser.username}</span>
-                  <VisibilityIndicator
-                    audience="community"
-                    isOwnProfile={isOwnProfile}
-                  />
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
                   <span className="inline-flex items-center">
-                    <Users className="w-4 h-4 mr-1" />
+                    <Users className="mr-1 h-3.5 w-3.5" />
                     {profileUser.gender}
                   </span>
-                  <VisibilityIndicator
-                    audience="community"
-                    isOwnProfile={isOwnProfile}
-                  />
                   <span className="inline-flex items-center">
-                    <Calendar className="w-4 h-4 mr-1" />
+                    <Calendar className="mr-1 h-3.5 w-3.5" />
                     Joined{" "}
                     {new Date(profileUser.created_at).toLocaleDateString()}
                   </span>
-                  <VisibilityIndicator
-                    audience="community"
-                    isOwnProfile={isOwnProfile}
-                  />
                 </div>
               </div>
             </div>
@@ -622,10 +551,10 @@ export function UserProfile({ userId }: UserProfileProps) {
               <button
                 onClick={handleToggleBan}
                 disabled={processingBan}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center justify-center rounded-lg px-4 py-2 font-medium text-white transition-colors ${
                   isBanned
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-red-600 hover:bg-red-700 text-white"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
                 } ${processingBan ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {processingBan ? (
@@ -638,6 +567,13 @@ export function UserProfile({ userId }: UserProfileProps) {
                 {isBanned ? "Unban User" : "Ban User"}
               </button>
             )}
+          </div>
+
+          <div className="mt-4 flex items-center gap-1.5 border-t border-slate-100 pt-4 text-xs text-gray-500">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            This page is only visible to {isOwnProfile ? "you" : "you and admins"}.
+            Username, gender, and join date may still appear in community
+            posts and comments.
           </div>
         </div>
 
@@ -653,118 +589,27 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-6 py-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="flex items-center text-lg font-semibold text-gray-900">
-                  <Lock className="mr-2 h-5 w-5 text-slate-500" />
-                  Profile privacy at a glance
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-                  Public profile pages are intentionally limited. Non-admin
-                  community members cannot open another member's full profile
-                  page in this app; community visibility means the field may
-                  still appear in shared community surfaces such as posts,
-                  comments, or member context.
-                </p>
-              </div>
-              <VisibilityIndicator
-                audience="only-you"
-                isOwnProfile={isOwnProfile}
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Full name
-              </p>
-              <div className="mt-2">
-                <VisibilityIndicator
-                  audience="admins"
-                  isOwnProfile={isOwnProfile}
-                />
-              </div>
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                Used for account review and moderation, not community display.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Username
-              </p>
-              <div className="mt-2">
-                <VisibilityIndicator
-                  audience="community"
-                  isOwnProfile={isOwnProfile}
-                />
-              </div>
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                Your community-facing identity.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Gender
-              </p>
-              <div className="mt-2">
-                <VisibilityIndicator
-                  audience="community"
-                  isOwnProfile={isOwnProfile}
-                />
-              </div>
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                Used to place members in appropriate community spaces.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Joined date
-              </p>
-              <div className="mt-2">
-                <VisibilityIndicator
-                  audience="community"
-                  isOwnProfile={isOwnProfile}
-                />
-              </div>
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                Shows account tenure without exposing contact details.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {isOwnProfile && (
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-blue-900/10">
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#4B9EC8] px-6 py-6 text-white">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="mb-2 inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-50">
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Private account tools
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-2xl font-bold">Security settings</h2>
-                    <VisibilityIndicator audience="only-you" />
-                  </div>
-                  <p className="mt-2 max-w-2xl text-sm text-blue-50/90">
-                    Change your password with Supabase reauthentication. We
-                    email you a one-time code first so your account stays
-                    protected.
-                  </p>
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-brand-blue px-6 py-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <Shield className="h-5 w-5" />
                 </div>
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
-                  <Shield className="h-7 w-7" />
+                <div>
+                  <h2 className="text-lg font-semibold">Security settings</h2>
+                  <p className="text-sm text-blue-50/90">
+                    Change your password with an emailed verification code.
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-6 p-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
                 <div className="mb-4 flex items-center text-blue-900">
                   <Mail className="mr-2 h-5 w-5" />
-                  <h3 className="font-semibold">How reauthentication works</h3>
+                  <h3 className="font-semibold">How it works</h3>
                 </div>
                 <ol className="space-y-3 text-sm text-blue-950/80">
                   <li className="flex gap-3">
@@ -783,8 +628,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                       3
                     </span>
-                    Supabase verifies the code before saving the password
-                    change.
+                    We verify the code before saving the change.
                   </li>
                 </ol>
 
@@ -897,7 +741,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                   <button
                     type="submit"
                     disabled={securityLoading || !reauthEmailSent}
-                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#4B9EC8] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3d8bb3] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-brand-blue px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {securityLoading && reauthEmailSent ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -919,56 +763,51 @@ export function UserProfile({ userId }: UserProfileProps) {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Profile Statistics
-            </h2>
-            <span className="text-sm text-gray-500">
-              Pulled from Discourse community activity
-            </span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <Camera className="w-5 h-5 text-blue-600 mr-1" />
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">
+            Community activity
+          </h2>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand-blue-muted">
+                <Camera className="h-4 w-4 text-brand-blue" />
               </div>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-gray-900">
                 {userStats.totalPhotos}
               </div>
-              <div className="text-sm text-gray-600">Photos uploaded</div>
+              <div className="text-sm text-gray-500">Photos</div>
             </div>
 
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <MessageSquare className="w-5 h-5 text-purple-600 mr-1" />
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand-purple-muted">
+                <MessageSquare className="h-4 w-4 text-brand-purple" />
               </div>
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-gray-900">
                 {userStats.totalComments}
               </div>
-              <div className="text-sm text-gray-600">Comments made</div>
+              <div className="text-sm text-gray-500">Comments</div>
             </div>
 
-            <div className="text-center p-4 bg-amber-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <FileText className="w-5 h-5 text-amber-600 mr-1" />
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-brand-rose-muted">
+                <FileText className="h-4 w-4 text-brand-rose" />
               </div>
-              <div className="text-2xl font-bold text-amber-600">
+              <div className="text-2xl font-bold text-gray-900">
                 {userStats.totalTopics}
               </div>
-              <div className="text-sm text-gray-600">Topics started</div>
+              <div className="text-sm text-gray-500">Topics</div>
             </div>
 
-            <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <Clock className="w-5 h-5 text-slate-600 mr-1" />
+            <div className="rounded-xl bg-slate-50 p-4 text-center">
+              <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-200">
+                <Clock className="h-4 w-4 text-slate-600" />
               </div>
-              <div className="text-sm font-bold text-slate-700">
+              <div className="text-sm font-bold text-gray-900">
                 {userStats.lastActivityAt
                   ? new Date(userStats.lastActivityAt).toLocaleDateString()
                   : "No activity"}
               </div>
-              <div className="text-sm text-gray-600">Last activity</div>
+              <div className="text-sm text-gray-500">Last activity</div>
             </div>
           </div>
           {discourseError && (
@@ -978,8 +817,8 @@ export function UserProfile({ userId }: UserProfileProps) {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+          <h2 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
             <ImageIcon className="w-5 h-5 mr-2" />
             Photos ({userStats.totalPhotos})
           </h2>
@@ -1001,7 +840,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                 <div key={photo.id} className="relative group">
                   <button
                     type="button"
-                    className="aspect-square w-full bg-gray-100 rounded-lg overflow-hidden cursor-pointer text-left"
+                    className="aspect-square w-full bg-gray-100 rounded-xl overflow-hidden cursor-pointer text-left"
                     onClick={() => openImageModal(photo.url)}
                     aria-label={`Open photo from ${photo.topic_title}`}
                   >
@@ -1018,7 +857,7 @@ export function UserProfile({ userId }: UserProfileProps) {
                     href={photo.post_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                    className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-brand-blue hover:text-brand-blue-dark"
                   >
                     View in Discourse
                     <ExternalLink className="h-3 w-3" />
@@ -1034,8 +873,8 @@ export function UserProfile({ userId }: UserProfileProps) {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-6">
+          <h2 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
             <MessageSquare className="w-5 h-5 mr-2" />
             Recent Comments ({Math.min(recentComments.length, 2)} of{" "}
             {userStats.totalComments})
@@ -1054,13 +893,13 @@ export function UserProfile({ userId }: UserProfileProps) {
                   href={comment.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block border border-gray-200 rounded-lg p-4 hover:border-blue-200 hover:bg-blue-50/50 transition-colors"
+                  className="block rounded-xl border border-gray-200 p-4 transition-colors hover:border-brand-blue-light hover:bg-brand-blue-muted/40"
                 >
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
                         <span className="truncate">{comment.topic_title}</span>
-                        <ExternalLink className="h-4 w-4 flex-shrink-0 text-blue-600" />
+                        <ExternalLink className="h-4 w-4 flex-shrink-0 text-brand-blue" />
                       </div>
                       {comment.target_username && (
                         <p className="mt-1 text-xs text-gray-500">
@@ -1082,19 +921,6 @@ export function UserProfile({ userId }: UserProfileProps) {
               ))}
             </div>
           )}
-        </div>
-
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-5">
-          <h2 className="flex items-center text-lg font-semibold text-blue-950">
-            <Sparkles className="mr-2 h-5 w-5 text-blue-700" />
-            Suggested next addition
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-blue-900">
-            I would add an "Open in Discourse" profile shortcut and a small
-            privacy reminder explaining that Discourse activity shown here is
-            limited to the signed-in member or admins, because community photos
-            and comments can be sensitive.
-          </p>
         </div>
 
         {isImageModalOpen && selectedImage && (
