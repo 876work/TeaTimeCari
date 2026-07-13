@@ -9,6 +9,7 @@ type Permission =
   | "users:reject"
   | "users:suspend"
   | "users:invite"
+  | "users:reset_password"
   | "posts:moderate"
   | "discourse:admin_manage"
   | "logs:view"
@@ -48,6 +49,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "users:reject",
     "users:suspend",
     "users:invite",
+    "users:reset_password",
     "posts:moderate",
     "discourse:admin_manage",
     "logs:view",
@@ -61,12 +63,18 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "users:reject",
     "users:suspend",
     "users:invite",
+    "users:reset_password",
     "posts:moderate",
     "discourse:admin_manage",
     "logs:view",
     "health:view",
   ],
-  moderator: ["admin:access", "users:view", "users:suspend", "posts:moderate"],
+  moderator: [
+    "admin:access",
+    "users:view",
+    "users:suspend",
+    "posts:moderate",
+  ],
 };
 
 function normalizeEmail(value?: string | null) {
@@ -76,23 +84,31 @@ function normalizeEmail(value?: string | null) {
 function getBearerToken(req: Request) {
   const header = req.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
+
   return match?.[1] || null;
 }
 
-function isSchemaCompatibilityError(error: { code?: string; message?: string } | null) {
+function isSchemaCompatibilityError(error: {
+  code?: string;
+  message?: string;
+} | null) {
   const message = error?.message?.toLowerCase() || "";
+
   return (
     error?.code === "PGRST204" ||
     error?.code === "42703" ||
     error?.code === "42P01" ||
     (message.includes("schema cache") && message.includes("could not find")) ||
     (message.includes("column") && message.includes("does not exist")) ||
-    message.includes("relation \"public.admin_roles\" does not exist")
+    message.includes('relation "public.admin_roles" does not exist')
   );
 }
 
 function allowLegacyAdminEmailFallback() {
-  return (Deno.env.get("ENABLE_LEGACY_ADMIN_EMAIL_FALLBACK") || "false").toLowerCase() === "true";
+  return (
+    (Deno.env.get("ENABLE_LEGACY_ADMIN_EMAIL_FALLBACK") || "false").toLowerCase() ===
+    "true"
+  );
 }
 
 function roleHasPermission(role: AdminRole, permission: Permission) {
@@ -107,11 +123,17 @@ async function getProfileAdmin(userId: string) {
     .maybeSingle();
 
   if (error) {
-    if (isSchemaCompatibilityError(error)) return { isAdmin: false, email: null };
+    if (isSchemaCompatibilityError(error)) {
+      return { isAdmin: false, email: null };
+    }
+
     throw error;
   }
 
-  return { isAdmin: Boolean(data?.is_admin), email: data?.email ?? null };
+  return {
+    isAdmin: Boolean(data?.is_admin),
+    email: data?.email ?? null,
+  };
 }
 
 async function getRole(userId: string): Promise<AdminRole | null> {
@@ -124,18 +146,29 @@ async function getRole(userId: string): Promise<AdminRole | null> {
 
   if (error) {
     if (isSchemaCompatibilityError(error)) return null;
+
     throw error;
   }
 
-  if (data?.role === "owner" || data?.role === "admin" || data?.role === "moderator") return data.role;
+  if (
+    data?.role === "owner" ||
+    data?.role === "admin" ||
+    data?.role === "moderator"
+  ) {
+    return data.role;
+  }
+
   return null;
 }
 
 export async function getAdminActor(req: Request): Promise<AdminActor | null> {
   const token = getBearerToken(req);
+
   if (!token) return null;
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+  const { data: authData, error: authError } =
+    await supabaseAdmin.auth.getUser(token);
+
   if (authError || !authData.user) return null;
 
   const authEmail = normalizeEmail(authData.user.email);
@@ -143,10 +176,17 @@ export async function getAdminActor(req: Request): Promise<AdminActor | null> {
   const profileEmail = normalizeEmail(profile.email);
   const role = await getRole(authData.user.id);
 
-  const isPermanentOwner = OWNER_USER_IDS.has(authData.user.id) || OWNER_EMAILS.has(authEmail) || OWNER_EMAILS.has(profileEmail);
-  const isLegacyAdmin = allowLegacyAdminEmailFallback() && [authEmail, profileEmail].some((email) => email.includes("admin"));
+  const isPermanentOwner =
+    OWNER_USER_IDS.has(authData.user.id) ||
+    OWNER_EMAILS.has(authEmail) ||
+    OWNER_EMAILS.has(profileEmail);
+
+  const isLegacyAdmin =
+    allowLegacyAdminEmailFallback() &&
+    [authEmail, profileEmail].some((email) => email.includes("admin"));
 
   let effectiveRole: AdminRole | null = role;
+
   if (!effectiveRole && isPermanentOwner) effectiveRole = "owner";
   if (!effectiveRole && profile.isAdmin) effectiveRole = "admin";
   if (!effectiveRole && isLegacyAdmin) effectiveRole = "admin";
@@ -161,13 +201,33 @@ export async function getAdminActor(req: Request): Promise<AdminActor | null> {
   };
 }
 
-export async function requireAdmin(req: Request, permission: Permission = "admin:access") {
+export async function requireAdmin(
+  req: Request,
+  permission: Permission = "admin:access"
+) {
   const actor = await getAdminActor(req);
-  if (!actor) return { actor: null, error: "Forbidden: admin only", status: 403 } as const;
-  if (!roleHasPermission(actor.role, permission)) {
-    return { actor: null, error: `Forbidden: missing ${permission}`, status: 403 } as const;
+
+  if (!actor) {
+    return {
+      actor: null,
+      error: "Forbidden: admin only",
+      status: 403,
+    } as const;
   }
-  return { actor, error: null, status: 200 } as const;
+
+  if (!roleHasPermission(actor.role, permission)) {
+    return {
+      actor: null,
+      error: `Forbidden: missing ${permission}`,
+      status: 403,
+    } as const;
+  }
+
+  return {
+    actor,
+    error: null,
+    status: 200,
+  } as const;
 }
 
 export async function writeAdminAuditLog(input: {
@@ -184,25 +244,24 @@ export async function writeAdminAuditLog(input: {
   success?: boolean;
   errorMessage?: string | null;
 }) {
-  const { error } = await supabaseAdmin
-    .from("admin_audit_logs")
-    .insert({
-      actor_user_id: input.actor?.userId ?? null,
-      actor_email: input.actor?.email ?? null,
-      actor_role: input.actor?.role ?? null,
-      action: input.action,
-      target_type: input.targetType ?? null,
-      target_id: input.targetId ?? null,
-      target_email: input.targetEmail ?? null,
-      previous_status: input.previousStatus ?? null,
-      next_status: input.nextStatus ?? null,
-      reason: input.reason ?? null,
-      metadata: input.metadata ?? {},
-      ip_address: input.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-      user_agent: input.req?.headers.get("user-agent") ?? null,
-      success: input.success ?? true,
-      error_message: input.errorMessage ?? null,
-    });
+  const { error } = await supabaseAdmin.from("admin_audit_logs").insert({
+    actor_user_id: input.actor?.userId ?? null,
+    actor_email: input.actor?.email ?? null,
+    actor_role: input.actor?.role ?? null,
+    action: input.action,
+    target_type: input.targetType ?? null,
+    target_id: input.targetId ?? null,
+    target_email: input.targetEmail ?? null,
+    previous_status: input.previousStatus ?? null,
+    next_status: input.nextStatus ?? null,
+    reason: input.reason ?? null,
+    metadata: input.metadata ?? {},
+    ip_address:
+      input.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    user_agent: input.req?.headers.get("user-agent") ?? null,
+    success: input.success ?? true,
+    error_message: input.errorMessage ?? null,
+  });
 
   if (error) {
     console.warn("Unable to write admin audit log", error);
