@@ -218,13 +218,15 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       <div className="space-y-6">
         <RegistrationProgress currentStep={4} className="mb-6" />
 
-        <div id="confirmation-receipt" className="rounded-2xl border p-8 shadow-sm bg-white">
+        <div id="confirmation-receipt" className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)]">
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]" aria-hidden="true" />
+
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF6FC] to-[#D6EBF5] shadow-md ring-4 ring-white">
               <Shield className="w-8 h-8 text-[#4B9EC8]" />
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Confirmation Receipt</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">Confirmation Receipt</h2>
 
             <p className="text-sm text-gray-600">
               Your registration application was received.
@@ -232,8 +234,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           </div>
 
           <div className="space-y-6">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-amber-600" />
                 Application Status
               </h3>
@@ -258,8 +260,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center">
                 <Shield className="w-5 h-5 mr-2 text-blue-600" />
                 Privacy Note
               </h3>
@@ -272,18 +274,20 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           </div>
         </div>
 
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-md ring-4 ring-white">
+            <CheckCircle className="w-9 h-9 text-emerald-500" />
+          </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
             {alreadyExists ? 'Application Already Submitted!' : 'Application Submitted!'}
           </h1>
 
-          <p className="text-sm text-gray-600 mb-4 font-medium">
+          <p className="text-sm text-slate-600 mb-4 font-medium">
             {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with instructions to access the community forum."}
           </p>
 
-          <div className="text-sm text-gray-600 mb-6">
+          <div className="text-sm text-slate-600 mb-6">
             {alreadyExists
               ? "Your application is already in our system. No need to resubmit - we'll email you with forum access instructions once reviewed."
               : "You can close this page. We'll email you with forum access instructions once your application is approved."}
@@ -293,9 +297,9 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
             <button
               onClick={downloadReceiptAsImage}
               disabled={isDownloading || isSubmitting}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              className={`w-full py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
                 !isDownloading && !isSubmitting
-                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
@@ -316,14 +320,14 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
               <button
                 onClick={onGoHome}
                 disabled={isSubmitting}
-                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-black text-white"
+                className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 border border-slate-200 bg-white font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
               >
                 Go to Home
               </button>
 
               <Link
                 to="/contact-us"
-                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"
+                className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 border border-slate-200 bg-white font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
               >
                 Need help?
               </Link>

@@ -463,12 +463,12 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
     }
   };
   
-  const fieldLabelClass = "text-sm font-medium text-gray-700";
+  const fieldLabelClass = "text-sm font-semibold text-slate-700";
   const fieldLabelRowClass = "mb-2 flex flex-wrap items-center gap-1.5";
   const fieldHelpButtonClass = "inline-flex h-6 w-6 items-center justify-center rounded-full text-[#4B9EC8] transition-colors hover:bg-[#D6EBF5] hover:text-[#3382AA] focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2";
   const fieldHelpIconClass = "h-4 w-4";
   const fieldHelpNoteClass = "mb-3 rounded-lg bg-[#F5FBFE] px-3 py-2 text-xs leading-5 text-slate-600 ring-1 ring-[#D6EBF5]";
-  const fieldInputClass = "w-full px-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]";
+  const fieldInputClass = "w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-slate-900 shadow-sm transition-all placeholder:text-slate-400 hover:border-[#4B9EC8] focus:border-[#4B9EC8] focus:outline-none focus:ring-4 focus:ring-[#4B9EC8]/15";
   const fieldInputWithRightIconClass = `${fieldInputClass} pr-12`;
   const passwordInputClass = `${fieldInputClass} pl-10 pr-12`;
   const normalizedEmailName = formData.email.split('@')[0]?.toLowerCase() || '';
@@ -521,20 +521,24 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
 
   return (
     <div className="mx-auto max-w-xl">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p-10">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]" aria-hidden="true" />
+
         <RegistrationProgress currentStep={1} className="mb-6" />
 
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF6FC] to-[#D6EBF5] shadow-md ring-4 ring-white">
             <User className="w-8 h-8 text-[#4B9EC8]" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Apply to Join</h1>
-          <p className="text-gray-600">Step 1 of 3: Basic Information</p>
+          <span className="inline-flex items-center rounded-full bg-[#F5FBFE] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#3382AA] ring-1 ring-[#D6EBF5]">
+            Step 1 of 3 · Basic Information
+          </span>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Apply to Join</h1>
           <p className="mt-2 text-sm text-slate-500">Create your Tea Time Cari account in a few quick steps. If approved, we’ll email your access details after review.</p>
         </div>
-        
+
         {globalError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" role="alert">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl" role="alert">
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
               <span className="text-red-700 text-sm">{globalError}</span>
@@ -802,7 +806,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
 
           {/* Password Requirements */}
           {showPasswordRequirements && (
-            <div className="rounded-lg bg-gradient-to-r from-blue-50 to-pink-50 p-3 ring-1 ring-[#D6EBF5]" role="status" aria-live="polite">
+            <div className="rounded-xl bg-gradient-to-r from-blue-50 to-pink-50 p-3 ring-1 ring-[#D6EBF5]" role="status" aria-live="polite">
               <p className="mb-2 text-sm font-medium text-slate-700">Password must include:</p>
               <ul className="space-y-1 text-xs leading-5 text-slate-600">
                 <li className={`flex items-center gap-2 ${formData.password.length >= 10 ? 'text-green-700' : ''}`}>
@@ -827,7 +831,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               <button
                 type="button"
                 onClick={onBack}
-                className="flex-1 py-3 px-4 border border-gray-300 rounded-lg font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-medium text-slate-700 bg-white hover:border-slate-300 hover:bg-slate-50 transition-colors"
               >
                 Back
               </button>
@@ -835,9 +839,9 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
             <button
               type="submit"
               disabled={!isFormValid() || isSubmitting}
-              className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              className={`${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
                 isFormValid() && !isSubmitting
-                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
