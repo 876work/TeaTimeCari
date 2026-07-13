@@ -904,7 +904,7 @@ export function AdminUserReview({
               {discourseBaseUrl && (
                 <AdminButton
                   type="button"
-                  variant="ghost"
+                  variant="glass"
                   onClick={() => window.open(discourseBaseUrl, '_blank')}
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -914,6 +914,7 @@ export function AdminUserReview({
 
               <AdminButton
                 type="button"
+                variant="glass"
                 onClick={() => fetchUsers(currentPage)}
                 disabled={loading}
               >

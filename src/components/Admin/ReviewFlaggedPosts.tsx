@@ -28,7 +28,6 @@ import {
   AdminInput,
   AdminMetricCard,
   AdminPageHeader,
-  AdminSectionHeader,
   AdminSelect,
   AdminSkeleton,
 } from './ui';
@@ -388,7 +387,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
           description="Review flagged content, inspect risk signals, and act on reported posts."
           meta={`${flaggedPosts.length} posts · ${totalRedFlags} total red flags in the current view`}
           actions={
-            <AdminButton type="button" onClick={fetchFlaggedPosts} disabled={loading}>
+            <AdminButton type="button" variant="glass" onClick={fetchFlaggedPosts} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh queue
             </AdminButton>
@@ -406,10 +405,10 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
         )}
 
         <section className="space-y-4">
-          <AdminSectionHeader
-            title="Flagged post queue"
-            description="Ordered by red flag count, highest first."
-          />
+          <div>
+            <h2 className="text-base font-semibold text-white">Flagged post queue</h2>
+            <p className="mt-1 text-sm text-white/70">Ordered by red flag count, highest first.</p>
+          </div>
           {loading ? <LoadingSkeleton /> : flaggedPosts.length === 0 ? (
             <div className="rounded-admin-xl border border-admin-border/80 bg-admin-surface shadow-admin-sm">
               <AdminEmptyState
