@@ -557,6 +557,8 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               className={fieldInputClass}
               placeholder="e.g., John Smith"
               aria-invalid={errors.fullName && touched.fullName ? 'true' : 'false'}
+              autoFocus
+              autoComplete="name"
             />
             {errors.fullName && touched.fullName && (
               <p className="mt-2 text-sm text-red-600" role="alert">
@@ -579,6 +581,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 className={fieldInputWithRightIconClass}
                 placeholder="e.g., john@example.com"
                 aria-invalid={(errors.email && touched.email) || emailStatus.error ? 'true' : 'false'}
+                autoComplete="email"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 {isCheckingEmail ? (
@@ -627,6 +630,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
               className={fieldInputClass}
               placeholder="Enter your phone number"
               aria-invalid={errors.phone && touched.phone ? 'true' : 'false'}
+              autoComplete="tel"
             />
             {errors.phone && touched.phone && (
               <p className="mt-2 text-sm text-red-600" role="alert">
@@ -649,6 +653,7 @@ export function RegisterStep1({ onNext, onBack, initialData }: RegisterStep1Prop
                 className={fieldInputWithRightIconClass}
                 placeholder="e.g., john_smith or johnsmith123"
                 aria-invalid={errors.username && touched.username ? 'true' : 'false'}
+                autoComplete="username"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 {isCheckingUsername ? (

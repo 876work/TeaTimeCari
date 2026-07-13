@@ -35,10 +35,6 @@ function getErrorName(error: unknown): string {
   return error instanceof Error ? error.constructor.name : 'Unknown';
 }
 
-function getErrorStack(error: unknown): string | undefined {
-  return error instanceof Error ? error.stack : undefined;
-}
-
 function getFirstNameFromFull(fullName: string): string | undefined {
   return fullName.trim().split(/\s+/).filter(Boolean)[0];
 }
@@ -269,8 +265,7 @@ Tea Time Cari Team`;
         success: false,
         error: `Unexpected error: ${message}`,
         details: {
-          errorType: getErrorName(err),
-          stack: getErrorStack(err)
+          errorType: getErrorName(err)
         }
       } as EmailResponse),
       {

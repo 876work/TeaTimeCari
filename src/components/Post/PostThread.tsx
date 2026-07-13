@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { isValidUUID } from '../../utils/validationUtils';
 import { 
@@ -53,7 +54,9 @@ interface PostThreadProps {
 export function PostThread({ postId }: PostThreadProps) {
   const supabase = useSupabaseClient();
   const session = useSession();
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [post, setPost] = useState<PostData | null>(null);
@@ -61,6 +64,7 @@ export function PostThread({ postId }: PostThreadProps) {
   const [loading, setLoading] = useState(true);
   const [userLoading, setUserLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -216,6 +220,7 @@ export function PostThread({ postId }: PostThreadProps) {
     if (!post) return;
 
     const interval = setInterval(async () => {
+      setIsAutoRefreshing(true);
       try {
         const { data: commentsData, error: commentsError } = await supabase
           .from('comments')
@@ -228,6 +233,8 @@ export function PostThread({ postId }: PostThreadProps) {
         }
       } catch (err) {
         console.warn('Failed to refresh comments:', err);
+      } finally {
+        setIsAutoRefreshing(false);
       }
     }, 10000); // Refresh every 10 seconds
 
@@ -410,7 +417,11 @@ export function PostThread({ postId }: PostThreadProps) {
 
   // Go back to feed
   const goBackToFeed = () => {
-    window.history.back();
+    if (location.key === 'default') {
+      navigate('/feed');
+    } else {
+      navigate(-1);
+    }
   };
 
   // Loading state for user verification
@@ -440,7 +451,7 @@ export function PostThread({ postId }: PostThreadProps) {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home
@@ -537,12 +548,13 @@ export function PostThread({ postId }: PostThreadProps) {
                 <button
                   onClick={() => handleFlag('green')}
                   disabled={flaggingPost}
+                  aria-label={`Give this post a green flag (${post.green_flag_count} so far)`}
                   className="flex items-center space-x-2 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {flaggingPost ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-4 h-4" aria-hidden="true" />
                   )}
                   <span className="font-medium">{post.green_flag_count}</span>
                 </button>
@@ -550,12 +562,13 @@ export function PostThread({ postId }: PostThreadProps) {
                 <button
                   onClick={() => handleFlag('red')}
                   disabled={flaggingPost}
+                  aria-label={`Give this post a red flag (${post.red_flag_count} so far)`}
                   className="flex items-center space-x-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {flaggingPost ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                   ) : (
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-4 h-4" aria-hidden="true" />
                   )}
                   <span className="font-medium">{post.red_flag_count}</span>
                 </button>
@@ -567,7 +580,7 @@ export function PostThread({ postId }: PostThreadProps) {
           <div className="relative">
             <img
               src={post.photo_url}
-              alt="Post content"
+              alt={`Photo shared by @${post.username}`}
               className="w-full h-96 object-cover"
             />
             {post.red_flag_count > 10 && (
@@ -735,7 +748,7 @@ export function PostThread({ postId }: PostThreadProps) {
         {/* Live Updates Indicator */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="flex items-center justify-center text-sm text-blue-800">
-            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            <RefreshCw className={`w-4 h-4 mr-2 ${isAutoRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span>Comments update automatically every 10 seconds</span>
           </div>
         </div>

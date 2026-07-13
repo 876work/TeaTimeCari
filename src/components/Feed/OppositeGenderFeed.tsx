@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { 
   CheckCircle, 
@@ -63,6 +64,7 @@ interface PaymentRecord {
 export function OppositeGenderFeed() {
   const supabase = useSupabaseClient();
   const session = useSession();
+  const navigate = useNavigate();
   
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -434,7 +436,7 @@ export function OppositeGenderFeed() {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home
@@ -687,6 +689,12 @@ export function OppositeGenderFeed() {
               <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
                 Be patient, {oppositeGender} users will start sharing content soon.
               </p>
+              <button
+                onClick={() => navigate('/feed')}
+                className="px-8 py-4 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              >
+                Visit your feed
+              </button>
             </div>
           ) : (
             /* Posts Feed - Same structure as GenderFeed */
@@ -720,7 +728,7 @@ export function OppositeGenderFeed() {
                   <div className="relative">
                     <img
                       src={post.photo_url}
-                      alt="Premium post content"
+                      alt={`Premium photo shared by @${post.username}`}
                       className="w-full h-96 object-cover"
                     />
                     <div className="absolute top-6 right-6 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
@@ -736,12 +744,13 @@ export function OppositeGenderFeed() {
                         <button
                           onClick={() => handleFlag(post.id, 'green')}
                           disabled={flaggingPostId === post.id}
+                          aria-label={`Give this post a green flag (${post.green_flag_count} so far)`}
                           className="flex items-center space-x-3 px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                           ) : (
-                            <CheckCircle className="w-5 h-5" />
+                            <CheckCircle className="w-5 h-5" aria-hidden="true" />
                           )}
                           <span className="text-lg font-bold">{post.green_flag_count}</span>
                         </button>
@@ -750,12 +759,13 @@ export function OppositeGenderFeed() {
                         <button
                           onClick={() => handleFlag(post.id, 'red')}
                           disabled={flaggingPostId === post.id}
+                          aria-label={`Give this post a red flag (${post.red_flag_count} so far)`}
                           className="flex items-center space-x-3 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                           ) : (
-                            <XCircle className="w-5 h-5" />
+                            <XCircle className="w-5 h-5" aria-hidden="true" />
                           )}
                           <span className="text-lg font-bold">{post.red_flag_count}</span>
                         </button>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Lock, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { getAdminSession } from "@/lib/adminAuth";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
@@ -28,6 +28,7 @@ export function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,17 +261,33 @@ export function AdminLoginPage() {
                       Password
                     </label>
 
-                    <AdminInput
-                      type="password"
-                      id="admin-password"
-                      name="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                      disabled={isLoading || checkingSession}
-                      autoComplete="current-password"
-                      placeholder="Enter your password"
-                    />
+                    <div className="relative">
+                      <AdminInput
+                        type={showPassword ? "text" : "password"}
+                        id="admin-password"
+                        name="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                        disabled={isLoading || checkingSession}
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
+                        className="pr-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        tabIndex={-1}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-admin-muted-fg" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-admin-muted-fg" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <AdminButton
