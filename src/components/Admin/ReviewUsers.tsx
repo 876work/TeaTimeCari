@@ -22,7 +22,7 @@ import {
 import { AdminLayout } from './AdminLayout';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
-import { getAdminSession } from '@/lib/adminAuth';
+import { getAdminSession, hasAdminPermission } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 import {
   AdminAlert,
@@ -411,6 +411,7 @@ export function AdminUserReview({
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [canResetPassword, setCanResetPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [editConflicts, setEditConflicts] = useState<AvailabilityConflict[]>([]);
   const [editSaveError, setEditSaveError] = useState<string | null>(null);
@@ -564,8 +565,14 @@ export function AdminUserReview({
     fetchUsers(0);
 
     getAdminSession()
-      .then((admin) => setIsOwner(admin?.role === 'owner'))
-      .catch(() => setIsOwner(false));
+      .then((admin) => {
+        setIsOwner(admin?.role === 'owner');
+        setCanResetPassword(hasAdminPermission(admin, 'users:reset_password'));
+      })
+      .catch(() => {
+        setIsOwner(false);
+        setCanResetPassword(false);
+      });
   }, [isAdmin]);
 
   useEffect(() => {
@@ -815,6 +822,35 @@ export function AdminUserReview({
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: data.status } : u)));
     } catch (err) {
       setError(`Failed to ${action === 'suspend' ? 'suspend user' : 'remove suspension'}: ${getErrorMessage(err)}`);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleSendPasswordReset = async (user: UserRow) => {
+    if (!confirm(`Send a password reset email to ${user.username ?? safeDisplayName(user)}?`)) return;
+
+    setProcessingId(user.id);
+    setError(null);
+
+    try {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession();
+
+      if (!s) throw new Error('Not authenticated.');
+
+      const { data, error: fnErr } = await supabase.functions.invoke('admin-send-password-reset', {
+        body: { registration_id: user.id },
+        headers: { Authorization: `Bearer ${s.access_token}` },
+      });
+
+      if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+      if (!data?.ok) throw new Error(data?.error || 'Failed to send password reset email');
+
+      setToast({ type: 'success', message: `Password reset email sent to @${user.username ?? safeDisplayName(user)}.` });
+    } catch (err) {
+      setError(`Failed to send password reset email: ${getErrorMessage(err)}`);
     } finally {
       setProcessingId(null);
     }
@@ -1227,6 +1263,18 @@ export function AdminUserReview({
                                   Unsuspend
                                 </AdminButton>
                               )}
+
+                              {canResetPassword && (normalizedStatus === 'approved' || normalizedStatus === 'suspended') && (
+                                <AdminButton
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleSendPasswordReset(user)}
+                                  disabled={isProcessing}
+                                  aria-label={`Send password reset email to ${user.username || user.email}`}
+                                >
+                                  Reset password
+                                </AdminButton>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1278,6 +1326,7 @@ export function AdminUserReview({
                       {actionMessages[user.id]?.canRetryDiscourse && <AdminButton size="sm" variant="secondary" onClick={() => handleRetryDiscourseSync(user)} loading={isProcessing}>Retry sync</AdminButton>}
                       {normalizedStatus === 'approved' && <AdminButton size="sm" variant="secondary" onClick={() => requestConfirmation('suspend', user)} disabled={isProcessing}>Suspend</AdminButton>}
                       {normalizedStatus === 'suspended' && <AdminButton size="sm" variant="secondary" onClick={() => requestConfirmation('unsuspend', user)} disabled={isProcessing}>Unsuspend</AdminButton>}
+                      {canResetPassword && (normalizedStatus === 'approved' || normalizedStatus === 'suspended') && <AdminButton size="sm" variant="secondary" onClick={() => handleSendPasswordReset(user)} disabled={isProcessing}>Reset password</AdminButton>}
                     </div>
 
                     {isExpanded && <div className="mt-4 overflow-hidden rounded-2xl border border-white/15"><DetailPanel user={user} /></div>}
