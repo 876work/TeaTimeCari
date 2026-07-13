@@ -94,6 +94,7 @@ type AdminPage =
   | 'user-reviews'
   | 'flagged-posts'
   | 'discourse-admins'
+  | 'invites'
   | 'logs'
   | 'function-ping';
 
@@ -102,6 +103,7 @@ const adminPagePaths: Record<AdminPage, string> = {
   'user-reviews': '/admin/users',
   'flagged-posts': '/admin/flagged-posts',
   'discourse-admins': '/admin/discourse-admins',
+  invites: '/admin/invites',
   logs: '/admin/logs',
   'function-ping': '/admin/health',
 };
@@ -265,6 +267,7 @@ function App() {
                   <Route path="/admin/users" element={<AdminPortalRoute initialPage="user-reviews" />} />
                   <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
                   <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
+                  <Route path="/admin/invites" element={<AdminPortalRoute initialPage="invites" />} />
                   <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
                   <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
                   <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />

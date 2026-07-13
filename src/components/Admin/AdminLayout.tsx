@@ -6,6 +6,7 @@ import {
   FileText,
   Flag,
   Home,
+  Mail,
   Menu,
   MessageSquare,
   Shield,
@@ -52,6 +53,12 @@ const navItems: NavItem[] = [
     label: "Community",
     description: "Discourse admins",
     icon: <MessageSquare className="h-4 w-4" />,
+  },
+  {
+    id: "invites",
+    label: "Invites",
+    description: "Invite by email",
+    icon: <Mail className="h-4 w-4" />,
   },
   {
     id: "logs",

@@ -26,6 +26,7 @@ import {
   Flag,
   HardDrive,
   FileText,
+  Mail,
   MessageSquare,
 } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
@@ -33,6 +34,7 @@ import { AdminUserReview } from "./ReviewUsers";
 import { ReviewFlaggedPosts } from "./ReviewFlaggedPosts";
 import { DiscourseCommunityAdmins } from "./DiscourseCommunityAdmins";
 import { AdminAuditLogs } from "./AdminAuditLogs";
+import { AdminInvites } from "./AdminInvites";
 import FunctionPing from "../../dev/FunctionPing";
 import {
   AdminAlert,
@@ -747,6 +749,10 @@ export function AdminDashboard({
     return <DiscourseCommunityAdmins onNavigate={onNavigate} />;
   }
 
+  if (activePage === "invites") {
+    return <AdminInvites activePage={activePage} onNavigate={onNavigate} />;
+  }
+
   if (activePage === "logs") {
     return <AdminAuditLogs activePage={activePage} onNavigate={onNavigate} />;
   }
@@ -972,6 +978,14 @@ export function AdminDashboard({
                 description="Manage Discourse admins"
                 icon={<MessageSquare className="h-4 w-4" />}
                 page="discourse-admins"
+                onNavigate={onNavigate}
+              />
+
+              <GlassShortcutButton
+                label="Invites"
+                description="Invite new members by email"
+                icon={<Mail className="h-4 w-4" />}
+                page="invites"
                 onNavigate={onNavigate}
               />
 

@@ -8,6 +8,7 @@ type Permission =
   | "users:approve"
   | "users:reject"
   | "users:suspend"
+  | "users:invite"
   | "posts:moderate"
   | "discourse:admin_manage"
   | "logs:view"
@@ -46,6 +47,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "users:approve",
     "users:reject",
     "users:suspend",
+    "users:invite",
     "posts:moderate",
     "discourse:admin_manage",
     "logs:view",
@@ -58,6 +60,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "users:approve",
     "users:reject",
     "users:suspend",
+    "users:invite",
     "posts:moderate",
     "discourse:admin_manage",
     "logs:view",

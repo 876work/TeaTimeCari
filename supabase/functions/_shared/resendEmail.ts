@@ -134,6 +134,159 @@ Tea Time Cari Team`;
   return sendResendEmail({ to, subject, html, text });
 }
 
+export async function sendInviteEmail(to: string): Promise<ResendEmailResult> {
+  const subject = "You're Invited to Tea Time Cari";
+  const signupUrl = `${getSiteBaseUrl()}/signup`;
+
+  const text = `Hello,
+
+You're invited to join Tea Time Cari.
+
+Tea Time Cari is a private Caribbean community where members can share experiences, compare notes, and stay informed before getting deeper involved with someone.
+
+It helps you find out if you may be dating the same partner by allowing members to share responsibly and get real community feedback.
+
+Create your account here:
+${signupUrl}
+
+Share. Compare. Stay informed.
+
+Follow us:
+Instagram: https://www.instagram.com/teatimecari
+Facebook: https://www.facebook.com/people/Tea-Time-Cari/61590153702836/
+WhatsApp: https://whatsapp.com/channel/0029VbDJhU46hENxsvU7ZM16
+
+Need help?
+hello@teatimecari.app
+
+Best regards,
+Tea Time Cari Team`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta content="width=device-width" name="viewport" />
+<meta name="x-apple-disable-message-reformatting" />
+<meta content="IE=edge" http-equiv="X-UA-Compatible" />
+<meta content="telephone=no,address=no,email=no,date=no,url=no" name="format-detection" />
+<title>You're Invited to Tea Time Cari</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f8f4f7; font-family:Arial, Helvetica, sans-serif; color:#172033;">
+<div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">
+You're invited to join Tea Time Cari.
+</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f8f4f7; margin:0; padding:32px 16px;">
+<tr>
+<td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px; background-color:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 10px 30px rgba(23,32,51,0.08);">
+<tr>
+<td style="padding:32px 28px 18px 28px; text-align:center; background:linear-gradient(135deg, #fde7ef 0%, #e8f4ff 100%);">
+<a href="https://teatimecari.app/" target="_blank" style="display:inline-block; text-decoration:none;">
+<img src="https://teatimecari.app/teaLogo.png" alt="Tea Time Cari" width="170" style="display:block; margin:0 auto 10px auto; max-width:170px; height:auto; border:0; outline:none; text-decoration:none;" />
+</a>
+<p style="margin:8px 0 0 0; font-size:14px; color:#4b5563;">
+Share. Compare. Stay informed.
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:32px 28px 8px 28px;">
+<p style="margin:0 0 12px 0; font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#d96e8a;">
+Private Community Invitation
+</p>
+<h2 style="margin:0 0 16px 0; font-size:24px; line-height:1.3; color:#172033;">
+You're invited to join Tea Time Cari
+</h2>
+<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#374151;">
+Hello,
+</p>
+<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#374151;">
+Tea Time Cari is a private Caribbean community where members can share experiences, compare notes, and stay informed before getting deeper involved with someone.
+</p>
+<p style="margin:0 0 24px 0; font-size:16px; line-height:1.6; color:#374151;">
+The platform helps you find out if you may be dating the same partner by allowing members to share responsibly and get real community feedback.
+</p>
+<p style="margin:0 0 24px 0; font-size:15px; line-height:1.6; color:#6b7280;">
+Tea Time Cari is built around privacy, trust, and responsible sharing. Create your account to request access and join the community.
+</p>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 12px 0;">
+<tr>
+<td align="center" style="border-radius:999px; background:linear-gradient(135deg, #d96e8a 0%, #5ca4c8 100%);">
+<a href="${signupUrl}" target="_blank" style="display:inline-block; padding:14px 28px; font-size:16px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:999px;"
+>
+Create Your Account
+</a>
+</td>
+</tr>
+</table>
+<p style="margin:0 0 28px 0; font-size:13px; line-height:1.6; color:#6b7280;">
+If the button does not work, copy and paste this link into your browser:
+<br />
+<a href="${signupUrl}" target="_blank" style="color:#d96e8a; text-decoration:underline; word-break:break-all;">
+${signupUrl}
+</a>
+</p>
+<p style="margin:0; font-size:16px; line-height:1.6; color:#374151;">
+Best regards,<br />
+Tea Time Cari Team
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding:24px 28px 32px 28px; text-align:center; border-top:1px solid #f1f5f9;">
+<p style="margin:0 0 12px 0; font-size:12px; line-height:1.5; color:#9ca3af;">
+This email was sent because you were invited to join Tea Time Cari.
+</p>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 16px auto;">
+<tr>
+<td align="center" style="padding:0 8px;">
+<a href="https://www.instagram.com/teatimecari" target="_blank" style="display:inline-block; text-decoration:none;">
+<img src="https://cdn.simpleicons.org/instagram/d96e8a" alt="Instagram" width="22" height="22" style="display:block; width:22px; height:22px; border:0;" />
+</a>
+</td>
+<td align="center" style="padding:0 8px;">
+<a href="https://www.facebook.com/people/Tea-Time-Cari/61590153702836/" target="_blank" style="display:inline-block; text-decoration:none;">
+<img src="https://cdn.simpleicons.org/facebook/5ca4c8" alt="Facebook" width="22" height="22" style="display:block; width:22px; height:22px; border:0;" />
+</a>
+</td>
+<td align="center" style="padding:0 8px;">
+<a href="https://whatsapp.com/channel/0029VbDJhU46hENxsvU7ZM16" target="_blank" style="display:inline-block; text-decoration:none;">
+<img src="https://cdn.simpleicons.org/whatsapp/25D366" alt="WhatsApp Channel" width="22" height="22" style="display:block; width:22px; height:22px; border:0;" />
+</a>
+</td>
+<td align="center" style="padding:0 8px;">
+<a href="mailto:hello@teatimecari.app" style="display:inline-block; text-decoration:none;">
+<img src="https://img.icons8.com/ios-filled/50/6b7280/new-post.png" alt="Email" width="22" height="22" style="display:block; width:22px; height:22px; border:0;" />
+</a>
+</td>
+</tr>
+</table>
+<p style="margin:0 0 8px 0; font-size:12px; line-height:1.6; color:#9ca3af;">
+Follow us on <a href="https://www.instagram.com/teatimecari" target="_blank" style="color:#6b7280; text-decoration:underline;">Instagram</a>, <a href="https://www.facebook.com/people/Tea-Time-Cari/61590153702836/" target="_blank" style="color:#6b7280; text-decoration:underline;">Facebook</a>, and <a href="https://whatsapp.com/channel/0029VbDJhU46hENxsvU7ZM16" target="_blank" style="color:#6b7280; text-decoration:underline;">WhatsApp</a>.
+</p>
+<p style="margin:0 0 12px 0; font-size:12px; line-height:1.6; color:#9ca3af;">
+Need help? Email us at <a href="mailto:hello@teatimecari.app" style="color:#6b7280; text-decoration:underline;">
+hello@teatimecari.app
+</a>
+</p>
+<p style="margin:0; font-size:12px; line-height:1.5; color:#9ca3af;">
+No longer want updates? <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#6b7280; text-decoration:underline;">
+Unsubscribe here
+</a>.
+</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`;
+
+  return sendResendEmail({ to, subject, html, text });
+}
+
 export async function sendSuspensionEmail(to: string, firstName?: string): Promise<ResendEmailResult> {
   const greeting = buildGreeting(firstName);
   const subject = "Your Tea Time Cari Account has been Suspended";
