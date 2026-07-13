@@ -1232,7 +1232,7 @@ export function AdminUserReview({
                         </tr>
 
                         {isExpanded && (
-                          <tr>
+                          <tr className="hover:bg-white/5">
                             <td colSpan={6} className="p-0">
                               <div className="transition-all duration-200 animate-in slide-in-from-top-1">
                                 <DetailPanel user={user} />
@@ -1352,6 +1352,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 First name
                 <AdminInput
+                  tone="light"
                   value={editForm.firstName ?? ''}
                   onChange={(event) => handleEditFormChange('firstName', event.target.value)}
                   className="mt-2"
@@ -1361,6 +1362,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 Last name
                 <AdminInput
+                  tone="light"
                   value={editForm.lastName ?? ''}
                   onChange={(event) => handleEditFormChange('lastName', event.target.value)}
                   className="mt-2"
@@ -1370,6 +1372,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 Username
                 <AdminInput
+                  tone="light"
                   value={editForm.username ?? ''}
                   onChange={(event) => handleEditFormChange('username', event.target.value)}
                   className="mt-2"
@@ -1401,6 +1404,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 Email
                 <AdminInput
+                  tone="light"
                   type="email"
                   value={editForm.email ?? ''}
                   onChange={(event) => handleEditFormChange('email', event.target.value)}
@@ -1419,6 +1423,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 Phone
                 <AdminInput
+                  tone="light"
                   value={editForm.phone ?? ''}
                   onChange={(event) => handleEditFormChange('phone', event.target.value)}
                   className="mt-2"
@@ -1428,6 +1433,7 @@ export function AdminUserReview({
               <label className="block text-sm font-semibold text-slate-700">
                 Gender category
                 <AdminSelect
+                  tone="light"
                   value={editForm.gender ?? 'Male'}
                   onChange={(event) => handleEditFormChange('gender', event.target.value)}
                   className="mt-2"

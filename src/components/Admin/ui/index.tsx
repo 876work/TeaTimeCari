@@ -87,10 +87,17 @@ export function AdminBadge({ variant = 'neutral', className, children }: { varia
 // Alias kept for call sites that pre-date the glass unification; identical to AdminBadge now.
 export const AdminGlassBadge = AdminBadge;
 
-const control = 'w-full rounded-admin-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white shadow-none outline-none transition-all duration-150 placeholder:text-white/40 hover:border-white/30 focus:border-white/50 focus:ring-4 focus:ring-white/15 disabled:cursor-not-allowed disabled:bg-white/5 disabled:text-white/30';
-export const AdminInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...props }, ref) => <input ref={ref} className={cn(control, className)} {...props} />);
+const controlTone = {
+  // For fields sitting on the dark glass shell (default).
+  glass: 'border-white/20 bg-white/10 text-white placeholder:text-white/40 hover:border-white/30 focus:border-white/50 focus:ring-white/15 disabled:bg-white/5 disabled:text-white/30',
+  // For fields sitting on a solid light surface, e.g. modals with a white background.
+  light: 'border-admin-border bg-white text-admin-fg placeholder:text-slate-400 hover:border-slate-300 focus:border-admin-brand/60 focus:ring-admin-brand/15 disabled:bg-slate-50 disabled:text-slate-400',
+};
+const control = 'w-full rounded-admin-md border px-3 py-2 text-sm shadow-none outline-none transition-all duration-150 focus:ring-4 disabled:cursor-not-allowed';
+type ControlTone = keyof typeof controlTone;
+export const AdminInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { tone?: ControlTone }>(({ className, tone = 'glass', ...props }, ref) => <input ref={ref} className={cn(control, controlTone[tone], className)} {...props} />);
 AdminInput.displayName = 'AdminInput';
-export const AdminSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className, ...props }, ref) => <select ref={ref} className={cn(control, '[&>option]:text-slate-900', className)} {...props} />);
+export const AdminSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & { tone?: ControlTone }>(({ className, tone = 'glass', ...props }, ref) => <select ref={ref} className={cn(control, controlTone[tone], tone === 'glass' ? '[&>option]:text-slate-900' : '', className)} {...props} />);
 AdminSelect.displayName = 'AdminSelect';
 
 export function AdminAlert({ variant = 'info', children, className, role }: { variant?: 'info'|'success'|'warning'|'error'; children: React.ReactNode; className?: string; role?: string }) {
