@@ -35,6 +35,7 @@ import { DiscourseCommunityAdmins } from "./DiscourseCommunityAdmins";
 import { AdminAuditLogs } from "./AdminAuditLogs";
 import FunctionPing from "../../dev/FunctionPing";
 import {
+  AdminAlert,
   AdminButton,
   AdminCard,
   AdminBadge,
@@ -42,6 +43,7 @@ import {
 } from "./ui";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 import { normalizeApprovalStatus } from "@/lib/auth/approvalStatus";
+import { getAdminSession } from "@/lib/adminAuth";
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -468,8 +470,16 @@ export function AdminDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isOwner, setIsOwner] = useState(false);
 
   const isAdmin = !!session?.user?.id;
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getAdminSession()
+      .then((admin) => setIsOwner(admin?.role === "owner"))
+      .catch(() => setIsOwner(false));
+  }, [isAdmin]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -744,9 +754,16 @@ export function AdminDashboard({
   if (activePage === "function-ping") {
     return (
       <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        <AdminCard>
-          <FunctionPing />
-        </AdminCard>
+        {isOwner ? (
+          <AdminCard>
+            <FunctionPing />
+          </AdminCard>
+        ) : (
+          <AdminAlert variant="error">
+            <p className="font-semibold">Owner access required</p>
+            <p className="mt-1">This diagnostic tool is restricted to owner-level admin accounts.</p>
+          </AdminAlert>
+        )}
       </AdminLayout>
     );
   }
@@ -966,13 +983,15 @@ export function AdminDashboard({
                 onNavigate={onNavigate}
               />
 
-              <GlassShortcutButton
-                label="System health"
-                description="Open health checks"
-                icon={<HardDrive className="h-4 w-4" />}
-                page="function-ping"
-                onNavigate={onNavigate}
-              />
+              {isOwner && (
+                <GlassShortcutButton
+                  label="System health"
+                  description="Open health checks"
+                  icon={<HardDrive className="h-4 w-4" />}
+                  page="function-ping"
+                  onNavigate={onNavigate}
+                />
+              )}
             </div>
           </AdminCard>
         </div>

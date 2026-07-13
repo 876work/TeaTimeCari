@@ -15,10 +15,10 @@ module ::UserDownloadWatermark
       post = authorized_post_for(upload)
       raise Discourse::InvalidAccess if post.blank?
 
-      return redirect_to upload.url if !category_allowed?(post.topic&.category_id)
+      return render_unwatermarked_notice(upload.url) if !category_allowed?(post.topic&.category_id)
 
       watermarker = UserDownloadWatermark::Watermarker.new(upload: upload, user: current_user, post: post)
-      return redirect_to upload.url if !watermarker.supported?
+      return render_unwatermarked_notice(upload.url) if !watermarker.supported?
 
       path = watermarker.build
       send_file(
@@ -31,10 +31,57 @@ module ::UserDownloadWatermark
       raise
     rescue StandardError => e
       Rails.logger.error("#{UserDownloadWatermark::PLUGIN_NAME}: failed to watermark upload #{params[:upload_id]} for user #{current_user&.id || "guest"}: #{e.class}: #{e.message}")
-      render plain: "Unable to prepare the watermarked download.", status: :internal_server_error
+      render_processing_error
     end
 
     private
+
+    def render_unwatermarked_notice(original_url)
+      safe_url = ERB::Util.html_escape(original_url)
+
+      render(
+        html: <<~HTML.html_safe,
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="3;url=#{safe_url}">
+              <title>Preparing your download</title>
+            </head>
+            <body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#F4FBFF; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh;">
+              <div style="max-width:420px; padding:32px; text-align:center;">
+                <h1 style="font-size:18px; margin:0 0 12px;">This file isn't watermarked</h1>
+                <p style="color:#4b5563; line-height:1.6; margin:0 0 20px;">This category or file type isn't eligible for watermarking, so you're getting the original file. Your download should start automatically.</p>
+                <a href="#{safe_url}" style="display:inline-block; background:#4B9EC8; color:#ffffff; padding:10px 18px; border-radius:10px; text-decoration:none; font-weight:600;">Download original file</a>
+              </div>
+            </body>
+          </html>
+        HTML
+        layout: false,
+      )
+    end
+
+    def render_processing_error
+      render(
+        html: <<~HTML.html_safe,
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Download unavailable</title>
+            </head>
+            <body style="margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#F4FBFF; color:#1f2937; display:flex; align-items:center; justify-content:center; min-height:100vh;">
+              <div style="max-width:420px; padding:32px; text-align:center;">
+                <h1 style="font-size:18px; margin:0 0 12px;">We couldn't prepare this download</h1>
+                <p style="color:#4b5563; line-height:1.6; margin:0;">Something went wrong preparing the watermarked version of this file. Please go back and try the download again in a moment.</p>
+              </div>
+            </body>
+          </html>
+        HTML
+        layout: false,
+        status: :internal_server_error,
+      )
+    end
 
     def resolve_upload
       return Upload.find_by(id: params[:upload_id].to_i) if params[:upload_id].present?

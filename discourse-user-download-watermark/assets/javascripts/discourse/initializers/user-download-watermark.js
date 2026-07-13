@@ -32,10 +32,24 @@ export default apiInitializer("1.8.0", (api) => {
         return;
       }
 
+      if (link.querySelector(".user-download-watermark-badge")) {
+        return;
+      }
+
       const downloadUrl = `/user-download-watermark/uploads/by-url?url=${encodeURIComponent(uploadPath)}`;
       link.setAttribute("href", downloadUrl);
       link.setAttribute("data-user-download-watermark", "true");
       link.setAttribute("download", "");
+      link.setAttribute("title", "Download watermarked image");
+
+      const badge = document.createElement("span");
+      badge.className = "user-download-watermark-badge";
+      badge.textContent = " (watermarked)";
+      badge.setAttribute("aria-hidden", "true");
+      badge.style.fontSize = "0.85em";
+      badge.style.opacity = "0.65";
+      badge.style.fontStyle = "italic";
+      link.appendChild(badge);
     });
   });
 });

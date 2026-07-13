@@ -73,6 +73,12 @@
     if (!currentUser || !ttcShouldShowBackButton()) return;
 
     const targetPath = ttcCommunityPathForUser(currentUser);
+
+    // No known destination (e.g. staff/mod/xaccess-only accounts with
+    // neither gendered group) or already at the destination: showing a
+    // "back to my community" button here would be misleading, so skip it.
+    if (!targetPath || window.location.pathname === targetPath) return;
+
     const button = document.createElement("button");
     button.id = TTC_BACK_BUTTON_ID;
     button.type = "button";
@@ -81,13 +87,7 @@
 
     button.addEventListener("click", (event) => {
       event.preventDefault();
-
-      if (targetPath && window.location.pathname !== targetPath) {
-        window.location.assign(targetPath);
-        return;
-      }
-
-      window.history.back();
+      window.location.assign(targetPath);
     });
 
     if (!ttcPlaceBackButton(button)) {
