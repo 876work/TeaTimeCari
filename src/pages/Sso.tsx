@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { supabase } from '@/lib/supabaseClient';
 import { AuthLayout } from "@/components/AuthLayout";
+import { LoadingCard } from "@/components/Form";
 import { getFunctionErrorMessage } from "@/lib/functionError";
 
 function useQuery() {
@@ -13,8 +14,7 @@ function useQuery() {
 export default function Sso() {
   const q = useQuery();
   const navigate = useNavigate();
-  const [msg, setMsg] = useState("Preparing secure community connection…");
-  const [hasError, setHasError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -22,8 +22,7 @@ export default function Sso() {
       const sig = q.get("sig") || "";
 
       if (!sso || !sig) {
-        setHasError(true);
-        setMsg("Your community sign-in session expired or is missing required security details. Please start again from the Community link.");
+        setErrorMsg("Your community sign-in session expired or is missing required security details. Please start again from the Community link.");
         return;
       }
 
@@ -33,8 +32,6 @@ export default function Sso() {
         return;
       }
 
-      setMsg("Finishing secure sign-in with the Tea Time Cari community…");
-
       const { data, error } = await supabase.functions.invoke("sso-complete", {
         body: { sso, sig },
       });
@@ -42,14 +39,13 @@ export default function Sso() {
       if (error) {
         const detail = await getFunctionErrorMessage(error);
         console.error("sso-complete error:", detail);
-        setHasError(true);
 
         if (detail.includes("unrecognized_gender")) {
-          setMsg("We couldn't confirm your community access group. Please contact support so we can fix this for you.");
+          setErrorMsg("We couldn't confirm your community access group. Please contact support so we can fix this for you.");
         } else if (detail.includes("unauthorized") || detail.includes("missing token") || detail.includes("missing nonce")) {
-          setMsg("Your community sign-in session may have expired. Please start again from the Community link.");
+          setErrorMsg("Your community sign-in session may have expired. Please start again from the Community link.");
         } else {
-          setMsg("We ran into a problem finishing your community sign-in. Please try again, or contact support if this keeps happening.");
+          setErrorMsg("We ran into a problem finishing your community sign-in. Please try again, or contact support if this keeps happening.");
         }
         return;
       }
@@ -58,41 +54,39 @@ export default function Sso() {
       if (redirectUrl) {
         window.location.href = redirectUrl;
       } else {
-        setHasError(true);
-        setMsg("We could not finish community sign-in. Please start again from the Community link, or contact support if this keeps happening.");
+        setErrorMsg("We could not finish community sign-in. Please start again from the Community link, or contact support if this keeps happening.");
       }
     })();
   }, [navigate, q]);
 
+  if (errorMsg) {
+    return (
+      <AuthLayout>
+        <div className="rounded-2xl bg-white p-8 text-center shadow-xl">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+            <AlertCircle className="h-8 w-8 text-red-500" aria-hidden="true" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Community sign-in needs attention</h1>
+          <p className="mt-3 text-sm leading-6 text-gray-600">{errorMsg}</p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link to="/community" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              Start community sign-in again
+            </Link>
+            <Link to="/contact-us?topic=account-status" className="rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]">
+              Contact support
+            </Link>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout>
-      <div className="rounded-2xl bg-white p-8 text-center shadow-xl">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
-          {hasError ? (
-            <AlertCircle className="h-8 w-8 text-red-500" aria-hidden="true" />
-          ) : (
-            <ShieldCheck className="h-8 w-8 text-[#4B9EC8]" aria-hidden="true" />
-          )}
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {hasError ? 'Community sign-in needs attention' : 'Connecting you to the community'}
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-gray-600">{msg}</p>
-        {!hasError && (
-          <div className="mt-6 flex items-center justify-center text-sm font-medium text-[#4B9EC8]">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
-            This may take a few seconds.
-          </div>
-        )}
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link to="/community" className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Start community sign-in again
-          </Link>
-          <Link to="/contact-us?topic=account-status" className="rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]">
-            Contact support
-          </Link>
-        </div>
-      </div>
+      <LoadingCard
+        title="Connecting you to the community"
+        message="Just a moment while we sign you in…"
+      />
     </AuthLayout>
   );
 }
