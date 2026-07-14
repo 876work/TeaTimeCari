@@ -40,12 +40,7 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
 
   const handleGenderSelect = (gender: 'Male' | 'Female') => {
     setSelectedGender(gender);
-  };
-
-  const handleContinue = () => {
-    if (selectedGender) {
-      onNext({ gender: selectedGender });
-    }
+    onNext({ gender });
   };
 
   return (
@@ -134,31 +129,17 @@ export function RegisterStep2({ onNext, onBack, initialData }: RegisterStep2Prop
           </details>
         </div>
 
-        <div className="flex space-x-4">
-          {onBack && (
+        {onBack && (
+          <div className="flex space-x-4">
             <button
               type="button"
               onClick={onBack}
-              className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-medium text-slate-700 bg-white hover:border-slate-300 hover:bg-slate-50 transition-colors"
+              className="w-full py-3 px-4 border border-slate-200 rounded-xl font-medium text-slate-700 bg-white hover:border-slate-300 hover:bg-slate-50 transition-colors"
             >
               Back
             </button>
-          )}
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={!selectedGender}
-            className={`
-              ${onBack ? 'flex-1' : 'w-full'} py-3 px-4 rounded-xl font-semibold transition-all duration-200 ease-in-out
-              ${selectedGender
-                ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }
-            `}
-          >
-            Continue
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
