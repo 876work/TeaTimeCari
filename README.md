@@ -25,7 +25,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - **Discourse SSO Integration:** Seamless Single Sign-On with Discourse forum
 - **Secure Authentication:** Email/password login with password reset functionality
 - **Payment Processing:** Stripe integration for premium features
-- **Email & SMS Notifications:** Automated communication via SendGrid and Twilio
+- **Email & SMS Notifications:** Automated communication via Resend and Twilio
 
 ## 🛠 Technologies Used
 
@@ -46,7 +46,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 
 ### Payment & Communication
 - **[Stripe](https://stripe.com/)** - Secure payment processing for premium features
-- **[SendGrid](https://sendgrid.com/)** - Transactional email delivery
+- **[Resend](https://resend.com/)** - Transactional email delivery
 - **[Twilio](https://www.twilio.com/)** - SMS messaging service
 
 ### Forum Integration
@@ -60,7 +60,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - A Supabase project
 - (Optional) Discourse forum instance
 - (Optional) Stripe account for payments
-- (Optional) SendGrid account for emails
+- (Optional) Resend account for emails
 - (Optional) Twilio account for SMS
 
 ### 1. Clone the Repository
@@ -147,9 +147,10 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-stripe-key
 STRIPE_SECRET_KEY=sk_test_your-stripe-secret
 STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
 
-# SendGrid Configuration (Optional)
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
-SENDGRID_FROM_EMAIL=noreply@your-domain.com
+# Resend Configuration (Optional)
+RESEND_API_KEY=re_your-resend-api-key
+RESEND_FROM_EMAIL=noreply@your-domain.com
+RESEND_FROM_NAME=Tea Time Cari
 
 # Twilio Configuration (Optional)
 TWILIO_ACCOUNT_SID=your-twilio-account-sid
@@ -315,7 +316,7 @@ npm run lint         # Run ESLint
 ### Environment Setup
 1. Copy `.env.example` to `.env`
 2. Fill in your Supabase credentials
-3. Configure optional services (Stripe, SendGrid, Twilio, Discourse)
+3. Configure optional services (Stripe, Resend, Twilio, Discourse)
 4. Deploy Edge Functions to Supabase
 5. Run database migrations
 

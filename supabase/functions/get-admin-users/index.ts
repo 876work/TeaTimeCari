@@ -210,7 +210,7 @@ serve(async (req) => {
       const requestedOffset = typeof body.offset === "number" ? body.offset : Number(body.offset);
 
       pagination = {
-        limit: Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 50) : 10,
+        limit: Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 500) : 10,
         offset: Number.isFinite(requestedOffset) ? Math.max(Math.floor(requestedOffset), 0) : 0,
       };
     }

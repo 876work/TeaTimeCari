@@ -93,8 +93,13 @@ type AdminPage =
   | 'dashboard'
   | 'user-reviews'
   | 'flagged-posts'
+  | 'payments'
   | 'discourse-admins'
   | 'invites'
+  | 'announcements'
+  | 'roles'
+  | 'flags'
+  | 'alerts'
   | 'logs'
   | 'function-ping';
 
@@ -102,8 +107,13 @@ const adminPagePaths: Record<AdminPage, string> = {
   dashboard: '/admin/dashboard',
   'user-reviews': '/admin/users',
   'flagged-posts': '/admin/flagged-posts',
+  payments: '/admin/payments',
   'discourse-admins': '/admin/discourse-admins',
   invites: '/admin/invites',
+  announcements: '/admin/announcements',
+  roles: '/admin/roles',
+  flags: '/admin/flags',
+  alerts: '/admin/alerts',
   logs: '/admin/logs',
   'function-ping': '/admin/health',
 };
@@ -268,6 +278,11 @@ function App() {
                   <Route path="/admin/flagged-posts" element={<AdminPortalRoute initialPage="flagged-posts" />} />
                   <Route path="/admin/discourse-admins" element={<AdminPortalRoute initialPage="discourse-admins" />} />
                   <Route path="/admin/invites" element={<AdminPortalRoute initialPage="invites" />} />
+                  <Route path="/admin/payments" element={<AdminPortalRoute initialPage="payments" />} />
+                  <Route path="/admin/announcements" element={<AdminPortalRoute initialPage="announcements" />} />
+                  <Route path="/admin/roles" element={<AdminPortalRoute initialPage="roles" />} />
+                  <Route path="/admin/flags" element={<AdminPortalRoute initialPage="flags" />} />
+                  <Route path="/admin/alerts" element={<AdminPortalRoute initialPage="alerts" />} />
                   <Route path="/admin/logs" element={<AdminPortalRoute initialPage="logs" />} />
                   <Route path="/admin/health" element={<AdminPortalRoute initialPage="function-ping" />} />
                   <Route path="/admin/function-ping" element={<AdminPortalRoute initialPage="function-ping" />} />

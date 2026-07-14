@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sendUnderReviewEmail } from "../_shared/resendEmail.ts";
 import { collectTrackingMetadata } from "../_shared/tracking.ts";
+import { isFeatureEnabled } from "../_shared/featureFlags.ts";
+import { getAlertSettings, sendAndLogAlert } from "../_shared/slack.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -175,6 +177,12 @@ serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
+    if (!(await isFeatureEnabled("registrations_enabled"))) {
+      return json(503, {
+        error: "New registrations are temporarily paused. Please try again later.",
+      });
+    }
+
     const normalized = normalizeRequest(await req.json());
     const registrationTracking = await collectTrackingMetadata(req);
     const registrationTrackedAt = new Date().toISOString();
@@ -333,6 +341,21 @@ serve(async (req) => {
       normalized.email,
       normalized.firstName,
     ).catch((emailError) => ({ success: false, error: String(emailError) }));
+
+    // Best-effort Slack notification for new registrations.
+    try {
+      const alertSettings = await getAlertSettings();
+      if (alertSettings.alerts_enabled && alertSettings.notify_on_new_registration) {
+        await sendAndLogAlert({
+          alertType: "new_registration",
+          message: `:wave: *Tea Time Cari*: new registration from @${normalized.username} is waiting for review.`,
+          payload: { username: normalized.username },
+          settings: alertSettings,
+        });
+      }
+    } catch (alertError) {
+      console.warn("New-registration Slack alert failed", alertError);
+    }
 
     return json(200, {
       ok: true,
