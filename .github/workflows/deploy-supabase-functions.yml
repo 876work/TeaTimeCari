@@ -1,15 +1,40 @@
-name: Deploy Supabase Edge Functions
+name: Deploy Supabase
 
 on:
   push:
     branches: [main]
     paths:
       - "supabase/functions/**"
+      - "supabase/migrations/**"
       - ".github/workflows/deploy-supabase-functions.yml"
   workflow_dispatch: {}
 
 jobs:
-  deploy:
+  # Apply pending database migrations first. Functions frequently reference
+  # tables created by migrations, so schema changes must land before the code
+  # that depends on them is deployed. Requires a SUPABASE_DB_PASSWORD repo
+  # secret (the database password for the linked project) in addition to the
+  # SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF secrets already used below.
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply database migrations
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+  deploy-functions:
+    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
