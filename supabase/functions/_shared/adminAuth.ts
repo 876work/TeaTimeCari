@@ -14,7 +14,11 @@ type Permission =
   | "discourse:admin_manage"
   | "logs:view"
   | "health:view"
-  | "admins:manage";
+  | "admins:manage"
+  | "payments:view"
+  | "announcements:manage"
+  | "alerts:manage"
+  | "flags:manage";
 
 export type AdminActor = {
   userId: string;
@@ -55,6 +59,10 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "logs:view",
     "health:view",
     "admins:manage",
+    "payments:view",
+    "announcements:manage",
+    "alerts:manage",
+    "flags:manage",
   ],
   admin: [
     "admin:access",
@@ -68,6 +76,9 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     "discourse:admin_manage",
     "logs:view",
     "health:view",
+    "payments:view",
+    "announcements:manage",
+    "alerts:manage",
   ],
   moderator: [
     "admin:access",

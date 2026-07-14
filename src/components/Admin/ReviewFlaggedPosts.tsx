@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import {
   Trash2,
+  Download,
   Eye,
   UserX,
   AlertCircle,
@@ -9,6 +10,7 @@ import {
   Calendar,
   Filter,
   RefreshCw,
+  ScanEye,
   X,
   CheckCircle,
   AlertTriangle,
@@ -19,6 +21,8 @@ import {
   User,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { downloadCsv, csvTimestamp } from '@/lib/adminCsv';
+import { nsfwRiskLevel, type NsfwScanResult } from '@/lib/nsfwScanner';
 import {
   AdminAlert,
   AdminBadge,
@@ -60,6 +64,29 @@ interface FilterState {
   dateFrom: string;
   dateTo: string;
   searchTerm: string;
+}
+
+interface ModerationScore {
+  post_id: string;
+  nsfw_score: number;
+  top_class: string | null;
+  scanned_at: string;
+}
+
+function NsfwScoreBadge({ score }: { score?: ModerationScore }) {
+  if (!score) {
+    return <AdminBadge variant="muted">Not scanned</AdminBadge>;
+  }
+
+  const risk = nsfwRiskLevel(score.nsfw_score);
+  const percent = Math.round(score.nsfw_score * 100);
+
+  return (
+    <AdminBadge variant={risk === 'high' ? 'danger' : risk === 'medium' ? 'warning' : 'success'}>
+      <ScanEye className="h-3.5 w-3.5" />
+      AI: {percent}% NSFW{score.top_class ? ` · ${score.top_class}` : ''}
+    </AdminBadge>
+  );
 }
 
 const defaultFilters: FilterState = {
@@ -181,7 +208,7 @@ function FlaggedPostFilters({ filters, onChange, onReset }: { filters: FilterSta
   );
 }
 
-function FlaggedPostCard({ post, processingPostId, onViewImage, onDeletePost, onBanUser }: { post: FlaggedPost; processingPostId: string | null; onViewImage: (imageUrl: string) => void; onDeletePost: (postId: string, photoUrl: string, username: string) => void; onBanUser: (userId: string, username: string) => void }) {
+function FlaggedPostCard({ post, moderationScore, processingPostId, onViewImage, onDeletePost, onBanUser }: { post: FlaggedPost; moderationScore?: ModerationScore; processingPostId: string | null; onViewImage: (imageUrl: string) => void; onDeletePost: (postId: string, photoUrl: string, username: string) => void; onBanUser: (userId: string, username: string) => void }) {
   const posted = formatDateTime(post.created_at);
   const isDeleting = processingPostId === post.id;
   const isBanning = processingPostId === post.user_id;
@@ -198,6 +225,7 @@ function FlaggedPostCard({ post, processingPostId, onViewImage, onDeletePost, on
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge post={post} />
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white"><User className="h-3.5 w-3.5" /> {post.gender}</span>
+            <NsfwScoreBadge score={moderationScore} />
           </div>
 
           <div>
@@ -266,7 +294,34 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [moderationScores, setModerationScores] = useState<Map<string, ModerationScore>>(new Map());
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const isAdmin = session?.user?.email?.includes('admin');
+
+  const loadModerationScores = async (postIds: string[]) => {
+    if (postIds.length === 0) return;
+
+    try {
+      const { data, error: scoreError } = await supabase
+        .from('post_moderation_scores')
+        .select('post_id, nsfw_score, top_class, scanned_at')
+        .in('post_id', postIds);
+
+      if (scoreError || !Array.isArray(data)) return;
+
+      setModerationScores((current) => {
+        const next = new Map(current);
+        for (const row of data) {
+          next.set(row.post_id, { ...row, nsfw_score: Number(row.nsfw_score) });
+        }
+        return next;
+      });
+    } catch {
+      // AI scores are additive; the queue works without them.
+    }
+  };
 
   const fetchFlaggedPosts = async () => {
     setLoading(true);
@@ -292,6 +347,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
       let filteredData = data || [];
       if (filters.searchTerm) filteredData = filteredData.filter((post) => post.username.toLowerCase().includes(filters.searchTerm.toLowerCase()));
       setFlaggedPosts(filteredData);
+      void loadModerationScores(filteredData.map((post) => post.id));
     } catch (err: unknown) {
       console.error('Error fetching flagged posts:', err);
       setError(`Failed to fetch flagged posts: ${getErrorMessage(err)}`);
@@ -368,6 +424,95 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
     }
   };
 
+  const handleScanQueue = async () => {
+    const targets = flaggedPosts.filter((post) => Boolean(post.photo_url));
+
+    if (targets.length === 0) {
+      setScanNotice('No image posts in the current queue to scan.');
+      return;
+    }
+
+    setScanning(true);
+    setScanNotice(null);
+    setScanProgress({ done: 0, total: targets.length });
+
+    let scanned = 0;
+    let failed = 0;
+
+    try {
+      // Lazy-load TensorFlow + the NSFW model only when a scan is requested.
+      const { scanImageUrl } = await import('@/lib/nsfwScanner');
+
+      for (const post of targets) {
+        let result: NsfwScanResult | null = null;
+
+        try {
+          result = await scanImageUrl(post.photo_url);
+        } catch {
+          failed += 1;
+        }
+
+        if (result) {
+          scanned += 1;
+          const score: ModerationScore = {
+            post_id: post.id,
+            nsfw_score: result.nsfwScore,
+            top_class: result.topClass,
+            scanned_at: new Date().toISOString(),
+          };
+
+          setModerationScores((current) => new Map(current).set(post.id, score));
+
+          // Persist so other admins see the score without rescanning.
+          const { error: saveError } = await supabase
+            .from('post_moderation_scores')
+            .upsert(
+              {
+                post_id: post.id,
+                nsfw_score: result.nsfwScore,
+                top_class: result.topClass,
+                class_scores: result.classScores,
+                model: result.model,
+                scanned_by: session?.user?.id ?? null,
+                scanned_at: score.scanned_at,
+              },
+              { onConflict: 'post_id' },
+            );
+
+          if (saveError) console.warn('Unable to persist moderation score:', saveError);
+        }
+
+        setScanProgress({ done: scanned + failed, total: targets.length });
+      }
+
+      setScanNotice(
+        `AI screening complete: ${scanned} image${scanned === 1 ? '' : 's'} scored${
+          failed > 0 ? `, ${failed} could not be scanned (image blocked or unreachable)` : ''
+        }. Scores run fully in your browser — images never leave Supabase.`,
+      );
+    } catch (scanError: unknown) {
+      setScanNotice(`AI screening unavailable: ${getErrorMessage(scanError)}`);
+    } finally {
+      setScanning(false);
+      setScanProgress(null);
+    }
+  };
+
+  const exportCsv = () => {
+    downloadCsv(`teatimecari-flagged-posts-${csvTimestamp()}`, flaggedPosts, [
+      { header: 'Post ID', value: (post) => post.id },
+      { header: 'Username', value: (post) => post.username },
+      { header: 'User ID', value: (post) => post.user_id },
+      { header: 'Gender', value: (post) => post.gender },
+      { header: 'Red flags', value: (post) => post.red_flag_count },
+      { header: 'Green flags', value: (post) => post.green_flag_count },
+      { header: 'AI NSFW score', value: (post) => moderationScores.get(post.id)?.nsfw_score ?? '' },
+      { header: 'AI top class', value: (post) => moderationScores.get(post.id)?.top_class ?? '' },
+      { header: 'Created', value: (post) => post.created_at },
+      { header: 'Photo URL', value: (post) => post.photo_url },
+    ]);
+  };
+
   const openImageModal = (imageUrl: string) => { setSelectedImage(imageUrl); setIsImageModalOpen(true); };
   const closeImageModal = () => { setSelectedImage(null); setIsImageModalOpen(false); };
   const handleFilterChange = (key: keyof FilterState, value: string | number) => setFilters((prev) => ({ ...prev, [key]: value }));
@@ -387,12 +532,30 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
           description="Review flagged content, inspect risk signals, and act on reported posts."
           meta={`${flaggedPosts.length} posts · ${totalRedFlags} total red flags in the current view`}
           actions={
-            <AdminButton type="button" variant="glass" onClick={fetchFlaggedPosts} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh queue
-            </AdminButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminButton type="button" variant="secondary" onClick={handleScanQueue} disabled={loading || scanning || flaggedPosts.length === 0} loading={scanning}>
+                {!scanning && <ScanEye className="h-4 w-4" />}
+                {scanning && scanProgress
+                  ? `Scanning ${scanProgress.done}/${scanProgress.total}…`
+                  : 'AI scan queue'}
+              </AdminButton>
+              <AdminButton type="button" variant="glass" onClick={exportCsv} disabled={loading || flaggedPosts.length === 0}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </AdminButton>
+              <AdminButton type="button" variant="glass" onClick={fetchFlaggedPosts} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh queue
+              </AdminButton>
+            </div>
           }
         />
+
+        {scanNotice && (
+          <AdminAlert variant="info">
+            <p>{scanNotice}</p>
+          </AdminAlert>
+        )}
 
         <ModerationSummaryCards posts={flaggedPosts} />
         <FlaggedPostFilters filters={filters} onChange={handleFilterChange} onReset={resetFilters} />
@@ -424,7 +587,7 @@ export function ReviewFlaggedPosts({ activePage = 'flagged-posts', onNavigate }:
                 }
               />
             </div>
-          ) : <div className="space-y-4">{flaggedPosts.map((post) => <FlaggedPostCard key={post.id} post={post} processingPostId={processingPostId} onViewImage={openImageModal} onDeletePost={handleDeletePost} onBanUser={handleBanUser} />)}</div>}
+          ) : <div className="space-y-4">{flaggedPosts.map((post) => <FlaggedPostCard key={post.id} post={post} moderationScore={moderationScores.get(post.id)} processingPostId={processingPostId} onViewImage={openImageModal} onDeletePost={handleDeletePost} onBanUser={handleBanUser} />)}</div>}
         </section>
 
         {isImageModalOpen && selectedImage && (

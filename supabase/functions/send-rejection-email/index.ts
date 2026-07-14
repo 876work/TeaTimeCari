@@ -23,8 +23,8 @@ interface EmailResponse {
   };
   error?: string;
   details?: {
-    sendgridStatus?: number;
-    sendgridResponse?: string;
+    resendStatus?: number;
+    resendResponse?: string;
     configurationIssues?: string[];
     userFound?: boolean;
     statusUpdated?: boolean;
@@ -227,12 +227,12 @@ Tea Time Cari Team`;
         statusUpdateError: statusError
       };
 
-      if (emailError.message.includes('SendGrid API error')) {
+      if (emailError.message.includes('Resend API error')) {
         const statusMatch = emailError.message.match(/\((\d+)\)/);
         if (statusMatch) {
-          errorDetails.sendgridStatus = parseInt(statusMatch[1]);
+          errorDetails.resendStatus = parseInt(statusMatch[1]);
         }
-        errorDetails.sendgridResponse = emailError.message;
+        errorDetails.resendResponse = emailError.message;
       } else if (emailError.message.includes('configuration error')) {
         errorDetails.configurationIssues = [emailError.message];
       }

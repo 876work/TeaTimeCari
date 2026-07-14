@@ -4,13 +4,17 @@ import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import {
   Check,
   CheckCircle,
+  Contrast,
+  Download,
   RefreshCw,
+  RotateCw,
   Search,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
   ChevronRight,
   Camera,
+  Sun,
   Users,
   Globe,
   Clock,
@@ -18,10 +22,14 @@ import {
   X,
   AlertTriangle,
   Copy,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { AdminLayout } from './AdminLayout';
+import { ADMIN_USER_SEARCH_KEY } from './AdminCommandPalette';
 import { approveRegistration, retryDiscourseSync } from '@/features/admin/registrations/api/approveRegistration';
 import { getFunctionErrorMessage } from '@/lib/functionError';
+import { downloadCsv, csvTimestamp } from '@/lib/adminCsv';
 import { getAdminSession, hasAdminPermission } from '@/lib/adminAuth';
 import { normalizeApprovalStatus } from '@/lib/auth/approvalStatus';
 import {
@@ -371,6 +379,168 @@ function DetailPanel({ user }: { user: UserRow }) {
   );
 }
 
+function KycReviewModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+
+  const reset = () => {
+    setZoom(1);
+    setRotation(0);
+    setBrightness(100);
+    setContrast(100);
+  };
+
+  const adjusted = zoom !== 1 || rotation !== 0 || brightness !== 100 || contrast !== 100;
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  const sliderClass = 'h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-white';
+  const toolLabelClass = 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/60';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="KYC verification photo review"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white">
+              KYC review — {safeDisplayName(user)}
+              {user.username ? ` (@${user.username})` : ''}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-300/90">
+              Restricted verification photo. Use only for registration review, safety, fraud prevention, legal, audit, or dispute needs. Do not copy, download, or share.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 focus:outline-none focus:ring-4 focus:ring-white/20"
+            aria-label="Close KYC review"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_280px]">
+          <div className="flex min-h-[320px] items-center justify-center overflow-hidden bg-black p-4">
+            <img
+              src={user.imageData ?? ''}
+              alt={`Verification photo for ${safeDisplayName(user)}`}
+              className="max-h-[62vh] max-w-full select-none object-contain transition-transform duration-150"
+              style={{
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+              }}
+              draggable={false}
+            />
+          </div>
+
+          <div className="flex flex-col gap-4 overflow-y-auto border-t border-white/10 bg-slate-900/80 p-5 lg:border-l lg:border-t-0">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Photo tools</p>
+
+              <div className="mt-3 space-y-3">
+                <div>
+                  <span className={toolLabelClass}><ZoomIn className="h-3.5 w-3.5" /> Zoom · {zoom.toFixed(1)}×</span>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <ZoomOut className="h-3.5 w-3.5 flex-shrink-0 text-white/40" />
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={4}
+                      step={0.1}
+                      value={zoom}
+                      onChange={(event) => setZoom(Number(event.target.value))}
+                      className={sliderClass}
+                      aria-label="Zoom"
+                    />
+                    <ZoomIn className="h-3.5 w-3.5 flex-shrink-0 text-white/40" />
+                  </div>
+                </div>
+
+                <div>
+                  <span className={toolLabelClass}><Sun className="h-3.5 w-3.5" /> Brightness · {brightness}%</span>
+                  <input
+                    type="range"
+                    min={40}
+                    max={200}
+                    step={5}
+                    value={brightness}
+                    onChange={(event) => setBrightness(Number(event.target.value))}
+                    className={`${sliderClass} mt-1.5`}
+                    aria-label="Brightness"
+                  />
+                </div>
+
+                <div>
+                  <span className={toolLabelClass}><Contrast className="h-3.5 w-3.5" /> Contrast · {contrast}%</span>
+                  <input
+                    type="range"
+                    min={40}
+                    max={200}
+                    step={5}
+                    value={contrast}
+                    onChange={(event) => setContrast(Number(event.target.value))}
+                    className={`${sliderClass} mt-1.5`}
+                    aria-label="Contrast"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <AdminButton size="sm" variant="subtle" onClick={() => setRotation((value) => (value + 90) % 360)}>
+                    <RotateCw className="h-4 w-4" />
+                    Rotate
+                  </AdminButton>
+                  <AdminButton size="sm" variant="ghost" onClick={reset} disabled={!adjusted}>
+                    Reset
+                  </AdminButton>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Cross-check against application</p>
+              <dl className="mt-3 space-y-2.5 text-sm">
+                {[
+                  ['Photo type', user.captureType === 'selfie' ? 'Selfie' : user.captureType === 'id' ? 'ID document' : 'Unknown'],
+                  ['Full name', safeDisplayName(user)],
+                  ['Username', user.username ? `@${user.username}` : '—'],
+                  ['Email', user.email ?? '—'],
+                  ['Gender', user.gender ?? '—'],
+                  ['Registered', formatDateTime(user.created_at) ?? '—'],
+                  ['Registered from', registrationLocationDisplay(user)],
+                  ['Device', [user.registration_device, user.registration_operating_system].filter(Boolean).join(' · ') || '—'],
+                ].map(([label, value]) => (
+                  <div key={label as string}>
+                    <dt className="text-[11px] uppercase tracking-wide text-white/40">{label}</dt>
+                    <dd className="break-words text-white/85">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminUserReview({
   activePage = 'user-reviews',
   onNavigate,
@@ -401,13 +571,29 @@ export function AdminUserReview({
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  const [search, setSearch] = useState('');
+  // Picks up a user selected from the global command palette (Cmd+K).
+  const [search, setSearch] = useState(() => {
+    try {
+      const handoff = sessionStorage.getItem(ADMIN_USER_SEARCH_KEY);
+      if (handoff) {
+        sessionStorage.removeItem(ADMIN_USER_SEARCH_KEY);
+        return handoff;
+      }
+    } catch {
+      // Session storage unavailable.
+    }
+    return '';
+  });
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [presenceFilter, setPresenceFilter] = useState<PresenceFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('registration_desc');
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [imageModal, setImageModal] = useState<string | null>(null);
+  const [kycUser, setKycUser] = useState<UserRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkProgress, setBulkProgress] = useState<{ label: string; done: number; total: number } | null>(null);
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [isOwner, setIsOwner] = useState(false);
@@ -540,6 +726,7 @@ export function AdminUserReview({
       setTotalUsers(typeof data.total === 'number' ? data.total : mapped.length);
       setCurrentPage(page);
       setExpandedId(null);
+      setSelectedIds(new Set());
       setTrackingStatus({
         trackingFieldsAvailable: data.trackingFieldsAvailable !== false,
         omittedFields: Array.isArray(data.omittedFields) ? data.omittedFields : [],
@@ -870,6 +1057,127 @@ export function AdminUserReview({
     setPendingConfirmation(null);
   };
 
+  const toggleSelected = (userId: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const selectedUsers = users.filter((u) => selectedIds.has(u.id));
+  const selectedPending = selectedUsers.filter((u) => normalizeApprovalStatus(u.status) === 'pending');
+
+  const handleBulkApprove = async () => {
+    if (selectedPending.length === 0) return;
+    if (!confirm(`Approve ${selectedPending.length} pending registration${selectedPending.length === 1 ? '' : 's'}? Each user is emailed and synced to Discourse.`)) return;
+
+    setError(null);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const [index, user] of selectedPending.entries()) {
+      setBulkProgress({ label: 'Approving', done: index, total: selectedPending.length });
+
+      try {
+        const data = await approveRegistration(user.id);
+        succeeded += 1;
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'approved' } : u)));
+
+        if (data?.status === 'approved_with_sync_error') {
+          setActionMessages((prev) => ({
+            ...prev,
+            [user.id]: { type: 'warning', message: 'Approved, but Discourse sync needs attention.', canRetryDiscourse: true },
+          }));
+        }
+      } catch (err) {
+        failed += 1;
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'warning', message: `Bulk approve failed: ${getErrorMessage(err)}` },
+        }));
+      }
+    }
+
+    setBulkProgress(null);
+    setSelectedIds(new Set());
+    setToast({
+      type: failed > 0 ? 'warning' : 'success',
+      message: `Bulk approve finished: ${succeeded} approved${failed > 0 ? `, ${failed} failed — see the flagged rows` : ''}.`,
+    });
+  };
+
+  const handleBulkReject = async () => {
+    if (selectedPending.length === 0) return;
+
+    setBulkRejectOpen(false);
+    setError(null);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const [index, user] of selectedPending.entries()) {
+      setBulkProgress({ label: 'Rejecting', done: index, total: selectedPending.length });
+
+      try {
+        const {
+          data: { session: s },
+        } = await supabase.auth.getSession();
+
+        if (!s) throw new Error('Not authenticated.');
+
+        const { data, error: fnErr } = await supabase.functions.invoke('send-rejection-email', {
+          body: {
+            registration_id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            fullName: user.fullName,
+            reason: bulkRejectReason || undefined,
+          },
+          headers: { Authorization: `Bearer ${s.access_token}` },
+        });
+
+        if (fnErr) throw new Error(await getFunctionErrorMessage(fnErr));
+        if (!data?.success) throw new Error(data?.error || 'Failed to reject user');
+
+        succeeded += 1;
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'rejected' } : u)));
+      } catch (err) {
+        failed += 1;
+        setActionMessages((prev) => ({
+          ...prev,
+          [user.id]: { type: 'warning', message: `Bulk reject failed: ${getErrorMessage(err)}` },
+        }));
+      }
+    }
+
+    setBulkProgress(null);
+    setSelectedIds(new Set());
+    setBulkRejectReason('');
+    setToast({
+      type: failed > 0 ? 'warning' : 'success',
+      message: `Bulk reject finished: ${succeeded} rejected${failed > 0 ? `, ${failed} failed — see the flagged rows` : ''}.`,
+    });
+  };
+
+  const exportUsersCsv = (rows: UserRow[], scope: string) => {
+    downloadCsv(`teatimecari-users-${scope}-${csvTimestamp()}`, rows, [
+      { header: 'Name', value: (u) => safeDisplayName(u) },
+      { header: 'Username', value: (u) => u.username },
+      { header: 'Email', value: (u) => u.email },
+      { header: 'Phone', value: (u) => u.phone },
+      { header: 'Gender', value: (u) => u.gender },
+      { header: 'Status', value: (u) => normalizeApprovalStatus(u.status) },
+      { header: 'Registered', value: (u) => u.created_at },
+      { header: 'Last login', value: (u) => u.last_login_at },
+      { header: 'Presence', value: (u) => u.presence_status },
+      { header: 'Registered from', value: (u) => registrationLocationDisplay(u) },
+      { header: 'Registration IP', value: (u) => u.registration_ip_address },
+      { header: 'Photo type', value: (u) => u.captureType },
+      { header: 'Discourse username', value: (u) => u.discourse_username },
+    ]);
+  };
+
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -979,6 +1287,16 @@ export function AdminUserReview({
               <AdminButton
                 type="button"
                 variant="glass"
+                onClick={() => exportUsersCsv(filtered, 'filtered')}
+                disabled={loading || filtered.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </AdminButton>
+
+              <AdminButton
+                type="button"
+                variant="glass"
                 onClick={() => fetchUsers(currentPage)}
                 disabled={loading}
               >
@@ -1077,6 +1395,56 @@ export function AdminUserReview({
           </p>
         </AdminFilterBar>
 
+        {(selectedIds.size > 0 || bulkProgress) && (
+          <div className="admin-glass flex flex-wrap items-center gap-3 rounded-3xl px-5 py-3">
+            {bulkProgress ? (
+              <p className="text-sm font-semibold text-white">
+                {bulkProgress.label} {bulkProgress.done + 1} of {bulkProgress.total}…
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-white">
+                  {selectedIds.size} selected
+                  {selectedPending.length > 0 && selectedPending.length !== selectedIds.size
+                    ? ` · ${selectedPending.length} pending`
+                    : ''}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <AdminButton
+                    size="sm"
+                    variant="success"
+                    onClick={handleBulkApprove}
+                    disabled={selectedPending.length === 0 || Boolean(processingId)}
+                    title={selectedPending.length === 0 ? 'Only pending registrations can be approved' : undefined}
+                  >
+                    Approve {selectedPending.length > 0 ? `${selectedPending.length} pending` : 'pending'}
+                  </AdminButton>
+
+                  <AdminButton
+                    size="sm"
+                    variant="danger"
+                    onClick={() => setBulkRejectOpen(true)}
+                    disabled={selectedPending.length === 0 || Boolean(processingId)}
+                    title={selectedPending.length === 0 ? 'Only pending registrations can be rejected' : undefined}
+                  >
+                    Reject {selectedPending.length > 0 ? `${selectedPending.length} pending` : 'pending'}
+                  </AdminButton>
+
+                  <AdminButton size="sm" variant="secondary" onClick={() => exportUsersCsv(selectedUsers, 'selected')}>
+                    <Download className="h-4 w-4" />
+                    Export selection
+                  </AdminButton>
+
+                  <AdminButton size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                    Clear
+                  </AdminButton>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="admin-glass overflow-hidden rounded-3xl">
           {loading ? (
             <div className="space-y-3 p-5">
@@ -1112,6 +1480,17 @@ export function AdminUserReview({
               <table className="min-w-full">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-white/15 bg-white/10 backdrop-blur">
+                    <th className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={filtered.length > 0 && filtered.every((u) => selectedIds.has(u.id))}
+                        onChange={(event) =>
+                          setSelectedIds(event.target.checked ? new Set(filtered.map((u) => u.id)) : new Set())
+                        }
+                        className="h-4 w-4 rounded border-white/30 bg-white/10"
+                        aria-label="Select all visible users"
+                      />
+                    </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider">User</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider hidden md:table-cell">Contact</th>
                     <th className="px-5 py-3 text-left text-xs font-semibold text-white/50 uppercase tracking-wider">Status</th>
@@ -1130,6 +1509,15 @@ export function AdminUserReview({
                     return (
                       <React.Fragment key={user.id}>
                         <tr className={`hover:bg-white/5 transition-colors ${isExpanded ? 'bg-white/5' : ''}`}>
+                          <td className="w-10 px-4 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(user.id)}
+                              onChange={() => toggleSelected(user.id)}
+                              className="h-4 w-4 rounded border-white/30 bg-white/10"
+                              aria-label={`Select ${user.username || user.email || 'user'}`}
+                            />
+                          </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15">
@@ -1185,8 +1573,8 @@ export function AdminUserReview({
 
                               {user.imageData && (
                                 <AdminIconButton
-                                  onClick={() => setImageModal(user.imageData!)}
-                                  label={`View verification photo for ${user.username || user.email}`}
+                                  onClick={() => setKycUser(user)}
+                                  label={`Open KYC review for ${user.username || user.email}`}
                                 >
                                   <Camera className="h-4 w-4" />
                                 </AdminIconButton>
@@ -1281,7 +1669,7 @@ export function AdminUserReview({
 
                         {isExpanded && (
                           <tr className="hover:bg-white/5">
-                            <td colSpan={6} className="p-0">
+                            <td colSpan={7} className="p-0">
                               <div className="transition-all duration-200 animate-in slide-in-from-top-1">
                                 <DetailPanel user={user} />
                               </div>
@@ -1303,6 +1691,13 @@ export function AdminUserReview({
                 return (
                   <div key={`${user.id}-mobile`} className="p-4">
                     <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => toggleSelected(user.id)}
+                        className="mt-3.5 h-4 w-4 flex-shrink-0 rounded border-white/30 bg-white/10"
+                        aria-label={`Select ${user.username || user.email || 'user'}`}
+                      />
                       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white ring-1 ring-white/15">
                         {initialsFor(user)}
                       </div>
@@ -1319,7 +1714,7 @@ export function AdminUserReview({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <AdminButton size="sm" variant="secondary" onClick={() => setExpandedId(isExpanded ? null : user.id)}>{isExpanded ? 'Hide details' : 'Details'}</AdminButton>
-                      {user.imageData && <AdminButton size="sm" variant="secondary" onClick={() => setImageModal(user.imageData!)}>Photo</AdminButton>}
+                      {user.imageData && <AdminButton size="sm" variant="secondary" onClick={() => setKycUser(user)}>KYC photo</AdminButton>}
                       {isOwner && <AdminButton size="sm" variant="secondary" onClick={() => openEditUser(user)} disabled={isProcessing}>Edit</AdminButton>}
                       {normalizedStatus === 'pending' && <AdminButton size="sm" variant="success" onClick={() => handleApprove(user)} loading={isProcessing}>Approve</AdminButton>}
                       {normalizedStatus === 'pending' && <AdminButton size="sm" variant="danger" onClick={() => requestConfirmation('reject', user)} disabled={isProcessing}>Reject</AdminButton>}
@@ -1593,30 +1988,38 @@ export function AdminUserReview({
         </div>
       )}
 
-      {imageModal && (
-        <div
-          className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50"
-          onClick={() => setImageModal(null)}
-        >
-          <div className="relative max-w-2xl max-h-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setImageModal(null)}
-              className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/30"
-              aria-label="Close photo preview"
-            >
-              <X className="w-4 h-4 text-slate-700" />
-            </button>
+      {kycUser && <KycReviewModal user={kycUser} onClose={() => setKycUser(null)} />}
 
-            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 shadow-lg">
-              <p className="font-semibold">Restricted verification photo</p>
-              <p className="mt-1">Use only for registration review, safety, fraud prevention, legal, audit, or dispute needs. Do not copy, download, or share publicly.</p>
-            </div>
+      {bulkRejectOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-reject-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="bulk-reject-title" className="text-lg font-bold text-slate-900">
+              Reject {selectedPending.length} pending registration{selectedPending.length === 1 ? '' : 's'}?
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Each applicant is marked rejected and emailed. The reason below is included in every rejection email.
+            </p>
 
-            <img
-              src={imageModal}
-              alt="Registration photo"
-              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+            <label htmlFor="bulk-rejection-reason" className="mt-5 block text-sm font-semibold text-slate-700">
+              Rejection reason (optional, shared by all)
+            </label>
+            <textarea
+              id="bulk-rejection-reason"
+              value={bulkRejectReason}
+              onChange={(event) => setBulkRejectReason(event.target.value)}
+              rows={3}
+              className="mt-2 w-full rounded-admin-md border border-admin-border bg-white px-3 py-2 text-sm text-admin-fg shadow-admin-sm outline-none transition-all duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-admin-brand focus:ring-4 focus:ring-admin-brand/10"
+              placeholder="Add a short reason for the rejection emails"
             />
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <AdminButton type="button" variant="secondary" onClick={() => setBulkRejectOpen(false)}>
+                Cancel
+              </AdminButton>
+              <AdminButton type="button" variant="danger" onClick={handleBulkReject}>
+                Reject {selectedPending.length} application{selectedPending.length === 1 ? '' : 's'}
+              </AdminButton>
+            </div>
           </div>
         </div>
       )}

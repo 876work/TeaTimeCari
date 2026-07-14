@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Download,
   FileSearch,
   Loader2,
   RefreshCw,
@@ -16,6 +17,7 @@ import {
   UserCog,
   XCircle,
 } from "lucide-react";
+import { downloadCsv, csvTimestamp } from "@/lib/adminCsv";
 import { AdminLayout } from "./AdminLayout";
 import {
   AdminAlert,
@@ -764,12 +766,38 @@ export function AdminAuditLogs({
               : undefined
           }
           actions={
-            <AdminButton type="button" variant="glass" onClick={fetchLogs} disabled={loading}>
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </AdminButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminButton
+                type="button"
+                variant="glass"
+                onClick={() =>
+                  downloadCsv(`teatimecari-audit-logs-${csvTimestamp()}`, filteredLogs, [
+                    { header: "Timestamp", value: (log) => log.created_at },
+                    { header: "Actor", value: (log) => log.actor_email },
+                    { header: "Actor role", value: (log) => log.actor_role },
+                    { header: "Action", value: (log) => log.action },
+                    { header: "Target type", value: (log) => log.target_type },
+                    { header: "Target", value: (log) => log.target_email ?? log.target_id },
+                    { header: "Previous status", value: (log) => log.previous_status },
+                    { header: "Next status", value: (log) => log.next_status },
+                    { header: "Reason", value: (log) => log.reason },
+                    { header: "Success", value: (log) => (log.success ? "yes" : "no") },
+                    { header: "Error", value: (log) => log.error_message },
+                  ])
+                }
+                disabled={loading || filteredLogs.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </AdminButton>
+
+              <AdminButton type="button" variant="glass" onClick={fetchLogs} disabled={loading}>
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </AdminButton>
+            </div>
           }
         />
 

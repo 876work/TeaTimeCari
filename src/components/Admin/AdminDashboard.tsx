@@ -23,11 +23,14 @@ import {
   Wifi,
   CalendarDays,
   ArrowRight,
+  CreditCard,
   Flag,
   HardDrive,
   FileText,
   Mail,
+  Megaphone,
   MessageSquare,
+  Radio,
 } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { AdminUserReview } from "./ReviewUsers";
@@ -35,9 +38,13 @@ import { ReviewFlaggedPosts } from "./ReviewFlaggedPosts";
 import { DiscourseCommunityAdmins } from "./DiscourseCommunityAdmins";
 import { AdminAuditLogs } from "./AdminAuditLogs";
 import { AdminInvites } from "./AdminInvites";
-import FunctionPing from "../../dev/FunctionPing";
+import { AdminPayments } from "./AdminPayments";
+import { AdminAnnouncements } from "./AdminAnnouncements";
+import { AdminRoles } from "./AdminRoles";
+import { AdminFeatureFlags } from "./AdminFeatureFlags";
+import { AdminAlerts } from "./AdminAlerts";
+import { AdminSystemHealth } from "./AdminSystemHealth";
 import {
-  AdminAlert,
   AdminButton,
   AdminCard,
   AdminBadge,
@@ -473,6 +480,7 @@ export function AdminDashboard({
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isOwner, setIsOwner] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const isAdmin = !!session?.user?.id;
 
@@ -483,8 +491,8 @@ export function AdminDashboard({
       .catch(() => setIsOwner(false));
   }, [isAdmin]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setLoading(true);
     setError(null);
 
     try {
@@ -499,6 +507,7 @@ export function AdminDashboard({
       const { data, error: fnError } = await supabase.functions.invoke(
         "get-admin-users",
         {
+          body: { limit: 500, offset: 0 },
           headers: {
             Authorization: `Bearer ${currentSession.access_token}`,
           },
@@ -715,6 +724,45 @@ export function AdminDashboard({
     return () => clearInterval(id);
   }, [isAdmin]);
 
+  // Live updates: refresh dashboard data when registrations or posts change,
+  // instead of waiting for a manual refresh.
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let refreshTimer: number | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer !== null) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void fetchData({ silent: true });
+      }, 1500);
+    };
+
+    const channel = supabase
+      .channel("admin-dashboard-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        scheduleRefresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        scheduleRefresh
+      )
+      .subscribe((status) => {
+        setRealtimeConnected(status === "SUBSCRIBED");
+      });
+
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      setRealtimeConnected(false);
+      void supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
   const totalAttentionItems = useMemo(
     () => stats.pending + moderationStats.flaggedPosts,
     [stats.pending, moderationStats.flaggedPosts]
@@ -753,24 +801,37 @@ export function AdminDashboard({
     return <AdminInvites activePage={activePage} onNavigate={onNavigate} />;
   }
 
+  if (activePage === "payments") {
+    return <AdminPayments activePage={activePage} onNavigate={onNavigate} />;
+  }
+
+  if (activePage === "announcements") {
+    return <AdminAnnouncements activePage={activePage} onNavigate={onNavigate} />;
+  }
+
+  if (activePage === "roles") {
+    return <AdminRoles activePage={activePage} onNavigate={onNavigate} />;
+  }
+
+  if (activePage === "flags") {
+    return <AdminFeatureFlags activePage={activePage} onNavigate={onNavigate} />;
+  }
+
+  if (activePage === "alerts") {
+    return <AdminAlerts activePage={activePage} onNavigate={onNavigate} />;
+  }
+
   if (activePage === "logs") {
     return <AdminAuditLogs activePage={activePage} onNavigate={onNavigate} />;
   }
 
   if (activePage === "function-ping") {
     return (
-      <AdminLayout activePage={activePage} onNavigate={onNavigate}>
-        {isOwner ? (
-          <AdminCard>
-            <FunctionPing />
-          </AdminCard>
-        ) : (
-          <AdminAlert variant="error">
-            <p className="font-semibold">Owner access required</p>
-            <p className="mt-1">This diagnostic tool is restricted to owner-level admin accounts.</p>
-          </AdminAlert>
-        )}
-      </AdminLayout>
+      <AdminSystemHealth
+        activePage={activePage}
+        onNavigate={onNavigate}
+        isOwner={isOwner}
+      />
     );
   }
 
@@ -803,9 +864,14 @@ export function AdminDashboard({
                 </AdminBadge>
 
                 <AdminBadge>Last synced {formatTime(lastUpdated)}</AdminBadge>
+
+                <AdminBadge variant={realtimeConnected ? "success" : "muted"}>
+                  <Radio className="h-3.5 w-3.5" />
+                  {realtimeConnected ? "Live" : "Polling"}
+                </AdminBadge>
               </div>
 
-              <AdminButton type="button" variant="glass" onClick={fetchData} disabled={loading}>
+              <AdminButton type="button" variant="glass" onClick={() => fetchData()} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </AdminButton>
@@ -970,6 +1036,22 @@ export function AdminDashboard({
                 description="Review flagged posts"
                 icon={<Flag className="h-4 w-4" />}
                 page="flagged-posts"
+                onNavigate={onNavigate}
+              />
+
+              <GlassShortcutButton
+                label="Payments"
+                description="Revenue and payment history"
+                icon={<CreditCard className="h-4 w-4" />}
+                page="payments"
+                onNavigate={onNavigate}
+              />
+
+              <GlassShortcutButton
+                label="Announcements"
+                description="Banners and email broadcasts"
+                icon={<Megaphone className="h-4 w-4" />}
+                page="announcements"
                 onNavigate={onNavigate}
               />
 
