@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
-import { trackAuthLogin } from '@/hooks/useAuthActivityTracking';
-import { debugError, debugLog, debugWarn } from '@/lib/debugLogger';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 export interface RegistrationPayload {
   fullName: string;
@@ -20,8 +19,6 @@ export interface RegistrationResponse {
   alreadyExists?: boolean;
   recoveredAuthUser?: boolean;
   status?: 'pending' | 'approved' | 'rejected' | 'banned' | 'suspended';
-  sessionSynced?: boolean;
-  sessionError?: string;
   error?: string;
   detail?: string;
 }
@@ -114,29 +111,9 @@ export async function submitRegistration(payload: RegistrationPayload): Promise<
     throw new Error(data?.error || 'Registration failed. Please try again.');
   }
 
-  if (!data.alreadyExists) {
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: normalizedPayload.email,
-      password: normalizedPayload.password,
-    });
-
-    if (signInError) {
-      await supabase.auth.signOut().catch((signOutError) => {
-        debugWarn('Unable to clear auth session after registration sign-in failed:', signOutError);
-      });
-
-      data.sessionSynced = false;
-      data.sessionError = signInError.message;
-    } else {
-      data.sessionSynced = true;
-      await trackAuthLogin();
-    }
-  }
-
   debugLog('Registration submitted successfully:', {
     alreadyExists: Boolean(data.alreadyExists),
     isNewSubmission: !data.alreadyExists,
-    sessionSynced: data.sessionSynced ?? false,
   });
 
   return {
