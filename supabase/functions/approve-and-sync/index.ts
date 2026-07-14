@@ -44,6 +44,19 @@ function safeJson(s: string) {
   }
 }
 
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+
+  const text = (error.message || "").toLowerCase();
+
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (text.includes("column") && text.includes("does not exist")) ||
+    (text.includes("schema cache") && text.includes("could not find"))
+  );
+}
+
 /* ---------------- Env ---------------- */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -293,15 +306,38 @@ Deno.serve(async (req) => {
     const bodyGender = normalizeGender(String(body.gender ?? ""));
     const xaccessFlag = Boolean(body.xaccess ?? false);
 
-    // Load registration
-    const { data: reg, error: regErr } = await supa
-      .from("registrations")
-      .select("id, email, username, firstName, lastName, gender, status, email_code, email_code_expiry, discourse_welcome_pm_sent_at")
-      .eq("id", registrationId)
-      .single();
+    // Load registration. discourse_welcome_pm_sent_at was added by a later
+    // migration, so environments that haven't applied it yet must still be able
+    // to approve — retry without it when the column is missing. Query failures
+    // must surface as 500s, not 404s: a broken select is not a missing row.
+    const requiredColumns = "id, email, username, firstName, lastName, gender, status";
+    const optionalColumns = ["discourse_welcome_pm_sent_at"];
 
-    if (regErr || !reg) {
+    let { data: reg, error: regErr } = await supa
+      .from("registrations")
+      .select([requiredColumns, ...optionalColumns].join(", "))
+      .eq("id", registrationId)
+      .maybeSingle();
+
+    if (regErr && isMissingColumnError(regErr)) {
+      console.warn("registrations optional columns unavailable; retrying without them", {
+        optionalColumns,
+        regErr,
+      });
+
+      ({ data: reg, error: regErr } = await supa
+        .from("registrations")
+        .select(requiredColumns)
+        .eq("id", registrationId)
+        .maybeSingle());
+    }
+
+    if (regErr) {
       console.error("registrations lookup failed", { registrationId, regErr });
+      return jerr(headers, 500, `Failed to load registration: ${regErr.message || "database error"}`);
+    }
+
+    if (!reg) {
       return jerr(headers, 404, "Registration not found");
     }
 
