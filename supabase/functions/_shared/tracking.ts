@@ -109,7 +109,7 @@ export async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
   if (!ip) return emptyLocation('not_attempted');
 
   const ipinfoToken = Deno.env.get('IPINFO_TOKEN') || '';
-  const timeout = AbortSignal.timeout(3000);
+  const timeout = AbortSignal.timeout(5000);
 
   try {
     if (ipinfoToken) {
@@ -122,7 +122,7 @@ export async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
         return {
           ip_city: data.city || null,
           ip_region: data.region || null,
-          ip_country: countryCode,
+          ip_country: data.country_name || countryCode,
           ip_country_code: countryCode,
           ip_timezone: data.timezone || null,
           ip_location: [data.city, data.region, countryCode].filter(Boolean).join(', ') || null,
@@ -136,11 +136,12 @@ export async function lookupIpLocation(ip: string | null): Promise<IpLocation> {
     if (!res.ok) return emptyLocation('unavailable');
     const data = await res.json();
     const country = data.country_name || data.country || null;
+    const countryCode = data.country_code || null;
     return {
       ip_city: data.city || null,
       ip_region: data.region || null,
       ip_country: country,
-      ip_country_code: data.country_code || data.country || null,
+      ip_country_code: countryCode,
       ip_timezone: data.timezone || null,
       ip_location: [data.city, data.region, country].filter(Boolean).join(', ') || null,
       ip_location_provider: 'ipapi',
