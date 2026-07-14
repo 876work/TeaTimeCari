@@ -75,6 +75,7 @@ export function AdminAnnouncements({
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tableMissing, setTableMissing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<Announcement | null>(null);
@@ -112,6 +113,7 @@ export function AdminAnnouncements({
     try {
       const data = await invoke({ action: 'list' });
       setAnnouncements(data.announcements ?? []);
+      setTableMissing(Boolean(data.tableMissing));
       if (data.tableMissing) {
         setError('The site_announcements table is missing. Run the pending database migrations.');
       }
@@ -216,7 +218,12 @@ export function AdminAnnouncements({
           description="Publish in-app banners and send email broadcasts to members through Resend."
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <AdminButton type="button" variant="primary" onClick={() => setShowComposer((open) => !open)}>
+              <AdminButton
+                type="button"
+                variant="primary"
+                onClick={() => setShowComposer((open) => !open)}
+                disabled={tableMissing}
+              >
                 <Plus className="h-4 w-4" />
                 New announcement
               </AdminButton>
@@ -300,7 +307,7 @@ export function AdminAnnouncements({
                   variant="primary"
                   onClick={handleCreate}
                   loading={processingId === 'new'}
-                  disabled={!title.trim() || !body.trim() || processingId === 'new'}
+                  disabled={!title.trim() || !body.trim() || processingId === 'new' || tableMissing}
                 >
                   <Megaphone className="h-4 w-4" />
                   Publish announcement

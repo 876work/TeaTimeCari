@@ -29,6 +29,13 @@ const AUDIENCES = new Set<Audience>(["all", "approved", "male", "female"]);
 const RESEND_BATCH_URL = "https://api.resend.com/emails/batch";
 const BATCH_SIZE = 50;
 
+const TABLE_MISSING_MESSAGE =
+  "The site_announcements table doesn't exist yet. Ask an engineer to run the pending database migration (supabase/migrations/20260714000000_admin_dashboard_expansion.sql) before announcements can be created.";
+
+function missingTableResponse() {
+  return json(409, { ok: false, error: TABLE_MISSING_MESSAGE, tableMissing: true });
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -192,7 +199,10 @@ Deno.serve(async (req: Request) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return missingTableResponse();
+        throw error;
+      }
 
       await writeAdminAuditLog({
         actor,
@@ -218,7 +228,10 @@ Deno.serve(async (req: Request) => {
         .eq("id", body.announcement_id)
         .maybeSingle();
 
-      if (readError) throw readError;
+      if (readError) {
+        if (isMissingTableError(readError)) return missingTableResponse();
+        throw readError;
+      }
       if (!current) return json(404, { ok: false, error: "Announcement not found." });
 
       const { error } = await supabaseAdmin
@@ -226,7 +239,10 @@ Deno.serve(async (req: Request) => {
         .update({ active: !current.active })
         .eq("id", current.id);
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return missingTableResponse();
+        throw error;
+      }
 
       await writeAdminAuditLog({
         actor,
@@ -251,7 +267,10 @@ Deno.serve(async (req: Request) => {
         .delete()
         .eq("id", body.announcement_id);
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingTableError(error)) return missingTableResponse();
+        throw error;
+      }
 
       await writeAdminAuditLog({
         actor,
@@ -276,7 +295,10 @@ Deno.serve(async (req: Request) => {
         .eq("id", body.announcement_id)
         .maybeSingle();
 
-      if (readError) throw readError;
+      if (readError) {
+        if (isMissingTableError(readError)) return missingTableResponse();
+        throw readError;
+      }
       if (!announcement) return json(404, { ok: false, error: "Announcement not found." });
 
       const recipients = await getRecipients(announcement.audience as Audience);
