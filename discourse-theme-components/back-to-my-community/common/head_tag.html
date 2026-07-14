@@ -1,0 +1,99 @@
+<script type="text/discourse-plugin" version="0.8">
+  const TTC_BACK_BUTTON_ID = "ttc-back-to-community";
+  const TTC_BACK_BUTTON_TEXT = "← Back to My Community";
+  const TTC_COMMUNITY_CATEGORY_PATHS = {
+    "women-slu": "/c/user-photos/women-photos-slu/7",
+    "men-slu": "/c/user-photos/men-photos-slu/6",
+  };
+
+  function ttcCollectionToArray(collection) {
+    if (!collection) return [];
+    if (Array.isArray(collection)) return collection;
+    if (typeof collection.toArray === "function") return collection.toArray();
+    return [];
+  }
+
+  function ttcGetProperty(object, key) {
+    if (!object) return null;
+    if (typeof object.get === "function") return object.get(key);
+    return object[key];
+  }
+
+  function ttcNormalizeGroupName(group) {
+    if (!group) return "";
+    if (typeof group === "string") return group.toLowerCase();
+    return String(ttcGetProperty(group, "name") || "").toLowerCase();
+  }
+
+  function ttcCurrentUserGroupNames(user) {
+    const directGroups = ttcCollectionToArray(ttcGetProperty(user, "groups"));
+    const groupUsers = ttcCollectionToArray(ttcGetProperty(user, "group_users"));
+    const groupNames = [];
+
+    groupNames.push(...directGroups.map(ttcNormalizeGroupName));
+    groupNames.push(
+      ...groupUsers.map((groupUser) =>
+        ttcNormalizeGroupName(ttcGetProperty(groupUser, "group") || groupUser),
+      ),
+    );
+
+    return groupNames.filter(Boolean);
+  }
+
+  function ttcCommunityPathForUser(user) {
+    const groupNames = ttcCurrentUserGroupNames(user);
+
+    if (groupNames.includes("women-slu")) return TTC_COMMUNITY_CATEGORY_PATHS["women-slu"];
+    if (groupNames.includes("men-slu")) return TTC_COMMUNITY_CATEGORY_PATHS["men-slu"];
+
+    return null;
+  }
+
+  function ttcShouldShowBackButton() {
+    return /^\/t\//.test(window.location.pathname) || /^\/c\//.test(window.location.pathname);
+  }
+
+  function ttcRemoveBackButton() {
+    document.getElementById(TTC_BACK_BUTTON_ID)?.remove();
+  }
+
+  function ttcPlaceBackButton(button) {
+    const mainOutlet = document.querySelector("#main-outlet");
+    if (!mainOutlet) return false;
+
+    mainOutlet.prepend(button);
+    return true;
+  }
+
+  function ttcRenderBackButton() {
+    const currentUser = api.getCurrentUser();
+
+    ttcRemoveBackButton();
+
+    if (!currentUser || !ttcShouldShowBackButton()) return;
+
+    const targetPath = ttcCommunityPathForUser(currentUser);
+
+    // No known destination (e.g. staff/mod/xaccess-only accounts with
+    // neither gendered group) or already at the destination: showing a
+    // "back to my community" button here would be misleading, so skip it.
+    if (!targetPath || window.location.pathname === targetPath) return;
+
+    const button = document.createElement("button");
+    button.id = TTC_BACK_BUTTON_ID;
+    button.type = "button";
+    button.className = "ttc-back-to-community-button";
+    button.textContent = TTC_BACK_BUTTON_TEXT;
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      window.location.assign(targetPath);
+    });
+
+    if (!ttcPlaceBackButton(button)) {
+      window.setTimeout(() => ttcPlaceBackButton(button), 100);
+    }
+  }
+
+  api.onPageChange(ttcRenderBackButton);
+</script>

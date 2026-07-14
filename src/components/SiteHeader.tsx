@@ -10,8 +10,10 @@ interface SiteHeaderProps {
 
 const navigationLinks = [
   { label: 'Home', to: '/', end: true },
+  { label: 'How It Works', to: '/how-it-works' },
   { label: 'Community', to: '/community' },
   { label: 'FAQ', to: '/faq' },
+  { label: 'Anonymous Mode', to: '/anonymous-mode' },
   { label: 'Contact Us', to: '/contact-us' },
 ];
 
@@ -88,7 +90,7 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
             ) : (
               <>
                 <Link to="/login" className={`${glassButtonClass} px-4 py-2`}>
-                  Sign In
+                  Log In
                 </Link>
                 <Link to="/signup" className={`${joinNowClass} px-4 py-2 text-sm font-bold lg:px-5`}>
                   Join Now
@@ -126,6 +128,12 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
                   {link.label}
                 </NavLink>
               ))}
+              {showNotifications && isAuthenticated && (
+                <div className="mt-2 flex items-center justify-between rounded-xl border-t border-white/20 px-4 py-3">
+                  <span className="text-sm font-semibold text-[#11263F]">Notifications</span>
+                  <NotificationBell />
+                </div>
+              )}
               <div className="mt-2 grid gap-2 border-t border-white/20 pt-3">
                 {isAuthenticated ? (
                   <>
@@ -143,7 +151,7 @@ export function SiteHeader({ showNotifications = false }: SiteHeaderProps) {
                 ) : (
                   <>
                     <Link to="/login" onClick={closeMenu} className={`${glassButtonClass} px-4 py-3 text-center`}>
-                      Sign In
+                      Log In
                     </Link>
                     <Link
                       to="/signup"

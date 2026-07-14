@@ -1,0 +1,12 @@
+en:
+  site_settings:
+    enable_user_download_watermark: "Serve post upload image downloads through a per-user watermarked derivative."
+    watermark_text: "First line of the visible watermark text."
+    watermark_include_username: "Include the current user's username, or Guest for anonymous users, on the second watermark line."
+    watermark_position: "Where the watermark is placed on downloaded image derivatives."
+    watermark_opacity: "Text opacity for the image download watermark."
+    watermark_font_size: "Watermark font size. Use responsive to scale from image dimensions, or a numeric pixel value."
+    watermark_margin: "Watermark margin from the selected image edge, in pixels."
+    watermark_apply_to_categories: "Optional category allow-list. When empty, post uploads in all categories are eligible."
+    watermark_excluded_categories: "Optional category block-list. Post uploads in these categories are never watermarked."
+    watermark_cache_enabled: "Cache generated derivatives using upload id, user id/guest, and upload version/hash."

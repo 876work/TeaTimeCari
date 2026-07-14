@@ -20,10 +20,19 @@ interface EmailResponse {
   };
   error?: string;
   details?: {
-    sendgridStatus?: number;
-    sendgridResponse?: string;
+    resendStatus?: number;
+    resendResponse?: string;
     configurationIssues?: string[];
   };
+}
+
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getErrorName(error: unknown): string {
+  return error instanceof Error ? error.constructor.name : 'Unknown';
 }
 
 function getFirstNameFromFull(fullName: string): string | undefined {
@@ -50,18 +59,18 @@ async function generateAndStoreEmailCode(userId: string): Promise<{ code: string
 
     if (updateError) {
       console.error('Database update error:', updateError);
-      return { 
-        code: emailCode, 
-        error: `Failed to store verification code: ${updateError.message}` 
+      return {
+        code: emailCode,
+        error: `Failed to store verification code: ${updateError.message}`
       };
     }
 
     return { code: emailCode };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error generating email code:', err);
-    return { 
-      code: `SLU${generate6DigitCode()}`, 
-      error: `Code generation error: ${err.message || err}` 
+    return {
+      code: `SLU${generate6DigitCode()}`,
+      error: `Code generation error: ${getErrorMessage(err)}`
     };
   }
 }
@@ -77,20 +86,20 @@ Deno.serve(async (req: Request) => {
       requestData = await req.json();
     } catch (parseError) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: "Invalid JSON in request body",
           details: { parseError: parseError.message }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
 
     const { email, firstName, dryRun } = requestData;
-    
+
     // Handle both fullName and firstName for backward compatibility
     let actualFirstName = firstName?.trim();
     if (!actualFirstName && requestData.fullName) {
@@ -103,14 +112,14 @@ Deno.serve(async (req: Request) => {
 
     if (missingFields.length > 0) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: `Missing required fields: ${missingFields.join(', ')}`,
           details: { missingFields }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -119,14 +128,14 @@ Deno.serve(async (req: Request) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: "Invalid email format",
           details: { providedEmail: email }
         } as EmailResponse),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
@@ -149,7 +158,7 @@ Deno.serve(async (req: Request) => {
       } else {
         userId = userData.id;
       }
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       console.warn('Database lookup failed:', dbError);
       // Continue without user ID for dry run or demo purposes
     }
@@ -168,19 +177,11 @@ Deno.serve(async (req: Request) => {
 
     const subject = "Your Tea Time Cari Account has been Approved";
     const siteBaseUrl = (Deno.env.get("SITE_BASE_URL")?.trim() || "https://teatimecari.app").replace(/\/+$/, "");
-    const communityGuidelinesUrl = `${siteBaseUrl}/community-guidelines`;
     const greeting = buildPreviewGreeting(actualFirstName);
     const text = `${greeting}
 Your Tea Time Cari account has been approved.
 You can now log in here:
 ${siteBaseUrl}/login
-Tea Time Cari is built around privacy, respectful sharing, and community support. Please take a moment to review our Privacy Policy, Terms of Service, and Community Guidelines before participating.
-Privacy Policy:
-${siteBaseUrl}/privacy-policy
-Terms of Service:
-${siteBaseUrl}/terms-of-service
-Community Guidelines:
-${communityGuidelinesUrl}
 Welcome to the community.
 Best regards,
 Tea Time Cari Team`;
@@ -188,9 +189,9 @@ Tea Time Cari Team`;
     // Handle dry run
     if (dryRun) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          dryRun: true, 
+        JSON.stringify({
+          success: true,
+          dryRun: true,
           preview: { to: email, subject, text },
           details: {
             userId: userId || 'not_found',
@@ -208,9 +209,9 @@ Tea Time Cari Team`;
       if (!emailResult.success) {
         throw new Error(emailResult.error || "Failed to send approval email");
       }
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
           details: {
             emailSent: true,
@@ -222,53 +223,54 @@ Tea Time Cari Team`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
-    } catch (emailError: any) {
-      console.error("[send-approval-email] Email sending failed:", emailError.message);
-      
+    } catch (emailError: unknown) {
+      const emailErrorMessage = getErrorMessage(emailError);
+      console.error("[send-approval-email] Email sending failed:", emailErrorMessage);
+
       // Extract details from email error
-      const errorDetails: any = {
+      const errorDetails: NonNullable<EmailResponse["details"]> & { emailSent: boolean; codeGenerated: boolean; codeGenerationError?: string } = {
         emailSent: false,
         codeGenerated: !!userId,
         codeGenerationError
       };
 
-      if (emailError.message.includes('SendGrid API error')) {
-        const statusMatch = emailError.message.match(/\((\d+)\)/);
+      if (emailErrorMessage.includes('Resend API error')) {
+        const statusMatch = emailErrorMessage.match(/\((\d+)\)/);
         if (statusMatch) {
-          errorDetails.sendgridStatus = parseInt(statusMatch[1]);
+          errorDetails.resendStatus = parseInt(statusMatch[1]);
         }
-        errorDetails.sendgridResponse = emailError.message;
-      } else if (emailError.message.includes('configuration error')) {
-        errorDetails.configurationIssues = [emailError.message];
+        errorDetails.resendResponse = emailErrorMessage;
+      } else if (emailErrorMessage.includes('configuration error')) {
+        errorDetails.configurationIssues = [emailErrorMessage];
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: emailError.message || 'Failed to send approval email',
+        JSON.stringify({
+          success: false,
+          error: emailErrorMessage || 'Failed to send approval email',
           details: errorDetails
         } as EmailResponse),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
         }
       );
     }
 
-  } catch (err: any) {
-    console.error("[send-approval-email] Unexpected error:", err?.message || err);
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
+    console.error("[send-approval-email] Unexpected error:", message);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: `Unexpected error: ${err?.message || err}`,
-        details: { 
-          errorType: err?.constructor?.name || 'Unknown',
-          stack: err?.stack 
+      JSON.stringify({
+        success: false,
+        error: `Unexpected error: ${message}`,
+        details: {
+          errorType: getErrorName(err)
         }
       } as EmailResponse),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       }
     );
   }

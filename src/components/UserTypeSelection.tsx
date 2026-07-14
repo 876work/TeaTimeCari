@@ -11,8 +11,12 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
   const discourseBaseUrl = import.meta.env.VITE_DISCOURSE_BASE_URL || 'https://community.teatimecari.app';
 
   const handleReturningUserClick = () => {
-    // Redirect to Discourse login
-    window.location.href = `${discourseBaseUrl}/login`;
+    if (discourseBaseUrl) {
+      window.location.href = `${discourseBaseUrl}/login`;
+      return;
+    }
+
+    onReturningUser();
   };
 
   return (
@@ -80,7 +84,7 @@ export function UserTypeSelection({ onNewUser, onReturningUser }: UserTypeSelect
               <div>
                 <p className="text-sm text-blue-800 font-medium mb-1">New to Tea Time Cari?</p>
                 <p className="text-sm text-blue-700">
-                  Join our verified community where authentic conversations happen. All new members go through a verification process for everyone's safety.
+                  Join our approved community where authentic conversations happen. All new members go through an account review process for everyone's safety.
                 </p>
               </div>
             </div>

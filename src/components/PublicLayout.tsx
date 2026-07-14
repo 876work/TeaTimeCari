@@ -1,6 +1,7 @@
 import React from 'react';
 import { Footer } from './Footer';
 import { SiteHeader } from './SiteHeader';
+import { AddToHomeBanner } from './AddToHomeBanner';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ export function PublicLayout({ children, showHeader = true }: PublicLayoutProps)
 
   return (
     <div className={`min-h-screen ${backgroundClass}`}>
+      <AddToHomeBanner />
       {showHeader && <SiteHeader />}
       {children}
       <Footer />

@@ -1,0 +1,8 @@
+{
+  "name": "Tea Time Cari Back to My Community Button",
+  "about_url": "https://teatimecari.app",
+  "component": true,
+  "authors": "Tea Time Cari",
+  "theme_version": "1.0.0",
+  "minimum_discourse_version": "3.4.0"
+}

@@ -44,6 +44,19 @@ function safeJson(s: string) {
   }
 }
 
+function isMissingColumnError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+
+  const text = (error.message || "").toLowerCase();
+
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (text.includes("column") && text.includes("does not exist")) ||
+    (text.includes("schema cache") && text.includes("could not find"))
+  );
+}
+
 /* ---------------- Env ---------------- */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -153,6 +166,66 @@ async function discourseSyncSSO(payload: Record<string, string>) {
   };
 }
 
+
+async function sendDiscourseWelcomePM(targetUsername: string) {
+  const missingConfig = missingDiscourseAdminSyncConfig();
+
+  if (missingConfig.length > 0) {
+    return {
+      success: false,
+      skipped: true,
+      reason: "missing_config",
+      missing_config: missingConfig,
+      message: `Discourse welcome PM skipped; missing ${missingConfig.join(", ")}.`,
+    };
+  }
+
+  const username = targetUsername.trim();
+
+  if (!username) {
+    return { success: false, skipped: true, reason: "missing_username" };
+  }
+
+  const form = new URLSearchParams();
+  form.set("title", "Welcome to Tea Time Cari");
+  form.set("target_usernames", username);
+  form.set("archetype", "private_message");
+  form.set("raw", [
+    "Welcome to Tea Time Cari — your account has been approved.",
+    "",
+    "Before you post or reply, please keep these safety basics in mind:",
+    "",
+    "1. Share only what you personally know or can reasonably support.",
+    "2. Protect privacy. Do not expose addresses, workplaces, IDs, private messages, or unnecessary personal details.",
+    "3. Keep the tone respectful and safety-focused. No harassment, threats, pile-ons, or revenge posting.",
+    "",
+    "Use your assigned private category first. If something feels unsafe, use the flag/report option and include a clear reason so moderators can review it.",
+  ].join("\n"));
+
+  const res = await fetch(`${DISCOURSE_BASE}/posts.json`, {
+    method: "POST",
+    headers: {
+      "Api-Key": DISCOURSE_KEY,
+      "Api-Username": DISCOURSE_USER,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json",
+    },
+    body: form.toString(),
+  });
+
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Discourse welcome PM failed: ${res.status} ${text}`);
+  }
+
+  return {
+    success: true,
+    skipped: false,
+    result: safeJson(text),
+  };
+}
+
 async function approveRegistrationRecord(supa: any, reg: any, genderNorm: "men" | "women") {
   const approvedAt = new Date().toISOString();
 
@@ -233,15 +306,38 @@ Deno.serve(async (req) => {
     const bodyGender = normalizeGender(String(body.gender ?? ""));
     const xaccessFlag = Boolean(body.xaccess ?? false);
 
-    // Load registration
-    const { data: reg, error: regErr } = await supa
-      .from("registrations")
-      .select("id, email, username, firstName, lastName, gender, status, email_code, email_code_expiry")
-      .eq("id", registrationId)
-      .single();
+    // Load registration. discourse_welcome_pm_sent_at was added by a later
+    // migration, so environments that haven't applied it yet must still be able
+    // to approve — retry without it when the column is missing. Query failures
+    // must surface as 500s, not 404s: a broken select is not a missing row.
+    const requiredColumns = "id, email, username, firstName, lastName, gender, status";
+    const optionalColumns = ["discourse_welcome_pm_sent_at"];
 
-    if (regErr || !reg) {
+    let { data: reg, error: regErr } = await supa
+      .from("registrations")
+      .select([requiredColumns, ...optionalColumns].join(", "))
+      .eq("id", registrationId)
+      .maybeSingle();
+
+    if (regErr && isMissingColumnError(regErr)) {
+      console.warn("registrations optional columns unavailable; retrying without them", {
+        optionalColumns,
+        regErr,
+      });
+
+      ({ data: reg, error: regErr } = await supa
+        .from("registrations")
+        .select(requiredColumns)
+        .eq("id", registrationId)
+        .maybeSingle());
+    }
+
+    if (regErr) {
       console.error("registrations lookup failed", { registrationId, regErr });
+      return jerr(headers, 500, `Failed to load registration: ${regErr.message || "database error"}`);
+    }
+
+    if (!reg) {
       return jerr(headers, 404, "Registration not found");
     }
 
@@ -270,13 +366,15 @@ Deno.serve(async (req) => {
     }
 
     // 2) Sync to Discourse via SSO. This is non-fatal for approval.
-    const displayName = nameFrom(reg) || username;
+    // Do not sync legal/full names into Discourse display fields; the public
+    // community identity is the member-selected username.
 
+    // Keep external_id stable forever: DiscourseConnect associates users by this value.
     const discourse = await discourseSyncSSO({
       external_id: reg.id,
       email,
       username,
-      name: displayName,
+      name: username,
       add_groups: groups,
     }).catch((err) => ({
       success: false,
@@ -294,6 +392,31 @@ Deno.serve(async (req) => {
           error: String(err),
         }))
       : { success: true, skipped: true, reason: "retry_discourse_sync" };
+
+    const welcomePm = action === "approve" && discourse.success && !reg.discourse_welcome_pm_sent_at
+      ? await sendDiscourseWelcomePM(username)
+        .catch((err) => ({
+          success: false,
+          skipped: false,
+          reason: "pm_error",
+          error: String(err?.message ?? err),
+        }))
+      : {
+        success: true,
+        skipped: true,
+        reason: action === "approve" ? "already_sent_or_sync_failed" : "retry_discourse_sync",
+      };
+
+    if (action === "approve" && welcomePm.success && !welcomePm.skipped) {
+      const { error: welcomePmUpdateErr } = await supa
+        .from("registrations")
+        .update({ discourse_welcome_pm_sent_at: new Date().toISOString() })
+        .eq("id", reg.id);
+
+      if (welcomePmUpdateErr) {
+        console.warn("failed to record Discourse welcome PM timestamp", welcomePmUpdateErr);
+      }
+    }
 
     const discourseOk = Boolean(discourse.success);
     const emailOk = Boolean(emailApproved.success);
@@ -314,7 +437,7 @@ Deno.serve(async (req) => {
       targetEmail: email,
       previousStatus: String(reg.status || "pending"),
       nextStatus: action === "approve" ? "approved" : String(reg.status || "approved"),
-      metadata: { discourse, email: emailApproved, groups, resultStatus },
+      metadata: { discourse, email: emailApproved, welcome_pm: welcomePm, groups, resultStatus },
       success: action === "retry_discourse_sync" ? discourseOk : true,
       errorMessage: discourseOk ? null : String((discourse as { error?: unknown }).error ?? "Discourse sync failed"),
     });
@@ -331,11 +454,12 @@ Deno.serve(async (req) => {
       emails: {
         approved: emailApproved,
       },
+      welcome_pm: welcomePm,
     });
   } catch (e: unknown) {
     const err = e as { message?: string; stack?: string };
     console.error("approve-and-sync error:", err?.message, err?.stack);
 
-    return jerr(headers, 500, err?.message ?? "Unknown error");
+    return jerr(headers, 500, "Unable to complete approval and sync. Please try again or check server logs.");
   }
 });

@@ -2,89 +2,81 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import {
   LogIn,
-  Mail,
+  User,
   Lock,
-  Loader2,
-  AlertCircle,
   ArrowLeft,
   Eye,
   EyeOff,
 } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
+import { FormField, PageSection, PrimaryButton, PrivacyNote, StatusAlert } from "../components/Form";
 import { supabase } from "@/lib/supabaseClient";
 import { hasPendingSso, finishDiscourseSso } from "@/lib/discourseSso";
 import { trackAuthLogin } from "@/hooks/useAuthActivityTracking";
+import { ApprovalStatus, getApprovalStatus, isBlockedStatus, safeAppPath } from "@/lib/auth/approvalStatus";
 
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
+const getApprovalMessage = (status: ApprovalStatus) => {
+  switch (status) {
+    case "pending":
+      return "Your application is still under review. We’ll email you when the review is complete, or you can check your status from the pending page.";
+    case "rejected":
+      return "This account was not approved for community access. Please contact support if you believe this decision was made in error.";
+    case "suspended":
+      return "This account is currently suspended, so access is paused. You have been signed out for safety. Contact support if you believe this is a mistake.";
+    case "banned":
+      return "This account is not eligible to access Tea Time Cari. You have been signed out for safety. Contact support if you believe this is a mistake.";
+    case "missing":
+      return "We could not find a completed application for this account. Sign in with the email you used to register, contact support, or start a new signup if you have not applied yet.";
+    case "not_approved":
+      return "This account is not approved for community access yet. Please check your application status or contact support if this looks incorrect.";
+    default:
+      return "Your account is not currently eligible to log in or use Tea Time Cari. Please contact support if you believe this is a mistake.";
+  }
+};
+
+const getKycPendingUrl = (status: ApprovalStatus) => `/kyc-pending?status=${encodeURIComponent(status)}`;
+
+const getSsoSessionExpiredMessage = () =>
+  "Your community sign-in session expired or is missing required security details. Please start again from the Community link, then log in if prompted.";
+
+
 export default function Login() {
   const q = useQuery();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const getPostLoginDestination = () => {
+  const getPostLoginDestination = React.useCallback(() => {
     const next = q.get("next");
-    const redirectTo = q.get("redirectTo");
-    const returnTo = q.get("returnTo");
 
     if (next === "/sso") {
-      const sso = q.get("sso");
-      const sig = q.get("sig");
-
-      if (sso && sig) {
-        return `/sso?sso=${encodeURIComponent(sso)}&sig=${encodeURIComponent(sig)}`;
-      }
+      return "/community";
     }
 
-    return next || redirectTo || returnTo || "/community";
-  };
-
-  const getApprovalStatus = async (
-    userId: string
-  ): Promise<"approved" | "pending" | "rejected" | "suspended" | "missing" | "not_approved"> => {
-    const { data, error: statusError } = await supabase
-      .from("registrations")
-      .select("status")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (statusError) {
-      throw statusError;
-    }
-
-    if (!data?.status) {
-      return "missing";
-    }
-
-    if (["approved", "pending", "rejected", "suspended"].includes(data.status)) {
-      return data.status as "approved" | "pending" | "rejected" | "suspended";
-    }
-
-    return "not_approved";
-  };
-
-  const suspendedMessage = "Your account has been suspended. You cannot log in or use TeaTime Cari at this time.";
+    return safeAppPath(next || q.get("redirectTo") || q.get("returnTo"));
+  }, [q]);
 
   const redirectAfterApprovalCheck = async (userId: string) => {
     const approvalStatus = await getApprovalStatus(userId);
 
-    if (approvalStatus === "suspended") {
+    if (isBlockedStatus(approvalStatus)) {
       await supabase.auth.signOut();
-      setError(suspendedMessage);
+      setError(getApprovalMessage(approvalStatus));
       setLoading(false);
       return;
     }
 
     if (approvalStatus !== "approved") {
-      window.location.href = "/kyc-pending";
+      window.location.href = getKycPendingUrl(approvalStatus);
       return;
     }
 
@@ -123,57 +115,67 @@ export default function Login() {
           return;
         }
 
-        if (approvalStatus === "suspended") {
+        if (isBlockedStatus(approvalStatus)) {
           await supabase.auth.signOut();
-          setError(suspendedMessage);
+          setError(getApprovalMessage(approvalStatus));
           return;
         }
 
-        navigate("/kyc-pending", { replace: true });
-      } catch (err: any) {
+        navigate(getKycPendingUrl(approvalStatus), { replace: true });
+      } catch {
         if (!isMounted) {
           return;
         }
 
         setError(
-          `Unable to verify approval status. Please try again. ${
-            err?.message ? `(${err.message})` : ""
-          }`.trim()
+          "Unable to verify your account status right now. Please try again, or contact support if the issue continues."
         );
       }
     };
+
+    if (q.get("next") === "/sso" && (!q.get("sso") || !q.get("sig"))) {
+      setError(getSsoSessionExpiredMessage());
+    }
 
     checkExistingSession();
 
     return () => {
       isMounted = false;
     };
-  }, [navigate, q]);
+  }, [navigate, getPostLoginDestination, q]);
 
   const signInWithFallback = async () => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedIdentifier = loginIdentifier.trim().toLowerCase();
+    const isEmailLogin = normalizedIdentifier.includes("@");
 
-    const firstAttempt = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    if (isEmailLogin) {
+      const firstAttempt = await supabase.auth.signInWithPassword({
+        email: normalizedIdentifier,
+        password,
+      });
 
-    if (!firstAttempt.error) {
-      return firstAttempt;
+      if (!firstAttempt.error) {
+        return firstAttempt;
+      }
     }
 
     const { data: bootstrapResult, error: bootstrapError } = await supabase.functions.invoke(
       "bootstrap-login",
-      { body: { email: normalizedEmail, password } },
+      { body: { identifier: normalizedIdentifier, password } },
     );
 
-    if (bootstrapError || !bootstrapResult?.ok) {
-      return firstAttempt;
+    if (bootstrapError || !bootstrapResult?.ok || !bootstrapResult.session) {
+      return {
+        data: { user: null, session: null },
+        error: isEmailLogin
+          ? { message: "Invalid login credentials" }
+          : { message: "Invalid username or password" },
+      };
     }
 
-    return supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
+    return supabase.auth.setSession({
+      access_token: bootstrapResult.session.access_token,
+      refresh_token: bootstrapResult.session.refresh_token,
     });
   };
 
@@ -186,7 +188,12 @@ export default function Login() {
     const { data: signInData, error } = await signInWithFallback();
 
     if (error) {
-      setError(error.message);
+      const message =
+        error.message.toLowerCase().includes("sso") ||
+        error.message.toLowerCase().includes("session")
+          ? getSsoSessionExpiredMessage()
+          : error.message;
+      setError(message);
       setLoading(false);
       return;
     }
@@ -199,20 +206,21 @@ export default function Login() {
       }
 
       const approvalStatus = await getApprovalStatus(userId);
-      if (approvalStatus === "suspended") {
+      if (isBlockedStatus(approvalStatus)) {
         await supabase.auth.signOut();
-        setError(suspendedMessage);
+        setError(getApprovalMessage(approvalStatus));
         setLoading(false);
         return;
       }
 
       await trackAuthLogin();
       await redirectAfterApprovalCheck(userId);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
       setError(
-        `Unable to verify approval status. Please try again. ${
-          err?.message ? `(${err.message})` : ""
-        }`.trim()
+        message === "sso_session_expired"
+          ? getSsoSessionExpiredMessage()
+          : "Unable to verify your account status right now. Please try again, or contact support if the issue continues."
       );
 
       setLoading(false);
@@ -221,7 +229,7 @@ export default function Login() {
 
   return (
     <AuthLayout>
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <PageSection>
         <div className="text-center mb-8">
           <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
             <LogIn className="w-8 h-8 text-[#4B9EC8]" />
@@ -232,60 +240,44 @@ export default function Login() {
           </h1>
 
           <p className="text-gray-600">
-            Sign in to your Tea Time Cari account
+            Log in to your Tea Time Cari account
           </p>
         </div>
 
         {error && (
-          <div
-            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"
-            role="alert"
-          >
-            <div className="flex items-center">
-              <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-              <span className="text-red-700 text-sm">{error}</span>
-            </div>
-          </div>
+          <StatusAlert variant="error" className="mb-6">
+            <span>{error}</span>
+            <p className="mt-2">
+              Need help?{' '}
+              <Link to="/contact-us?topic=account-status" className="font-semibold underline">Contact support</Link>.
+            </p>
+          </StatusAlert>
         )}
 
         <form name="login" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
           <input type="hidden" name="form-name" value="login" readOnly />
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Email Address
-            </label>
-
+          <FormField id="loginIdentifier" label="Email Address or Username">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-gray-400" />
+                <User className="h-5 w-5 text-gray-400" />
               </div>
 
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                id="loginIdentifier"
+                name="loginIdentifier"
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 bg-white hover:border-[#4B9EC8]"
-                placeholder="Enter your email address"
+                placeholder="Enter your email address or username"
                 required
                 disabled={loading}
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
-          </div>
+          </FormField>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Password
-            </label>
-
+          <FormField id="password" label="Password">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -318,29 +310,17 @@ export default function Login() {
                 )}
               </button>
             </div>
-          </div>
+          </FormField>
 
-          <button
+          <PrimaryButton
             type="submit"
-            disabled={loading || !email || !password}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
-              !loading && email && password
-                ? "bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            disabled={loading || !loginIdentifier || !password}
+            isLoading={loading}
+            loadingLabel="Logging in..."
+            icon={<LogIn className="h-5 w-5" />}
           >
-            {loading ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Signing in...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <LogIn className="w-5 h-5 mr-2" />
-                Sign In
-              </div>
-            )}
-          </button>
+            Log In
+          </PrimaryButton>
         </form>
 
         <div className="mt-8 space-y-4">
@@ -364,15 +344,10 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="mt-8">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800 text-center">
-              <strong>New to Tea Time Cari?</strong> You'll need an invitation
-              to join our community.
-            </p>
-          </div>
-        </div>
-      </div>
+        <PrivacyNote className="mt-8" title="New to Tea Time Cari?">
+          You'll need an invitation to join our community.
+        </PrivacyNote>
+      </PageSection>
     </AuthLayout>
   );
 }

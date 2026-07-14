@@ -97,8 +97,10 @@ const faqCategories: FaqCategory[] = [
         answer: (
           <>
             <p>Anonymous Mode helps protect your public identity when you post.</p>
+            <p>Other members won’t see your profile name, but admins may review abuse reports and internal records for safety, moderation, security, legal compliance, abuse prevention, and enforcement.</p>
             <p>Depending on how the platform is configured, the system may create a temporary anonymous identity for added privacy. This makes it harder for other users to connect multiple anonymous posts to the same profile.</p>
-            <p>Tea Time Cari may still keep internal records for safety, moderation, security, and legal compliance.</p>
+            <p>Anonymous posting is for safer participation, not for harassment, false claims, threats, exposing private information, or breaking community rules.</p>
+            <p>Read the <Link to="/anonymous-mode" className="font-medium text-blue-500 dark:text-blue-400 hover:underline">Anonymous mode explained</Link> page before relying on it.</p>
           </>
         ),
       },
@@ -420,108 +422,121 @@ export default function Faq() {
     <GradientPageShell maxWidth="max-w-5xl">
       <div className="w-full">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
+            <span className="text-2xl" aria-hidden="true">?</span>
+          </div>
+
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#4B9EC8]">
             Tea Time Cari FAQ
-          </span>
-          <h1 className="mt-4 text-2xl font-semibold text-center text-gray-800 lg:text-3xl dark:text-white">Have any Questions?</h1>
-          <p className="mt-4 text-gray-500 dark:text-gray-300">
-            Find clear answers about membership, privacy, anonymous posting, receipts, moderation, and community safety.
+          </p>
+
+          <h1 className="mt-3 text-2xl font-bold text-gray-900 lg:text-3xl">
+            Questions before you share?
+          </h1>
+
+          <p className="mt-4 text-gray-600">
+            Simple answers about membership, privacy, anonymous posting, moderation,
+            and how we work to keep trust first.
           </p>
         </div>
 
-        <div className="mt-8 xl:mt-16 lg:flex lg:-mx-12">
-          <div className="lg:mx-12 lg:w-72 lg:flex-shrink-0">
-            <div className="sticky top-8 rounded-3xl border border-gray-100 bg-gray-50/80 p-6 shadow-sm dark:border-gray-800 dark:bg-gray-800/40">
-              <h1 className="text-xl font-semibold text-gray-800 dark:text-white">Table of Content</h1>
+        <div className="mt-8 rounded-2xl border border-[#D6EBF5] bg-[#F4FBFF] p-5 text-gray-700 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#4B9EC8]">
+            Privacy and trust come first
+          </p>
+          <p className="mt-2 leading-7">
+            Tea Time Cari is designed for private, thoughtful community support.
+            Anonymous tools can protect your public identity, but they should never be
+            used to harass, expose, threaten, or spread false information.
+          </p>
+          <Link
+            to="/anonymous-mode"
+            className="mt-4 inline-flex text-sm font-semibold text-[#3382AA] underline underline-offset-4 hover:text-[#11263F]"
+          >
+            Read how Anonymous Mode works
+          </Link>
+        </div>
 
-              <div className="mt-4 space-y-4 lg:mt-8">
+        <div className="mt-8 lg:grid lg:grid-cols-[16rem_1fr] lg:gap-8">
+          <aside className="lg:sticky lg:top-8 lg:self-start">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">Contents</h2>
+
+              <nav className="mt-4 space-y-2" aria-label="FAQ categories">
                 {faqCategories.map((category) => (
                   <a
                     key={category.id}
                     href={`#${category.id}`}
-                    className={`block hover:underline ${
+                    className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                       activeCategory === category.id
-                        ? 'text-blue-500 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-300'
+                        ? 'bg-white font-semibold text-[#3382AA] shadow-sm'
+                        : 'text-gray-600 hover:bg-white hover:text-gray-900'
                     }`}
                   >
                     {category.title}
                   </a>
                 ))}
-              </div>
+              </nav>
 
-              <div className="mt-8 rounded-2xl bg-white p-4 text-sm text-gray-500 shadow-sm dark:bg-gray-900 dark:text-gray-300">
+              <div className="mt-6 rounded-xl bg-white p-4 text-sm leading-6 text-gray-600 shadow-sm">
                 Need more help? Email{' '}
-                <a href={`mailto:${contactEmail}`} className="font-medium text-blue-500 dark:text-blue-400 hover:underline">
+                <a href={`mailto:${contactEmail}`} className="font-semibold text-[#3382AA] underline underline-offset-4 hover:text-[#11263F]">
                   {contactEmail}
                 </a>
                 .
               </div>
             </div>
-          </div>
+          </aside>
 
-          <div className="flex-1 mt-8 lg:mx-12 lg:mt-0">
-            <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-xl shadow-gray-100/70 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none md:p-8">
+          <div className="mt-8 lg:mt-0">
+            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:p-8">
               {faqCategories.map((category) => (
-                <div key={category.id} id={category.id} className="scroll-mt-8">
-                  <div className="mb-8">
-                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-blue-500 dark:text-blue-400">{category.title}</p>
-                    <p className="mt-2 max-w-2xl text-gray-500 dark:text-gray-300">{category.description}</p>
+                <section key={category.id} id={category.id} className="scroll-mt-8">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-gray-900">{category.title}</h2>
+                    <p className="mt-2 max-w-2xl text-gray-600">{category.description}</p>
                   </div>
 
-                  {category.questions.map((faq) => {
-                    const questionIndex = allFaqs.findIndex((item) => item.question === faq.question);
-                    const isOpen = openQuestion === questionIndex;
+                  <div className="divide-y divide-gray-200">
+                    {category.questions.map((faq) => {
+                      const questionIndex = allFaqs.findIndex((item) => item.question === faq.question);
+                      const isOpen = openQuestion === questionIndex;
 
-                    return (
-                      <React.Fragment key={faq.question}>
-                        <div>
+                      return (
+                        <div key={faq.question} className="py-5">
                           <button
                             type="button"
-                            className="flex w-full items-center text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 dark:focus-visible:ring-offset-gray-900"
+                            className="flex w-full items-start justify-between gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-4"
                             aria-expanded={isOpen}
                             onClick={() => setOpenQuestion(isOpen ? -1 : questionIndex)}
                           >
-                            {isOpen ? (
-                              <svg className="flex-shrink-0 w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4"></path>
-                              </svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                              </svg>
-                            )}
-
-                            <h1 className="mx-4 text-xl text-gray-700 dark:text-white">{faq.question}</h1>
+                            <span className="text-lg font-semibold text-gray-900">{faq.question}</span>
+                            <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 text-lg font-semibold text-[#3382AA]">
+                              {isOpen ? '−' : '+'}
+                            </span>
                           </button>
 
                           {isOpen && (
-                            <div className="flex mt-8 md:mx-10">
-                              <span className="border border-blue-500"></span>
-
-                              <div className="max-w-3xl space-y-4 px-4 text-gray-500 dark:text-gray-300">
-                                {faq.answer}
-                              </div>
+                            <div className="mt-4 max-w-3xl space-y-4 border-l-2 border-[#D6EBF5] pl-4 leading-7 text-gray-600">
+                              {faq.answer}
                             </div>
                           )}
                         </div>
-
-                        <hr className="my-8 border-gray-200 dark:border-gray-700" />
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
             </div>
 
-            <div className="mt-8 rounded-3xl bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E] p-8 text-center text-white shadow-xl">
-              <h2 className="text-2xl font-bold">Ready to join the conversation?</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-white/90">
-                Tea Time Cari is for real stories, thoughtful conversations, and privacy conscious community support.
+            <div className="mt-8 rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center shadow-sm">
+              <h2 className="text-2xl font-bold text-gray-900">Ready to join the conversation?</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-gray-600">
+                Apply when you are ready to participate with honesty, care, and respect for privacy.
               </p>
               <Link
                 to="/signup"
-                className="mt-6 inline-flex rounded-full bg-white px-6 py-3 font-semibold text-gray-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-white/95"
+                className="mt-6 inline-flex rounded-lg bg-[#4B9EC8] px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-[#3382AA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B9EC8] focus-visible:ring-offset-2"
               >
                 Apply to Join
               </Link>

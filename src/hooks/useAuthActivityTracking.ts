@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { APP_HEARTBEAT_INTERVAL_MS } from '@/lib/presenceConstants';
 
 type ActivityEvent = 'login' | 'heartbeat';
-
-const ACTIVITY_TRACKING_KEY = 'ttc-auth-activity-tracking';
 
 async function invokeActivity(event: ActivityEvent) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -27,14 +26,11 @@ export function useAuthActivityTracking() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (window.sessionStorage.getItem(ACTIVITY_TRACKING_KEY)) return;
-    window.sessionStorage.setItem(ACTIVITY_TRACKING_KEY, 'true');
-
     const sendHeartbeat = async (force = false) => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && !force) return;
 
       const now = Date.now();
-      if (!force && now - lastHeartbeatAt.current < 60_000) return;
+      if (!force && now - lastHeartbeatAt.current < APP_HEARTBEAT_INTERVAL_MS) return;
       lastHeartbeatAt.current = now;
 
       await invokeActivity('heartbeat').catch((error) => {
@@ -42,7 +38,7 @@ export function useAuthActivityTracking() {
       });
     };
 
-    const interval = window.setInterval(() => sendHeartbeat(), 60_000);
+    const interval = window.setInterval(() => sendHeartbeat(), APP_HEARTBEAT_INTERVAL_MS);
     const onFocus = () => sendHeartbeat();
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') void sendHeartbeat(true);
@@ -63,7 +59,6 @@ export function useAuthActivityTracking() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       listener.subscription.unsubscribe();
-      window.sessionStorage.removeItem(ACTIVITY_TRACKING_KEY);
     };
   }, []);
 }

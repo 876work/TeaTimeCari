@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { 
   CheckCircle, 
@@ -10,9 +11,10 @@ import {
   X,
   Send,
   Users,
-  Heart,
-  Flag
+  Heart
 } from 'lucide-react';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { anonymousComposerHelperText } from '@/content/anonymousMode';
 
 // Type definitions
 interface Post {
@@ -47,6 +49,7 @@ interface UserData {
 export function GenderFeed() {
   const supabase = useSupabaseClient();
   const session = useSession();
+  const navigate = useNavigate();
   
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -89,14 +92,14 @@ export function GenderFeed() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to access the feed.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to access the feed.');
           setUserLoading(false);
           return;
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -151,9 +154,9 @@ export function GenderFeed() {
         );
 
         setPosts(postsWithComments);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching posts:', err);
-        setError(`Failed to load posts: ${err.message}`);
+        setError(err instanceof Error ? `Failed to load posts: ${err.message}` : 'Failed to load posts.');
         // Fallback to mock data for demonstration
         setMockPosts();
       } finally {
@@ -245,9 +248,9 @@ export function GenderFeed() {
         )
       );
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating flag count:', err);
-      setError(`Failed to update flag: ${err.message}`);
+      setError(err instanceof Error ? `Failed to update flag: ${err.message}` : 'Failed to update flag.');
     } finally {
       setFlaggingPostId(null);
     }
@@ -303,9 +306,9 @@ export function GenderFeed() {
       setSelectedPostId(null);
       setCommentText('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting comment:', err);
-      setError(`Failed to submit comment: ${err.message}`);
+      setError(err instanceof Error ? `Failed to submit comment: ${err.message}` : 'Failed to submit comment.');
     } finally {
       setSubmittingComment(false);
     }
@@ -352,7 +355,7 @@ export function GenderFeed() {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home
@@ -424,7 +427,10 @@ export function GenderFeed() {
             <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
               Be the first to share something with the {currentUser?.gender} community.
             </p>
-            <button className="px-8 py-4 bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+            <button
+              onClick={() => navigate('/upload')}
+              className="px-8 py-4 bg-gradient-to-r from-[#A3C6E0] to-[#E0A3A3] hover:from-[#8BB5D9] hover:to-[#D98B8B] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
               Create First Post
             </button>
           </div>
@@ -457,7 +463,7 @@ export function GenderFeed() {
                 <div className="relative">
                   <img
                     src={post.photo_url}
-                    alt="Post content"
+                    alt={`Photo shared by @${post.username}`}
                     className="w-full h-96 object-cover"
                   />
                 </div>
@@ -470,12 +476,13 @@ export function GenderFeed() {
                       <button
                         onClick={() => handleFlag(post.id, 'green')}
                         disabled={flaggingPostId === post.id}
+                        aria-label={`Give this post a green flag (${post.green_flag_count} so far)`}
                         className="flex items-center space-x-3 px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         {flaggingPostId === post.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                         ) : (
-                          <CheckCircle className="w-5 h-5" />
+                          <CheckCircle className="w-5 h-5" aria-hidden="true" />
                         )}
                         <span className="text-lg font-bold">{post.green_flag_count}</span>
                       </button>
@@ -484,12 +491,13 @@ export function GenderFeed() {
                       <button
                         onClick={() => handleFlag(post.id, 'red')}
                         disabled={flaggingPostId === post.id}
+                        aria-label={`Give this post a red flag (${post.red_flag_count} so far)`}
                         className="flex items-center space-x-3 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                       >
                         {flaggingPostId === post.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                         ) : (
-                          <XCircle className="w-5 h-5" />
+                          <XCircle className="w-5 h-5" aria-hidden="true" />
                         )}
                         <span className="text-lg font-bold">{post.red_flag_count}</span>
                       </button>
@@ -567,6 +575,9 @@ export function GenderFeed() {
                       {currentUser?.gender}
                     </span>
                   </p>
+                  <div className="rounded-xl border border-[#A3C6E0]/50 bg-[#F4FBFF] p-4 text-sm leading-6 text-gray-700">
+                    {anonymousComposerHelperText}
+                  </div>
                 </div>
                 
                 <textarea

@@ -9,6 +9,7 @@ const admin = createClient(url, key);
 
 type BootstrapLoginRequest = {
   email?: string;
+  identifier?: string;
   password?: string;
 };
 
@@ -29,6 +30,50 @@ function json(status: number, body: unknown) {
   });
 }
 
+function getAnonKey(req: Request) {
+  const envAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+  if (envAnonKey) return envAnonKey;
+
+  const authorization = req.headers.get("Authorization") || "";
+  return authorization.startsWith("Bearer ") ? authorization.slice("Bearer ".length) : "";
+}
+
+function createPublicClient(req: Request) {
+  const anonKey = getAnonKey(req);
+
+  if (!anonKey) {
+    throw new Error("Missing Supabase anon key for password sign-in");
+  }
+
+  return createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+function normalizeIdentifier(identifier: string) {
+  const normalized = identifier.trim().toLowerCase();
+
+  return {
+    value: normalized,
+    isEmail: normalized.includes("@"),
+  };
+}
+
+function authResponse(session: unknown, user: { id: string; email?: string | null }) {
+  return {
+    ok: true,
+    session,
+    user: {
+      id: user.id,
+      email: user.email ?? null,
+    },
+  };
+}
+
 function metadataFromRegistration(registration: Registration) {
   return {
     username: registration.username ?? undefined,
@@ -46,26 +91,45 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as BootstrapLoginRequest;
-    const email = body.email?.trim().toLowerCase() || "";
+    const identifier = body.identifier || body.email || "";
+    const login = normalizeIdentifier(identifier);
     const password = body.password || "";
 
-    if (!email || !password) {
-      return json(400, { error: "email/password required" });
+    if (!login.value || !password) {
+      return json(400, { error: "email, username, and password required" });
     }
 
-    const { data: registrationRow, error: registrationError } = await admin
+    const registrationQuery = admin
       .from("registrations")
       .select("id, email, username, firstName, lastName, gender, password_temp")
-      .eq("email", email)
-      .maybeSingle();
-    const registration = registrationRow as Registration | null;
+      .limit(1);
+
+    const { data: registrationRows, error: registrationError } = login.isEmail
+      ? await registrationQuery.eq("email", login.value)
+      : await registrationQuery.eq("username", login.value);
+    const registration = (registrationRows?.[0] ?? null) as Registration | null;
 
     if (registrationError) {
       console.error("bootstrap-login registration lookup failed", registrationError);
       return json(500, { error: "registration lookup failed" });
     }
 
-    if (!registration?.id || registration.password_temp !== password) {
+    if (!registration?.id || !registration.email) {
+      return json(401, { error: "Invalid login credentials" });
+    }
+
+    const email = registration.email.trim().toLowerCase();
+    const publicClient = createPublicClient(req);
+    const firstAttempt = await publicClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (!firstAttempt.error && firstAttempt.data.session && firstAttempt.data.user) {
+      return json(200, authResponse(firstAttempt.data.session, firstAttempt.data.user));
+    }
+
+    if (registration.password_temp !== password) {
       return json(401, { error: "Invalid login credentials" });
     }
 
@@ -111,7 +175,17 @@ serve(async (req) => {
       console.warn("bootstrap-login failed to clear password_temp", clearPasswordError);
     }
 
-    return json(200, { ok: true });
+    const secondAttempt = await publicClient.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (secondAttempt.error || !secondAttempt.data.session || !secondAttempt.data.user) {
+      console.error("bootstrap-login sign-in failed after auth preparation", secondAttempt.error);
+      return json(500, { error: "Unable to complete login" });
+    }
+
+    return json(200, authResponse(secondAttempt.data.session, secondAttempt.data.user));
   } catch (error) {
     console.error("bootstrap-login internal error", error);
     return json(500, { error: "internal", detail: String(error) });

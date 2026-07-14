@@ -1,5 +1,7 @@
-import { Facebook, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const APP_STORE_URL = 'https://teatimecari.app';
+const PLAY_STORE_URL = 'https://teatimecari.app';
 
 type FooterLink = {
   label: string;
@@ -16,8 +18,10 @@ const footerLinkGroups: FooterLinkGroup[] = [
     title: 'Platform',
     links: [
       { label: 'Home', to: '/' },
+      { label: 'How It Works', to: '/how-it-works' },
       { label: 'Community', to: '/community' },
       { label: 'FAQ', to: '/faq' },
+      { label: 'Anonymous Mode', to: '/anonymous-mode' },
       { label: 'Contact Us', to: '/contact-us' },
     ],
   },
@@ -37,6 +41,7 @@ const footerLinkGroups: FooterLinkGroup[] = [
       { label: 'Privacy Policy', to: '/privacy-policy' },
       { label: 'Terms of Service', to: '/terms-of-service' },
       { label: 'Community Guidelines', to: '/community-guidelines' },
+      { label: 'Anonymous Mode Explained', to: '/anonymous-mode' },
     ],
   },
 ];
@@ -45,14 +50,39 @@ const socialLinks = [
   {
     label: 'Instagram',
     href: 'http://instagram.com/teatimecari',
-    Icon: Instagram,
+    img: '/IG_logo.png',
   },
   {
     label: 'Facebook',
     href: 'https://www.facebook.com/people/Tea-Time-Cari/61590153702836/',
-    Icon: Facebook,
+    img: '/FB_logo.png',
+  },
+  {
+    label: 'WhatsApp Channel',
+    href: 'https://whatsapp.com/channel/0029VbDJhU46hENxsvU7ZM16',
+    img: '/whatsapp.svg',
   },
 ];
+
+function AppleStoreBadge() {
+  return (
+    <img
+      src="/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg"
+      alt="Download on the App Store"
+      className="h-full w-full object-contain"
+    />
+  );
+}
+
+function PlayStoreBadge() {
+  return (
+    <img
+      src="/GetItOnGooglePlay_Badge_Web_color_English.png"
+      alt="Get it on Google Play"
+      className="h-full w-full object-contain"
+    />
+  );
+}
 
 export function Footer() {
   return (
@@ -76,6 +106,31 @@ export function Footer() {
             <p className="mt-3 text-sm leading-6 text-slate-600">
               A private Caribbean community built around real stories, thoughtful conversations, and community support.
             </p>
+
+            {/* App store badges */}
+            <div className="mt-6">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#3382AA]">Available on</p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Download Tea Time Cari on the App Store"
+                  className="inline-block h-10 w-[120px] overflow-hidden rounded-lg shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2"
+                >
+                  <AppleStoreBadge />
+                </a>
+                <a
+                  href={PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Get Tea Time Cari on Google Play"
+                  className="inline-block h-10 w-[135px] overflow-hidden rounded-lg shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2"
+                >
+                  <PlayStoreBadge />
+                </a>
+              </div>
+            </div>
           </div>
 
           <nav aria-label="Footer navigation" className="grid gap-8 sm:grid-cols-3">
@@ -106,7 +161,7 @@ export function Footer() {
           </div>
 
           <div className="mt-5 flex items-center gap-3 sm:mt-0">
-            {socialLinks.map(({ label, href, Icon }) => (
+            {socialLinks.map(({ label, href, img }) => (
               <a
                 key={label}
                 href={href}
@@ -115,7 +170,7 @@ export function Footer() {
                 aria-label={label}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/85 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#4B9EC8] hover:text-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-[#4B9EC8] focus:ring-offset-2"
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                <img src={img} alt={label} className="h-5 w-5 object-contain" aria-hidden="true" />
               </a>
             ))}
           </div>

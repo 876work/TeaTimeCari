@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
 import { Image, Upload, X, CheckCircle, AlertCircle, Loader2, Camera, ArrowRight } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { debugError, debugLog } from '@/lib/debugLogger';
 
 interface UserData {
   id: string;
@@ -13,7 +16,8 @@ interface UserData {
 export function UploadPost() {
   const supabase = useSupabaseClient();
   const session = useSession();
-  
+  const navigate = useNavigate();
+
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [userLoading, setUserLoading] = useState(true);
@@ -45,7 +49,7 @@ export function UploadPost() {
           .single();
 
         if (userError) {
-          console.error('Error fetching user data:', userError);
+          debugError('Error fetching user data:', userError);
           setError('Failed to load user data. Please try again.');
           setUserLoading(false);
           return;
@@ -57,15 +61,15 @@ export function UploadPost() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to upload posts.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to upload posts.');
           setUserLoading(false);
           return;
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
-        console.error('Error in fetchCurrentUser:', err);
+      } catch (err: unknown) {
+        debugError('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
         setUserLoading(false);
@@ -114,11 +118,11 @@ export function UploadPost() {
       setSelectedFile(compressedFile);
       setPreviewUrl(previewUrl);
       
-      console.log('Original file size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
-      console.log('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
+      debugLog('Original file size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+      debugLog('Compressed file size:', (compressedFile.size / 1024 / 1024).toFixed(2), 'MB');
       
-    } catch (err: any) {
-      console.error('Error processing image:', err);
+    } catch (err: unknown) {
+      debugError('Error processing image:', err);
       setError('Failed to process image. Please try a different file.');
     } finally {
       setIsProcessing(false);
@@ -153,7 +157,7 @@ export function UploadPost() {
       const filePath = `posts/${currentUser.id}/${fileName}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
@@ -201,9 +205,9 @@ export function UploadPost() {
         URL.revokeObjectURL(previewUrl);
       }
 
-    } catch (err: any) {
-      console.error('Error uploading post:', err);
-      setError(err.message || 'Failed to upload post. Please try again.');
+    } catch (err: unknown) {
+      debugError('Error uploading post:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload post. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -211,7 +215,7 @@ export function UploadPost() {
 
   // Navigate to feed
   const goToFeed = () => {
-    window.location.href = '/feed';
+    navigate('/feed');
   };
 
   // Loading state for user verification
@@ -241,7 +245,7 @@ export function UploadPost() {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSupabaseClient, useSession } from '@supabase/auth-helpers-react';
-import { AppLayout } from '../AppLayout';
 import { 
   CheckCircle, 
   XCircle, 
@@ -17,6 +17,8 @@ import {
   Star,
   Clock
 } from 'lucide-react';
+import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { anonymousComposerHelperText } from '@/content/anonymousMode';
 import { StripeProvider } from '../Payment/StripeProvider';
 import { PaymentForm } from '../Payment/PaymentForm';
 
@@ -62,6 +64,7 @@ interface PaymentRecord {
 export function OppositeGenderFeed() {
   const supabase = useSupabaseClient();
   const session = useSession();
+  const navigate = useNavigate();
   
   // State management
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
@@ -109,14 +112,14 @@ export function OppositeGenderFeed() {
           return;
         }
 
-        if (userData.status !== 'verified') {
-          setError('Access denied. Your account must be verified to access the feed.');
+        if (!isApprovedRegistrationStatus(userData.status)) {
+          setError('Access denied. Your account must be approved to access the feed.');
           setUserLoading(false);
           return;
         }
 
         setCurrentUser(userData);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error in fetchCurrentUser:', err);
         setError('An unexpected error occurred while loading user data.');
       } finally {
@@ -160,7 +163,7 @@ export function OppositeGenderFeed() {
           setHasAccess(false);
           setPaymentRecord(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error checking payment access:', err);
         setHasAccess(false);
       }
@@ -216,9 +219,9 @@ export function OppositeGenderFeed() {
         );
 
         setPosts(postsWithComments);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching posts:', err);
-        setError(`Failed to load posts: ${err.message}`);
+        setError(err instanceof Error ? `Failed to load posts: ${err.message}` : 'Failed to load posts.');
         // Fallback to mock data for demonstration
         if (currentUser) {
           const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
@@ -326,9 +329,9 @@ export function OppositeGenderFeed() {
         )
       );
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating flag count:', err);
-      setError(`Failed to update flag: ${err.message}`);
+      setError(err instanceof Error ? `Failed to update flag: ${err.message}` : 'Failed to update flag.');
     } finally {
       setFlaggingPostId(null);
     }
@@ -384,9 +387,9 @@ export function OppositeGenderFeed() {
       setSelectedPostId(null);
       setCommentText('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting comment:', err);
-      setError(`Failed to submit comment: ${err.message}`);
+      setError(err instanceof Error ? `Failed to submit comment: ${err.message}` : 'Failed to submit comment.');
     } finally {
       setSubmittingComment(false);
     }
@@ -409,7 +412,7 @@ export function OppositeGenderFeed() {
   // Loading state for user verification
   if (userLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div>
         <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
@@ -425,7 +428,7 @@ export function OppositeGenderFeed() {
   // Error state or access denied
   if (error && !currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div>
         <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -433,7 +436,7 @@ export function OppositeGenderFeed() {
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
             <p className="text-gray-700 mb-6">{error}</p>
             <button
-              onClick={() => window.location.href = '/'}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
               Go Back Home
@@ -451,7 +454,7 @@ export function OppositeGenderFeed() {
     
     return (
       <StripeProvider>
-        <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+        <div>
           <div className="container mx-auto px-4 py-8">
           <div className="max-w-lg mx-auto">
             {showPaymentForm ? (
@@ -602,7 +605,7 @@ export function OppositeGenderFeed() {
     const oppositeGender = currentUser.gender === 'Male' ? 'Female' : 'Male';
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#A3C6E0] to-[#E0A3A3]">
+      <div>
         <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
@@ -686,6 +689,12 @@ export function OppositeGenderFeed() {
               <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
                 Be patient, {oppositeGender} users will start sharing content soon.
               </p>
+              <button
+                onClick={() => navigate('/feed')}
+                className="px-8 py-4 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] hover:from-[#D98B8B] hover:to-[#D17A7A] text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              >
+                Visit your feed
+              </button>
             </div>
           ) : (
             /* Posts Feed - Same structure as GenderFeed */
@@ -719,7 +728,7 @@ export function OppositeGenderFeed() {
                   <div className="relative">
                     <img
                       src={post.photo_url}
-                      alt="Premium post content"
+                      alt={`Premium photo shared by @${post.username}`}
                       className="w-full h-96 object-cover"
                     />
                     <div className="absolute top-6 right-6 bg-gradient-to-r from-[#E0A3A3] to-[#D98B8B] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
@@ -735,12 +744,13 @@ export function OppositeGenderFeed() {
                         <button
                           onClick={() => handleFlag(post.id, 'green')}
                           disabled={flaggingPostId === post.id}
+                          aria-label={`Give this post a green flag (${post.green_flag_count} so far)`}
                           className="flex items-center space-x-3 px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                           ) : (
-                            <CheckCircle className="w-5 h-5" />
+                            <CheckCircle className="w-5 h-5" aria-hidden="true" />
                           )}
                           <span className="text-lg font-bold">{post.green_flag_count}</span>
                         </button>
@@ -749,12 +759,13 @@ export function OppositeGenderFeed() {
                         <button
                           onClick={() => handleFlag(post.id, 'red')}
                           disabled={flaggingPostId === post.id}
+                          aria-label={`Give this post a red flag (${post.red_flag_count} so far)`}
                           className="flex items-center space-x-3 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all duration-200 disabled:opacity-50 shadow-md hover:shadow-lg transform hover:scale-105"
                         >
                           {flaggingPostId === post.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                           ) : (
-                            <XCircle className="w-5 h-5" />
+                            <XCircle className="w-5 h-5" aria-hidden="true" />
                           )}
                           <span className="text-lg font-bold">{post.red_flag_count}</span>
                         </button>
@@ -812,7 +823,7 @@ export function OppositeGenderFeed() {
 
           {/* Comment Modal - Same as GenderFeed */}
           {isCommentModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full transform transition-all duration-300">
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                   <h3 className="text-xl font-bold text-gray-900">Add Anonymous Comment</h3>
@@ -832,6 +843,9 @@ export function OppositeGenderFeed() {
                         {currentUser?.gender}
                       </span>
                     </p>
+                    <div className="rounded-xl border border-[#E0A3A3]/50 bg-[#FFF7F8] p-4 text-sm leading-6 text-gray-700">
+                      {anonymousComposerHelperText}
+                    </div>
                   </div>
                   
                   <textarea

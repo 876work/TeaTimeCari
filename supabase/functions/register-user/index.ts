@@ -4,6 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sendUnderReviewEmail } from "../_shared/resendEmail.ts";
 import { collectTrackingMetadata } from "../_shared/tracking.ts";
+import { isFeatureEnabled } from "../_shared/featureFlags.ts";
+import { getAlertSettings, sendAndLogAlert } from "../_shared/slack.ts";
 
 const url = Deno.env.get("SUPABASE_URL")!;
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -52,6 +54,43 @@ function isSchemaCacheColumnError(error: { code?: string; message?: string } | n
   );
 }
 
+function isUniqueViolation(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || "";
+  return error?.code === "23505" || message.includes("duplicate key");
+}
+
+async function existingRegistrationResponse(email: string, fallbackUserId?: string) {
+  const { data: existingRegistration, error: lookupError } = email
+    ? await admin
+      .from("registrations")
+      .select("id, status")
+      .eq("email", email)
+      .maybeSingle()
+    : await admin
+      .from("registrations")
+      .select("id, status")
+      .eq("id", fallbackUserId)
+      .maybeSingle();
+
+  if (lookupError) {
+    return json(500, {
+      error: "registration lookup failed",
+      detail: lookupError.message,
+    });
+  }
+
+  if (!existingRegistration?.id) {
+    return json(409, { error: "registration already exists" });
+  }
+
+  return json(200, {
+    ok: true,
+    userId: existingRegistration.id,
+    alreadyExists: true,
+    status: existingRegistration.status,
+  });
+}
+
 function registrationUpsertPayload(
   userId: string,
   normalized: ReturnType<typeof normalizeRequest>,
@@ -71,7 +110,15 @@ function registrationUpsertPayload(
     ...(tracking
       ? {
           registration_ip_address: tracking.metadata.ip_address,
+          registration_ip_header: tracking.metadata.ip_header,
           registration_ip_location: tracking.metadata.ip_location,
+          registration_city: tracking.metadata.ip_city,
+          registration_region: tracking.metadata.ip_region,
+          registration_country: tracking.metadata.ip_country,
+          registration_country_code: tracking.metadata.ip_country_code,
+          registration_timezone: tracking.metadata.ip_timezone,
+          registration_location_provider: tracking.metadata.ip_location_provider,
+          registration_location_status: tracking.metadata.ip_location_status,
           registration_browser: tracking.metadata.browser,
           registration_device: tracking.metadata.device,
           registration_operating_system: tracking.metadata.operating_system,
@@ -130,6 +177,12 @@ serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
+    if (!(await isFeatureEnabled("registrations_enabled"))) {
+      return json(503, {
+        error: "New registrations are temporarily paused. Please try again later.",
+      });
+    }
+
     const normalized = normalizeRequest(await req.json());
     const registrationTracking = await collectTrackingMetadata(req);
     const registrationTrackedAt = new Date().toISOString();
@@ -198,6 +251,7 @@ serve(async (req) => {
         fullName: normalized.fullName,
         firstName: normalized.firstName,
         lastName: normalized.lastName,
+        phone: normalized.phone,
         gender: normalized.gender,
       },
     });
@@ -223,6 +277,7 @@ serve(async (req) => {
           fullName: normalized.fullName,
           firstName: normalized.firstName,
           lastName: normalized.lastName,
+          phone: normalized.phone,
           gender: normalized.gender,
         },
       });
@@ -244,41 +299,63 @@ serve(async (req) => {
     // schema cache after a migration. If the newer admin-tracking columns are
     // unavailable, keep registration working and persist the core application.
     let trackingPersisted = true;
-    let { error: upsertError } = await admin
+    let { error: insertError } = await admin
       .from("registrations")
-      .upsert(
+      .insert(
         registrationUpsertPayload(userId, normalized, {
           metadata: registrationTracking,
           trackedAt: registrationTrackedAt,
         }),
-        { onConflict: "id" },
       );
 
-    if (upsertError && isSchemaCacheColumnError(upsertError)) {
-      console.warn(
-        "registrations tracking columns are unavailable; retrying registration without tracking metadata",
-        upsertError,
-      );
-      trackingPersisted = false;
-      ({ error: upsertError } = await admin
-        .from("registrations")
-        .upsert(registrationUpsertPayload(userId, normalized), { onConflict: "id" }));
+    if (insertError && isUniqueViolation(insertError)) {
+      return existingRegistrationResponse(normalized.email, userId);
     }
 
-    if (upsertError) {
+    if (insertError && isSchemaCacheColumnError(insertError)) {
+      console.warn(
+        "registrations tracking columns are unavailable; retrying registration without tracking metadata",
+        insertError,
+      );
+      trackingPersisted = false;
+      ({ error: insertError } = await admin
+        .from("registrations")
+        .insert(registrationUpsertPayload(userId, normalized)));
+    }
+
+    if (insertError && isUniqueViolation(insertError)) {
+      return existingRegistrationResponse(normalized.email, userId);
+    }
+
+    if (insertError) {
       if (!isRecoveredAuthUser) {
         await admin.auth.admin.deleteUser(userId).catch((deleteError) => {
-          console.error("Failed to roll back auth user after registration upsert error", deleteError);
+          console.error("Failed to roll back auth user after registration insert error", deleteError);
         });
       }
 
-      return json(500, { error: "upsert failed", detail: upsertError.message });
+      return json(500, { error: "registration insert failed", detail: insertError.message });
     }
 
     const underReviewEmail = await sendUnderReviewEmail(
       normalized.email,
       normalized.firstName,
     ).catch((emailError) => ({ success: false, error: String(emailError) }));
+
+    // Best-effort Slack notification for new registrations.
+    try {
+      const alertSettings = await getAlertSettings();
+      if (alertSettings.alerts_enabled && alertSettings.notify_on_new_registration) {
+        await sendAndLogAlert({
+          alertType: "new_registration",
+          message: `:wave: *Tea Time Cari*: new registration from @${normalized.username} is waiting for review.`,
+          payload: { username: normalized.username },
+          settings: alertSettings,
+        });
+      }
+    } catch (alertError) {
+      console.warn("New-registration Slack alert failed", alertError);
+    }
 
     return json(200, {
       ok: true,

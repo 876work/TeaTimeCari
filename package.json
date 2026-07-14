@@ -10,19 +10,26 @@
     "preview": "vite preview --port 4173",
     "supabase": "supabase",
     "deploy:functions": "supabase functions deploy",
-    "deploy:rejection": "supabase functions deploy send-rejection-email"
+    "deploy:rejection": "supabase functions deploy send-rejection-email",
+    "supabase:update-recovery-template": "node scripts/update-supabase-recovery-template.mjs"
   },
   "dependencies": {
+    "@posthog/react": "^1.10.0",
+    "@sentry/react": "^10.57.0",
     "@stripe/react-stripe-js": "^3.9.0",
     "@stripe/stripe-js": "^7.8.0",
     "@supabase/auth-helpers-react": "^0.5.0",
     "@supabase/supabase-js": "^2.53.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "browser-image-compression": "^2.0.2",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.344.0",
+    "nsfwjs": "^4.3.0",
+    "posthog-js": "^1.386.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.8.0"
+    "react-router-dom": "^7.8.0",
+    "recharts": "^3.9.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

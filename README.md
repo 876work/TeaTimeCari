@@ -25,7 +25,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - **Discourse SSO Integration:** Seamless Single Sign-On with Discourse forum
 - **Secure Authentication:** Email/password login with password reset functionality
 - **Payment Processing:** Stripe integration for premium features
-- **Email & SMS Notifications:** Automated communication via SendGrid and Twilio
+- **Email & SMS Notifications:** Automated communication via Resend and Twilio
 
 ## 🛠 Technologies Used
 
@@ -46,7 +46,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 
 ### Payment & Communication
 - **[Stripe](https://stripe.com/)** - Secure payment processing for premium features
-- **[SendGrid](https://sendgrid.com/)** - Transactional email delivery
+- **[Resend](https://resend.com/)** - Transactional email delivery
 - **[Twilio](https://www.twilio.com/)** - SMS messaging service
 
 ### Forum Integration
@@ -60,7 +60,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - A Supabase project
 - (Optional) Discourse forum instance
 - (Optional) Stripe account for payments
-- (Optional) SendGrid account for emails
+- (Optional) Resend account for emails
 - (Optional) Twilio account for SMS
 
 ### 1. Clone the Repository
@@ -130,6 +130,8 @@ SEND_DISCOURSE_ACTIVATION=true
 
 For deployed Supabase Edge Functions, set the server-side values above as Supabase secrets, not only as frontend hosting variables. `DISCOURSE_SSO_SECRET` is required for Discourse SSO login. `DISCOURSE_ADMIN_API_KEY` is only required for the optional approval-time pre-sync that makes approved users appear in Discourse immediately.
 
+DiscourseConnect identity depends on a stable `external_id`; this app uses the Supabase registration/user ID for that value. Never regenerate the Supabase ID for the same user. See [`docs/discourse-sso-identity.md`](docs/discourse-sso-identity.md) for the internal permanence requirement. Discourse group and category privacy rules are documented in [`docs/discourse-permissions.md`](docs/discourse-permissions.md).
+
 ```bash
 supabase secrets set \
   DISCOURSE_BASE_URL=https://community.teatimecari.app \
@@ -145,9 +147,10 @@ VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-stripe-key
 STRIPE_SECRET_KEY=sk_test_your-stripe-secret
 STRIPE_WEBHOOK_SECRET=whsec_your-webhook-secret
 
-# SendGrid Configuration (Optional)
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
-SENDGRID_FROM_EMAIL=noreply@your-domain.com
+# Resend Configuration (Optional)
+RESEND_API_KEY=re_your-resend-api-key
+RESEND_FROM_EMAIL=noreply@your-domain.com
+RESEND_FROM_NAME=Tea Time Cari
 
 # Twilio Configuration (Optional)
 TWILIO_ACCOUNT_SID=your-twilio-account-sid
@@ -161,6 +164,11 @@ npm run dev
 ```
 
 Visit `http://localhost:5173` to see the application running.
+
+
+### Discourse User Download Watermark Plugin
+
+This repository also includes a server-side Discourse plugin at [`discourse-user-download-watermark/`](discourse-user-download-watermark/) for serving temporary, per-user watermarked derivatives of post upload image downloads. The plugin keeps original Discourse uploads unchanged, checks Discourse permissions before generating a derivative, and documents installation/testing in its plugin README.
 
 ## 📊 Database Schema
 
@@ -266,6 +274,7 @@ Stripe payment records:
 
 ### Data Protection
 - **Image Processing:** Automatic EXIF metadata removal from uploaded photos
+- **Verification Photo Handling:** See [`docs/verification-photo-storage.md`](docs/verification-photo-storage.md) for restricted selfie/ID review, retention, visibility, and deletion expectations
 - **Password Security:** Secure password hashing via Supabase Auth
 - **Payment Security:** PCI-compliant payment processing through Stripe
 - **CORS Protection:** Proper Cross-Origin Resource Sharing configuration
@@ -307,7 +316,7 @@ npm run lint         # Run ESLint
 ### Environment Setup
 1. Copy `.env.example` to `.env`
 2. Fill in your Supabase credentials
-3. Configure optional services (Stripe, SendGrid, Twilio, Discourse)
+3. Configure optional services (Stripe, Resend, Twilio, Discourse)
 4. Deploy Edge Functions to Supabase
 5. Run database migrations
 

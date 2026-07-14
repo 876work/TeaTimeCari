@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
-import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff } from 'lucide-react';
-import { useNotifications } from '../../contexts/NotificationContext';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff, Loader2 } from 'lucide-react';
+import { useNotifications, type Notification as AppNotification } from '../../contexts/NotificationContext';
 
 interface NotificationDropdownProps {
   onClose: () => void;
 }
 
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
+  const navigate = useNavigate();
   const { 
     notifications, 
     unreadCount, 
@@ -55,21 +57,18 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     return notificationTime.toLocaleDateString();
   };
 
-  const handleNotificationClick = async (notification: Notification) => {
+  const handleNotificationClick = async (notification: AppNotification) => {
     // Mark as read if not already read
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
 
-    // Navigate to the link
     if (notification.link.startsWith('/')) {
-      // Internal link - you might want to implement proper routing here
-      // For now, we'll just close the dropdown
       onClose();
-      console.log('Navigate to:', notification.link);
+      navigate(notification.link);
     } else {
-      // External link
-      window.open(notification.link, '_blank');
+      window.open(notification.link, '_blank', 'noopener,noreferrer');
+      onClose();
     }
   };
 
@@ -126,6 +125,16 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             <p className="text-sm text-gray-500 mt-1">
               You'll see notifications here when people interact with your posts
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate('/community');
+              }}
+              className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#4B9EC8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3382AA]"
+            >
+              Visit community
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -133,7 +142,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                className={`relative p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
                   !notification.is_read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                 }`}
               >
@@ -176,7 +185,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             onClick={onClose}
             className="w-full text-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
           >
-            View all notifications
+            Close notifications
           </button>
         </div>
       )}

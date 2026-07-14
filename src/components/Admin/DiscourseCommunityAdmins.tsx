@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
+import React, { useEffect, useMemo, useState } from "react";
+import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 import {
-  AlertCircle,
-  CheckCircle,
+  Activity,
   Crown,
   Loader2,
   RefreshCw,
@@ -11,11 +10,32 @@ import {
   ShieldOff,
   UserCheck,
   X,
-} from 'lucide-react';
-import { AdminLayout } from './AdminLayout';
+} from "lucide-react";
+import { AdminLayout } from "./AdminLayout";
+import {
+  AdminAlert,
+  AdminBadge,
+  AdminButton,
+  AdminCard,
+  AdminEmptyState,
+  AdminFilterBar,
+  AdminInput,
+  AdminMetricCard,
+  AdminPageHeader,
+  AdminSkeleton,
+  AdminTable,
+} from "./ui";
 
-type DiscourseFlag = 'all' | 'active' | 'staff' | 'suspended' | 'new' | 'blocked' | 'suspect';
-type AdminAction = 'promote' | 'demote';
+type DiscourseFlag =
+  | "all"
+  | "active"
+  | "staff"
+  | "suspended"
+  | "new"
+  | "blocked"
+  | "suspect";
+
+type AdminAction = "promote" | "demote";
 
 type DiscourseUser = {
   id: number;
@@ -40,37 +60,42 @@ type PendingAction = {
 };
 
 const FILTERS: { id: DiscourseFlag; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'active', label: 'Active' },
-  { id: 'staff', label: 'Staff' },
-  { id: 'suspended', label: 'Suspended' },
-  { id: 'new', label: 'New' },
-  { id: 'blocked', label: 'Blocked' },
-  { id: 'suspect', label: 'Suspect' },
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "staff", label: "Staff" },
+  { id: "suspended", label: "Suspended" },
+  { id: "new", label: "New" },
+  { id: "blocked", label: "Blocked" },
+  { id: "suspect", label: "Suspect" },
 ];
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  return 'Unknown error';
+  if (typeof error === "string") return error;
+
+  return "Unknown error";
 }
 
 async function getFunctionErrorMessage(error: unknown) {
   const fallback = getErrorMessage(error);
   const maybeContext = (error as { context?: unknown })?.context;
-  const response = maybeContext instanceof Response
-    ? maybeContext
-    : (maybeContext as { response?: Response } | undefined)?.response;
+
+  const response =
+    maybeContext instanceof Response
+      ? maybeContext
+      : (maybeContext as { response?: Response } | undefined)?.response;
 
   if (!response) return fallback;
 
   try {
     const body = await response.clone().json();
+
     if (body?.error) return String(body.error);
     if (body?.message) return String(body.message);
   } catch {
     try {
       const text = await response.clone().text();
+
       if (text) return text;
     } catch {
       // Fall through to the Supabase client error message.
@@ -81,30 +106,92 @@ async function getFunctionErrorMessage(error: unknown) {
 }
 
 function displayName(user: DiscourseUser) {
-  return user.name?.trim() || user.username?.trim() || user.email?.trim() || `Discourse user #${user.id}`;
+  return (
+    user.name?.trim() ||
+    user.username?.trim() ||
+    user.email?.trim() ||
+    `Discourse user #${user.id}`
+  );
 }
 
-function Badge({
+function CommunityRoleBadge({ user }: { user: DiscourseUser }) {
+  if (user.admin) return <AdminBadge variant="warning">Admin</AdminBadge>;
+  if (user.moderator) return <AdminBadge variant="brand">Moderator</AdminBadge>;
+
+  return <AdminBadge variant="muted">Member</AdminBadge>;
+}
+
+function CommunityStatusBadge({ user }: { user: DiscourseUser }) {
+  if (user.suspended) return <AdminBadge variant="danger">Suspended</AdminBadge>;
+  if (user.active) return <AdminBadge variant="success">Active</AdminBadge>;
+
+  return <AdminBadge variant="muted">Inactive</AdminBadge>;
+}
+
+function BooleanBadge({
   label,
   enabled,
-  tone,
+  variant,
 }: {
   label: string;
   enabled: boolean;
-  tone: 'blue' | 'green' | 'red' | 'slate' | 'purple';
+  variant: "success" | "danger" | "brand" | "warning" | "muted";
 }) {
-  const colors = {
-    blue: enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    green: enabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    red: enabled ? 'bg-red-50 text-red-700 border-red-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    slate: enabled ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-    purple: enabled ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-50 text-slate-400 border-slate-200',
-  };
-
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colors[tone]}`}>
-      {label}: {enabled ? 'Yes' : 'No'}
-    </span>
+    <AdminBadge variant={enabled ? variant : "muted"}>
+      {label}: {enabled ? "Yes" : "No"}
+    </AdminBadge>
+  );
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Not returned";
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function CommunityAdminSkeletonRows() {
+  return (
+    <>
+      {[0, 1, 2].map((item) => (
+        <tr key={item}>
+          <td className="px-5 py-5">
+            <div className="flex items-center gap-3">
+              <AdminSkeleton className="h-10 w-10 rounded-full" />
+
+              <div className="space-y-2">
+                <AdminSkeleton className="h-4 w-36" />
+                <AdminSkeleton className="h-3 w-24" />
+              </div>
+            </div>
+          </td>
+
+          <td className="px-5 py-5">
+            <AdminSkeleton className="h-6 w-24 rounded-full" />
+          </td>
+
+          <td className="px-5 py-5">
+            <AdminSkeleton className="h-6 w-28 rounded-full" />
+          </td>
+
+          <td className="px-5 py-5">
+            <AdminSkeleton className="h-4 w-28" />
+          </td>
+
+          <td className="px-5 py-5 text-right">
+            <AdminSkeleton className="ml-auto h-9 w-32" />
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }
 
@@ -119,19 +206,27 @@ function ConfirmationModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const isPromote = pendingAction.action === 'promote';
+  const isPromote = pendingAction.action === "promote";
   const userName = displayName(pendingAction.user);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
         <div className="flex items-start justify-between border-b border-slate-200 p-5">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">
-              {isPromote ? 'Promote Discourse admin?' : 'Demote Discourse admin?'}
+              {isPromote
+                ? "Promote Discourse admin?"
+                : "Demote Discourse admin?"}
             </h3>
+
             <p className="mt-1 text-sm text-slate-500">
-              This changes Discourse admin status only. Tea Time Cari app admin access is not changed.
+              This changes Discourse admin status only. Tea Time Cari app admin
+              access is not changed.
             </p>
           </div>
 
@@ -139,7 +234,7 @@ function ConfirmationModal({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+            className="rounded-admin-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-admin-brand/20 disabled:opacity-50"
             aria-label="Close confirmation"
           >
             <X className="h-5 w-5" />
@@ -149,53 +244,55 @@ function ConfirmationModal({
         <div className="space-y-4 p-5">
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-sm font-medium text-slate-900">{userName}</p>
+
             <p className="text-xs text-slate-500">
-              @{pendingAction.user.username || 'unknown'} · {pendingAction.user.email || 'No email returned'}
+              @{pendingAction.user.username || "unknown"} ·{" "}
+              {pendingAction.user.email || "No email returned"}
             </p>
-            <p className="mt-2 text-xs text-slate-500">Discourse user ID: {pendingAction.user.id}</p>
+
+            <p className="mt-2 text-xs text-slate-500">
+              Discourse user ID: {pendingAction.user.id}
+            </p>
           </div>
 
           <p className="text-sm text-slate-600">
             {isPromote
-              ? 'Promoting this user grants administrator privileges inside Discourse.'
-              : 'Demoting this user removes administrator privileges inside Discourse. Self-demotion and last-admin demotion are blocked server-side.'}
+              ? "Promoting this user grants administrator privileges inside Discourse."
+              : "Demoting this user removes administrator privileges inside Discourse. Self-demotion and last-admin demotion are blocked server-side."}
           </p>
         </div>
 
         <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
+          <AdminButton type="button" onClick={onCancel} disabled={loading}>
             Cancel
-          </button>
+          </AdminButton>
 
-          <button
+          <AdminButton
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-              isPromote ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'
-            }`}
+            variant={isPromote ? "primary" : "danger"}
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isPromote ? 'Promote Admin' : 'Demote Admin'}
-          </button>
+            {isPromote ? "Promote Admin" : "Demote Admin"}
+          </AdminButton>
         </div>
       </div>
     </div>
   );
 }
 
-export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: string) => void }) {
+export function DiscourseCommunityAdmins({
+  onNavigate,
+}: {
+  onNavigate?: (page: string) => void;
+}) {
   const supabase = useSupabaseClient();
   const session = useSession();
 
   const [users, setUsers] = useState<DiscourseUser[]>([]);
-  const [filter, setFilter] = useState<DiscourseFlag>('all');
-  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<DiscourseFlag>("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -203,8 +300,29 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
-  const currentEmail = session?.user?.email?.trim().toLowerCase() || '';
-  const adminCount = useMemo(() => users.filter((user) => user.admin).length, [users]);
+  const currentEmail = session?.user?.email?.trim().toLowerCase() || "";
+
+  const adminCount = useMemo(
+    () => users.filter((user) => user.admin).length,
+    [users]
+  );
+
+  const moderatorCount = useMemo(
+    () => users.filter((user) => user.moderator).length,
+    [users]
+  );
+
+  const activeCount = useMemo(
+    () => users.filter((user) => user.active && !user.suspended).length,
+    [users]
+  );
+
+  const suspendedCount = useMemo(
+    () => users.filter((user) => user.suspended).length,
+    [users]
+  );
+
+  const hasActiveFilters = filter !== "all" || search.trim().length > 0;
 
   const fetchUsers = async (nextPage = page) => {
     setLoading(true);
@@ -216,23 +334,30 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
       } = await supabase.auth.getSession();
 
       if (!currentSession?.access_token) {
-        throw new Error('You must be logged in as a Tea Time Cari admin.');
+        throw new Error("You must be logged in as a Tea Time Cari admin.");
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke('discourse-admin-users', {
-        body: {
-          action: 'list',
-          flag: filter,
-          page: nextPage,
-          search: search.trim() || undefined,
-        },
-        headers: { Authorization: `Bearer ${currentSession.access_token}` },
-      });
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "discourse-admin-users",
+        {
+          body: {
+            action: "list",
+            flag: filter,
+            page: nextPage,
+            search: search.trim() || undefined,
+          },
+          headers: {
+            Authorization: `Bearer ${currentSession.access_token}`,
+          },
+        }
+      );
 
-      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+      if (fnError) {
+        throw new Error(await getFunctionErrorMessage(fnError));
+      }
 
       if (!data?.ok) {
-        throw new Error(data?.error || 'Unable to load Discourse users.');
+        throw new Error(data?.error || "Unable to load Discourse users.");
       }
 
       setUsers(data.users ?? []);
@@ -256,6 +381,11 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
     fetchUsers(0);
   };
 
+  const clearFilters = () => {
+    setFilter("all");
+    setSearch("");
+  };
+
   const openAction = (action: AdminAction, user: DiscourseUser) => {
     setError(null);
     setSuccess(null);
@@ -275,38 +405,49 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
       } = await supabase.auth.getSession();
 
       if (!currentSession?.access_token) {
-        throw new Error('You must be logged in as a Tea Time Cari admin.');
+        throw new Error("You must be logged in as a Tea Time Cari admin.");
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke('discourse-admin-users', {
-        body: {
-          action: pendingAction.action,
-          discourse_user_id: pendingAction.user.id,
-        },
-        headers: { Authorization: `Bearer ${currentSession.access_token}` },
-      });
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "discourse-admin-users",
+        {
+          body: {
+            action: pendingAction.action,
+            discourse_user_id: pendingAction.user.id,
+          },
+          headers: {
+            Authorization: `Bearer ${currentSession.access_token}`,
+          },
+        }
+      );
 
-      if (fnError) throw new Error(await getFunctionErrorMessage(fnError));
+      if (fnError) {
+        throw new Error(await getFunctionErrorMessage(fnError));
+      }
 
       if (!data?.ok) {
-        throw new Error(data?.error || 'Unable to update Discourse admin status.');
+        throw new Error(
+          data?.error || "Unable to update Discourse admin status."
+        );
       }
 
       const updatedUser = data.user as DiscourseUser;
 
       setUsers((prev) =>
-        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user))
       );
 
       setSuccess(
-        pendingAction.action === 'promote'
+        pendingAction.action === "promote"
           ? `${displayName(updatedUser)} is now a Discourse admin.`
-          : `${displayName(updatedUser)} is no longer a Discourse admin.`,
+          : `${displayName(updatedUser)} is no longer a Discourse admin.`
       );
 
       setPendingAction(null);
     } catch (err) {
-      setError(`Failed to update Discourse admin status: ${getErrorMessage(err)}`);
+      setError(
+        `Failed to update Discourse admin status: ${getErrorMessage(err)}`
+      );
     } finally {
       setActionLoading(false);
     }
@@ -315,240 +456,461 @@ export function DiscourseCommunityAdmins({ onNavigate }: { onNavigate?: (page: s
   return (
     <AdminLayout activePage="discourse-admins" onNavigate={onNavigate}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Discourse/Community Admins</h1>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Review Discourse users and promote or demote Discourse-only administrator access.
-            </p>
-          </div>
+        <AdminPageHeader
+          title="Community Admins"
+          description="Manage community administrators, moderators, and access status for the Tea Time Cari community."
+          actions={
+            <AdminButton
+              type="button"
+              variant="glass"
+              onClick={() => fetchUsers(page)}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh users
+            </AdminButton>
+          }
+        />
 
-          <button
-            type="button"
-            onClick={() => fetchUsers(page)}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <AdminMetricCard
+            title="Loaded users"
+            value={users.length}
+            loading={loading}
+            accent="info"
+            icon={<UserCheck className="h-5 w-5" />}
+            description="Returned by the current view"
+          />
+
+          <AdminMetricCard
+            title="Admins"
+            value={adminCount}
+            loading={loading}
+            accent="warning"
+            icon={<Crown className="h-5 w-5" />}
+            description="Community administrator role"
+          />
+
+          <AdminMetricCard
+            title="Moderators"
+            value={moderatorCount}
+            loading={loading}
+            accent="brand"
+            icon={<Shield className="h-5 w-5" />}
+            description="Community moderator role"
+          />
+
+          <AdminMetricCard
+            title="Active"
+            value={activeCount}
+            loading={loading}
+            accent="success"
+            icon={<Activity className="h-5 w-5" />}
+            description="Active and not suspended"
+          />
+
+          <AdminMetricCard
+            title="Suspended"
+            value={suspendedCount}
+            loading={loading}
+            accent="danger"
+            icon={<ShieldOff className="h-5 w-5" />}
+            description="Access restricted"
+          />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Loaded Users</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : users.length}</p>
-          </div>
+        <AdminFilterBar>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-sm font-semibold text-white">
+                Find community members
+              </h2>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Discourse Admins</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{loading ? '—' : adminCount}</p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Filter</p>
-            <p className="mt-1 text-2xl font-bold capitalize text-slate-900">{filter}</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((item) => (
-                <button
-                  key={item.id}
+              {hasActiveFilters && (
+                <AdminButton
                   type="button"
-                  onClick={() => setFilter(item.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                    filter === item.id
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
                 >
-                  {item.label}
-                </button>
-              ))}
+                  Clear filters
+                </AdminButton>
+              )}
             </div>
 
-            <form name="discourse-admin-search" method="POST" data-netlify="true" onSubmit={handleSearchSubmit} className="flex w-full gap-2 lg:w-auto">
-              <input type="hidden" name="form-name" value="discourse-admin-search" readOnly />
-              <div className="relative flex-1 lg:w-80">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  name="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search username or email"
-                  className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {FILTERS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setFilter(item.id)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30 ${
+                      filter === item.id
+                        ? "border-white/40 bg-white/25 text-white"
+                        : "border-white/15 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              <form
+                name="discourse-admin-search"
+                method="POST"
+                data-netlify="true"
+                onSubmit={handleSearchSubmit}
+                className="flex w-full gap-2 lg:w-auto"
               >
-                Search
-              </button>
-            </form>
-          </div>
-        </div>
+                <input
+                  type="hidden"
+                  name="form-name"
+                  value="discourse-admin-search"
+                  readOnly
+                />
 
-        {success && (
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4" role="status">
-            <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" />
-            <p className="text-sm text-emerald-700">{success}</p>
-          </div>
-        )}
+                <div className="relative flex-1 lg:w-80">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
 
-        {error && (
-          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4" role="alert">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
+                  <AdminInput
+                    type="search"
+                    name="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search username or email"
+                    className="pl-9"
+                  />
+                </div>
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+                <AdminButton type="submit" disabled={loading} variant="primary">
+                  Search
+                </AdminButton>
+              </form>
+            </div>
+
+            {hasActiveFilters && (
+              <div className="flex flex-wrap gap-2 border-t border-white/15 pt-3">
+                {filter !== "all" && (
+                  <AdminBadge variant="info">
+                    Filter: {FILTERS.find((item) => item.id === filter)?.label}
+                  </AdminBadge>
+                )}
+
+                {search.trim() && (
+                  <AdminBadge variant="neutral">
+                    Search: {search.trim()}
+                  </AdminBadge>
+                )}
+              </div>
+            )}
+          </div>
+        </AdminFilterBar>
+
+        {success && <AdminAlert variant="success">{success}</AdminAlert>}
+
+        {error && <AdminAlert variant="error">{error}</AdminAlert>}
+
+        <AdminTable>
+          <table className="hidden min-w-full divide-y divide-white/10 md:table">
+            <thead className="bg-white/10">
+              <tr>
+                {["User", "Role", "Status", "Activity", "Actions"].map(
+                  (heading) => (
+                    <th
+                      key={heading}
+                      className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-white/50 ${
+                        heading === "Actions" ? "text-right" : "text-left"
+                      }`}
+                    >
+                      {heading}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/10">
+              {loading && <CommunityAdminSkeletonRows />}
+
+              {!loading && users.length === 0 && (
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    User
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Email
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Admin
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Actions
-                  </th>
+                  <td colSpan={5}>
+                    <AdminEmptyState
+                      icon={<UserCheck className="h-8 w-8" />}
+                      title="No community admins match the current filters."
+                      message="Try a different status filter, clear the search, or refresh the current page."
+                      action={
+                        <AdminButton
+                          type="button"
+                          variant="secondary"
+                          onClick={() => fetchUsers(0)}
+                        >
+                          Retry load
+                        </AdminButton>
+                      }
+                    />
+                  </td>
                 </tr>
-              </thead>
+              )}
 
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {loading && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
-                      <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-blue-500" />
-                      Loading Discourse users…
-                    </td>
-                  </tr>
-                )}
+              {!loading &&
+                users.map((user) => {
+                  const isSelf = Boolean(
+                    currentEmail &&
+                      user.email?.trim().toLowerCase() === currentEmail
+                  );
 
-                {!loading && users.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
-                      No Discourse users found for this filter.
-                    </td>
-                  </tr>
-                )}
+                  const demoteDisabled = isSelf || adminCount <= 1;
 
-                {!loading &&
-                  users.map((user) => {
-                    const isSelf = Boolean(currentEmail && user.email?.trim().toLowerCase() === currentEmail);
-
-                    return (
-                      <tr key={user.id} className="hover:bg-slate-50/60">
-                        <td className="px-4 py-4 align-top">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                              {user.admin ? (
-                                <Crown className="h-5 w-5 text-amber-500" />
-                              ) : (
-                                <UserCheck className="h-5 w-5" />
-                              )}
-                            </div>
-
-                            <div>
-                              <p className="text-sm font-semibold text-slate-900">{displayName(user)}</p>
-                              <p className="text-xs text-slate-500">
-                                @{user.username || 'unknown'} · ID {user.id}
-                              </p>
-                            </div>
+                  return (
+                    <tr
+                      key={user.id}
+                      className="transition-colors hover:bg-white/5"
+                    >
+                      <td className="px-5 py-5 align-top">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/70">
+                            {user.admin ? (
+                              <Crown className="h-5 w-5 text-amber-500" />
+                            ) : (
+                              <UserCheck className="h-5 w-5" />
+                            )}
                           </div>
-                        </td>
 
-                        <td className="px-4 py-4 align-top text-sm text-slate-600">
-                          {user.email || <span className="text-slate-400">No email returned</span>}
-                        </td>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {displayName(user)}
+                            </p>
 
-                        <td className="px-4 py-4 align-top">
-                          <Badge label="Admin" enabled={user.admin} tone="purple" />
-                        </td>
+                            <p className="mt-0.5 text-xs text-white/60">
+                              @{user.username || "unknown"} · ID {user.id}
+                            </p>
 
-                        <td className="px-4 py-4 align-top">
-                          <div className="flex flex-wrap gap-1.5">
-                            <Badge label="Active" enabled={user.active} tone="green" />
-                            <Badge label="Moderator" enabled={user.moderator} tone="blue" />
-                            <Badge label="Suspended" enabled={user.suspended} tone="red" />
+                            <p className="mt-1 text-xs text-white/60">
+                              {user.email || "No email returned"}
+                            </p>
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        <td className="px-4 py-4 align-top text-right">
+                      <td className="px-5 py-5 align-top">
+                        <div className="flex flex-wrap gap-1.5">
+                          <CommunityRoleBadge user={user} />
+
+                          <BooleanBadge
+                            label="Admin"
+                            enabled={user.admin}
+                            variant="warning"
+                          />
+
+                          <BooleanBadge
+                            label="Moderator"
+                            enabled={user.moderator}
+                            variant="brand"
+                          />
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-5 align-top">
+                        <div className="flex flex-wrap gap-1.5">
+                          <CommunityStatusBadge user={user} />
+
+                          <BooleanBadge
+                            label="Active"
+                            enabled={user.active}
+                            variant="success"
+                          />
+
+                          <BooleanBadge
+                            label="Suspended"
+                            enabled={user.suspended}
+                            variant="danger"
+                          />
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-5 align-top text-sm text-white/60">
+                        <div>Joined {formatDate(user.created_at)}</div>
+                        <div className="mt-1">
+                          Last seen {formatDate(user.last_seen_at)}
+                        </div>
+                        <div className="mt-1">
+                          Trust level {user.trust_level ?? "Not returned"}
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-5 align-top text-right">
+                        {user.admin ? (
+                          <AdminButton
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => openAction("demote", user)}
+                            disabled={demoteDisabled}
+                            title={
+                              isSelf
+                                ? "You cannot demote yourself."
+                                : adminCount <= 1
+                                ? "Cannot demote the last loaded admin."
+                                : undefined
+                            }
+                          >
+                            <ShieldOff className="h-4 w-4" />
+                            Demote
+                          </AdminButton>
+                        ) : (
+                          <AdminButton
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={() => openAction("promote", user)}
+                          >
+                            <Shield className="h-4 w-4" />
+                            Promote
+                          </AdminButton>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+
+          <div className="space-y-3 p-4 md:hidden">
+            {loading &&
+              [0, 1, 2].map((item) => (
+                <AdminSkeleton key={item} className="h-44 w-full" />
+              ))}
+
+            {!loading && users.length === 0 && (
+              <AdminEmptyState
+                icon={<UserCheck className="h-8 w-8" />}
+                title="No community admins match the current filters."
+                message="Try clearing filters or refreshing the current page."
+              />
+            )}
+
+            {!loading &&
+              users.map((user) => {
+                const isSelf = Boolean(
+                  currentEmail &&
+                    user.email?.trim().toLowerCase() === currentEmail
+                );
+
+                const demoteDisabled = isSelf || adminCount <= 1;
+
+                return (
+                  <AdminCard key={user.id} className="shadow-none">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70">
                           {user.admin ? (
-                            <button
-                              type="button"
-                              onClick={() => openAction('demote', user)}
-                              disabled={isSelf || adminCount <= 1}
-                              title={
-                                isSelf
-                                  ? 'You cannot demote yourself.'
-                                  : adminCount <= 1
-                                    ? 'Cannot demote the last loaded admin.'
-                                    : undefined
-                              }
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              <ShieldOff className="h-4 w-4" />
-                              Demote Admin
-                            </button>
+                            <Crown className="h-5 w-5 text-amber-500" />
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => openAction('promote', user)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
-                            >
-                              <Shield className="h-4 w-4" />
-                              Promote Admin
-                            </button>
+                            <UserCheck className="h-5 w-5" />
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-white">
+                            {displayName(user)}
+                          </p>
+
+                          <p className="text-xs text-white/60">
+                            @{user.username || "unknown"} · ID {user.id}
+                          </p>
+
+                          <p className="mt-1 break-words text-xs text-white/60">
+                            {user.email || "No email returned"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        <CommunityRoleBadge user={user} />
+                        <CommunityStatusBadge user={user} />
+
+                        <BooleanBadge
+                          label="Moderator"
+                          enabled={user.moderator}
+                          variant="brand"
+                        />
+                      </div>
+
+                      <div className="rounded-admin-lg bg-white/5 p-3 text-xs text-white/60">
+                        <p>Joined {formatDate(user.created_at)}</p>
+                        <p className="mt-1">
+                          Last seen {formatDate(user.last_seen_at)}
+                        </p>
+                        <p className="mt-1">
+                          Trust level {user.trust_level ?? "Not returned"}
+                        </p>
+                      </div>
+
+                      {user.admin ? (
+                        <AdminButton
+                          type="button"
+                          variant="danger"
+                          className="w-full"
+                          onClick={() => openAction("demote", user)}
+                          disabled={demoteDisabled}
+                          title={
+                            isSelf
+                              ? "You cannot demote yourself."
+                              : adminCount <= 1
+                              ? "Cannot demote the last loaded admin."
+                              : undefined
+                          }
+                        >
+                          <ShieldOff className="h-4 w-4" />
+                          Demote Admin
+                        </AdminButton>
+                      ) : (
+                        <AdminButton
+                          type="button"
+                          variant="primary"
+                          className="w-full"
+                          onClick={() => openAction("promote", user)}
+                        >
+                          <Shield className="h-4 w-4" />
+                          Promote Admin
+                        </AdminButton>
+                      )}
+                    </div>
+                  </AdminCard>
+                );
+              })}
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3">
-            <button
+          <div className="flex items-center justify-between border-t border-white/15 bg-white/5 px-4 py-3">
+            <AdminButton
               type="button"
               onClick={() => fetchUsers(Math.max(0, page - 1))}
               disabled={loading || page === 0}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              size="sm"
+              variant="secondary"
             >
               Previous
-            </button>
+            </AdminButton>
 
-            <span className="text-sm text-slate-500">Page {page + 1}</span>
+            <span className="text-sm font-medium text-white/60">
+              Page {page + 1}
+            </span>
 
-            <button
+            <AdminButton
               type="button"
               onClick={() => fetchUsers(page + 1)}
               disabled={loading}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              size="sm"
+              variant="secondary"
             >
               Next
-            </button>
+            </AdminButton>
           </div>
-        </div>
+        </AdminTable>
       </div>
 
       {pendingAction && (

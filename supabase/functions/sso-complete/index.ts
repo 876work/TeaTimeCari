@@ -6,11 +6,51 @@ import { signSsoPayload, buildDiscourseGroups, parseAndVerifyIncoming } from "..
 const SECRET = Deno.env.get("DISCOURSE_SSO_SECRET")!;
 const DISCOURSE_BASE_URL =
   Deno.env.get("DISCOURSE_BASE_URL") || "https://community.teatimecari.app";
+const SITE_BASE_URL =
+  Deno.env.get("SITE_BASE_URL") || "https://teatimecari.app";
+const DEFAULT_RETURN_PATH = Deno.env.get("DISCOURSE_DEFAULT_RETURN_PATH") || "/";
+const MEN_CATEGORY_PATH = Deno.env.get("DISCOURSE_MEN_CATEGORY_PATH") || "/c/user-photos/men-photos-slu/6";
+const WOMEN_CATEGORY_PATH = Deno.env.get("DISCOURSE_WOMEN_CATEGORY_PATH") || "/c/user-photos/women-photos-slu/7";
 
 const baseHeaders = { ...corsHeaders, "Content-Type": "application/json", "Vary": "Origin" };
 
+type CommunityGender = "men" | "women";
+
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: baseHeaders });
+}
+
+function normalizeReturnPath(pathOrUrl: string) {
+  try {
+    const base = new URL(DISCOURSE_BASE_URL);
+    const url = new URL(pathOrUrl, base.origin);
+
+    if (url.origin !== base.origin) {
+      return DEFAULT_RETURN_PATH;
+    }
+
+    return `${url.pathname}${url.search}${url.hash}` || DEFAULT_RETURN_PATH;
+  } catch {
+    return DEFAULT_RETURN_PATH;
+  }
+}
+
+function normalizeCommunityGender(gender?: string | null): CommunityGender | null {
+  const normalized = gender?.trim().toLowerCase();
+
+  if (normalized === "male" || normalized === "men") return "men";
+  if (normalized === "female" || normalized === "women") return "women";
+
+  return null;
+}
+
+function getReturnPathForGender(gender?: string | null) {
+  const communityGender = normalizeCommunityGender(gender);
+
+  if (communityGender === "men") return normalizeReturnPath(MEN_CATEGORY_PATH);
+  if (communityGender === "women") return normalizeReturnPath(WOMEN_CATEGORY_PATH);
+
+  return normalizeReturnPath(DEFAULT_RETURN_PATH);
 }
 
 function safeReturnUrl(input?: string | null) {
@@ -25,6 +65,14 @@ function safeReturnUrl(input?: string | null) {
   } catch {
     return fallback;
   }
+}
+
+function buildDiscourseSsoRedirect(returnUrlRaw: string | null, returnPath: string, sso: string, sig: string) {
+  const returnUrl = new URL(safeReturnUrl(returnUrlRaw));
+  returnUrl.searchParams.set("return_path", returnPath);
+  returnUrl.searchParams.set("sso", sso);
+  returnUrl.searchParams.set("sig", sig);
+  return returnUrl.toString();
 }
 
 function sanitizeUsername(u: string) {
@@ -85,35 +133,39 @@ Deno.serve(async (req: Request) => {
     // Only real database/permission failures should return an error.
     if (pErr) return json(500, { error: "registration lookup failed" });
     if (!profile || !profile.status || profile.status !== "approved") {
-      return json(200, { redirectUrl: "https://teatimecari.app/kyc-pending" });
+      const pendingUrl = `${SITE_BASE_URL.replace(/\/+$/, "")}/kyc-pending`;
+      return json(200, { redirectUrl: pendingUrl });
     }
 
-    const genderVal = (profile.gender || "").toString().toLowerCase();
-    const gender = genderVal === "male" ? "men" : "women";
-    const addGroups = buildDiscourseGroups(gender, /* xaccess */ false);
+    const communityGender = normalizeCommunityGender(profile.gender);
+
+    if (!communityGender) {
+      console.error("[sso-complete] Unrecognized gender on approved profile:", profile.id);
+      return json(422, { error: "unrecognized_gender" });
+    }
+
+    const addGroups = buildDiscourseGroups(communityGender, /* xaccess */ false);
+    const returnPath = getReturnPathForGender(profile.gender);
 
     const derivedUsername =
       profile.username ||
       sanitizeUsername((user.email ?? "").split("@")[0] || "");
 
-    const name =
-      profile.fullName ||
-      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-      derivedUsername;
-
+    // Keep external_id stable forever: DiscourseConnect associates users by this value.
+    // Do not sync legal/full names into Discourse display fields; the public
+    // community identity is the member-selected username.
     const payload = {
       nonce,
       external_id: profile.id,
       email: profile.email,
       username: derivedUsername,
-      name,
+      name: derivedUsername,
       add_groups: addGroups,
-      require_activation: false,
+      require_activation: "false",
     };
 
     const { b64, sig } = await signSsoPayload(payload, SECRET);
-    const returnUrl = safeReturnUrl(returnUrlRaw);
-    const redirectUrl = `${returnUrl}?sso=${encodeURIComponent(b64)}&sig=${sig}`;
+    const redirectUrl = buildDiscourseSsoRedirect(returnUrlRaw, returnPath, b64, sig);
 
     return json(200, { redirectUrl });
   } catch (e) {

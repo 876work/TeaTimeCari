@@ -1,78 +1,327 @@
 import { useEffect, useState } from "react";
-import { supabase } from '@/lib/supabaseClient';
+import { Link } from "react-router-dom";
+import { Eye, EyeOff, Lock } from "lucide-react";
+import { AuthLayout } from "../components/AuthLayout";
+import { FormField, PageSection, PrimaryButton, StatusAlert } from "../components/Form";
+import { supabase } from "@/lib/supabaseClient";
+
+type ResetStatus = {
+  variant: "error" | "success" | "info" | "warning";
+  msg: string;
+};
+
+const INVALID_RESET_LINK_MESSAGE = "Reset link invalid or expired. Please request a new one.";
+
+function getRecoveryParams() {
+  const url = new URL(window.location.href);
+  const searchParams = url.searchParams;
+  const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+
+  return {
+    code: searchParams.get("code") ?? hashParams.get("code"),
+    tokenHash: searchParams.get("token_hash") ?? hashParams.get("token_hash"),
+    type: searchParams.get("type") ?? hashParams.get("type"),
+    accessToken: hashParams.get("access_token") ?? searchParams.get("access_token"),
+    refreshToken: hashParams.get("refresh_token") ?? searchParams.get("refresh_token"),
+    authError:
+      searchParams.get("error_description") ??
+      hashParams.get("error_description") ??
+      searchParams.get("error") ??
+      hashParams.get("error"),
+  };
+}
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [status, setStatus] = useState<null | { ok: boolean; msg: string }>(null);
+  const [status, setStatus] = useState<ResetStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
+  const [hasRecoverySession, setHasRecoverySession] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    // When user lands here via email link, Supabase sets a session in local storage.
-    // If there's no session, they likely hit the page directly; show a friendly note.
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        setStatus({
-          ok: false,
-          msg: "Reset link invalid or expired. Please request a new one.",
-        });
+    let mounted = true;
+
+    const markRecoveryReady = () => {
+      if (!mounted) return;
+
+      setHasRecoverySession(true);
+      setStatus(null);
+      setCheckingLink(false);
+    };
+
+    const cleanRecoveryParams = () => {
+      const url = new URL(window.location.href);
+      [
+        "access_token",
+        "code",
+        "error",
+        "error_code",
+        "error_description",
+        "expires_at",
+        "expires_in",
+        "refresh_token",
+        "token_hash",
+        "type",
+      ].forEach((param) => {
+        url.searchParams.delete(param);
+      });
+      window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        markRecoveryReady();
       }
     });
+
+    const verifyRecoveryLink = async () => {
+      const { code, tokenHash, type, accessToken, refreshToken, authError } = getRecoveryParams();
+
+      if (authError) {
+        if (mounted) {
+          setStatus({
+            variant: "error",
+            msg: decodeURIComponent(authError).replace(/\+/g, " "),
+          });
+          setCheckingLink(false);
+        }
+        return;
+      }
+
+      if (code) {
+        if (mounted) {
+          setStatus({ variant: "info", msg: "Verifying your password reset link…" });
+        }
+
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          const { data } = await supabase.auth.getSession();
+
+          if (data.session) {
+            markRecoveryReady();
+            cleanRecoveryParams();
+          } else if (mounted) {
+            setStatus({
+              variant: "error",
+              msg: INVALID_RESET_LINK_MESSAGE,
+            });
+          }
+
+          if (mounted) setCheckingLink(false);
+          return;
+        }
+
+        markRecoveryReady();
+        cleanRecoveryParams();
+        return;
+      }
+
+      if (tokenHash && type === "recovery") {
+        if (mounted) {
+          setStatus({ variant: "info", msg: "Verifying your password reset link…" });
+        }
+
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (error) {
+          const { data } = await supabase.auth.getSession();
+
+          if (data.session) {
+            markRecoveryReady();
+            cleanRecoveryParams();
+          } else if (mounted) {
+            setStatus({
+              variant: "error",
+              msg: INVALID_RESET_LINK_MESSAGE,
+            });
+            setCheckingLink(false);
+          }
+
+          return;
+        }
+
+        markRecoveryReady();
+        cleanRecoveryParams();
+        return;
+      }
+
+      if (accessToken && refreshToken && type === "recovery") {
+        if (mounted) {
+          setStatus({ variant: "info", msg: "Verifying your password reset link…" });
+        }
+
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error && mounted) {
+          setStatus({
+            variant: "error",
+            msg: INVALID_RESET_LINK_MESSAGE,
+          });
+          setCheckingLink(false);
+          return;
+        }
+
+        markRecoveryReady();
+        cleanRecoveryParams();
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        markRecoveryReady();
+      } else if (mounted) {
+        setStatus({
+          variant: "warning",
+          msg: INVALID_RESET_LINK_MESSAGE,
+        });
+      }
+
+      if (mounted) setCheckingLink(false);
+    };
+
+    verifyRecoveryLink();
+
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) {
-      setStatus({ ok: false, msg: "Passwords do not match." });
+
+    if (!hasRecoverySession) {
+      setStatus({ variant: "error", msg: "Please open a valid password reset link before setting a new password." });
       return;
     }
+
+    if (password.length < 10) {
+      setStatus({ variant: "error", msg: "Password must be at least 10 characters long." });
+      return;
+    }
+
+    if (password !== confirm) {
+      setStatus({ variant: "error", msg: "Passwords do not match." });
+      return;
+    }
+
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) setStatus({ ok: false, msg: error.message });
-    else {
-      setStatus({ ok: true, msg: "Password updated. You can now sign in." });
-      // Optional: if this reset was initiated during a Discourse SSO flow,
-      // you could redirect to /sso afterwards. For now, just show success.
+
+    if (error) {
+      setStatus({ variant: "error", msg: error.message });
+    } else {
+      setStatus({ variant: "success", msg: "Password updated. You can now sign in." });
+      setPassword("");
+      setConfirm("");
     }
   }
 
   return (
-    <div className="mx-auto max-w-sm p-6">
-      <h1 className="text-xl font-semibold mb-4">Set a new password</h1>
-      <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-4">
-        <input type="hidden" name="form-name" value="reset-password" readOnly />
-        <input
-          type="password"
-          name="password"
-          required
-          placeholder="New password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        <input
-          type="password"
-          name="confirm"
-          required
-          placeholder="Confirm new password"
-          value={confirm}
-          onChange={e => setConfirm(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-black text-white py-2"
-        >
-          {loading ? "Updating…" : "Update password"}
-        </button>
-      </form>
-      {status && (
-        <p className={`mt-4 text-sm ${status.ok ? "text-green-700" : "text-red-700"}`}>
-          {status.msg}
+    <AuthLayout>
+      <PageSection>
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#D6EBF5]">
+            <Lock className="h-8 w-8 text-[#4B9EC8]" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900">Set a new password</h1>
+          <p className="text-gray-600">Choose a secure password for your Tea Time Cari account.</p>
+        </div>
+
+        {status && (
+          <StatusAlert variant={status.variant} className="mb-6">
+            {status.msg}
+          </StatusAlert>
+        )}
+
+        <form name="reset-password" method="POST" data-netlify="true" onSubmit={onSubmit} className="space-y-6">
+          <input type="hidden" name="form-name" value="reset-password" readOnly />
+          <FormField id="password" label="New password" required>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                required
+                minLength={10}
+                placeholder="New password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-12 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="new-password"
+                disabled={checkingLink || loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+          </FormField>
+          <FormField id="confirm" label="Confirm new password" required>
+            <div className="relative">
+              <input
+                id="confirm"
+                type={showConfirm ? "text" : "password"}
+                name="confirm"
+                required
+                minLength={10}
+                placeholder="Confirm new password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-12 transition-colors hover:border-[#4B9EC8] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="new-password"
+                disabled={checkingLink || loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                tabIndex={-1}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+              >
+                {showConfirm ? (
+                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            </div>
+          </FormField>
+          <PrimaryButton
+            type="submit"
+            disabled={checkingLink || loading || !hasRecoverySession}
+            isLoading={loading || checkingLink}
+            loadingLabel={checkingLink ? "Verifying reset link..." : "Updating password..."}
+          >
+            Update password
+          </PrimaryButton>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Need a new link? <Link to="/forgot-password" className="font-medium text-[#4B9EC8] hover:text-[#3382AA]">Request another reset email</Link>.
         </p>
-      )}
-    </div>
+      </PageSection>
+    </AuthLayout>
   );
 }

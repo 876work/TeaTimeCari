@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Link } from "react-router-dom";
-import { CheckCircle, Loader2, AlertCircle, Download, User, Mail, Phone, Camera, Calendar, Shield } from 'lucide-react';
+import { CheckCircle, Download, Calendar, Shield, Loader2 } from 'lucide-react';
+import { RegistrationProgress } from './RegistrationProgress';
 import html2canvas from 'html2canvas';
 import { submitRegistration, RegistrationPayload } from '../../lib/registrations';
 import { RegisterStep1Data } from '../RegisterStep1';
 import { RegisterStep2Data } from './Step2';
 import { RegisterStep3Data } from './Step3';
+import { debugError, debugLog } from '@/lib/debugLogger';
+import { LoadingCard, PageSection, PrimaryButton, StatusAlert } from '../Form';
 
 interface PendingApprovalProps {
   registrationData: {
@@ -18,71 +20,110 @@ interface PendingApprovalProps {
   onGoBackToStep1: () => void;
 }
 
-const PendingApproval: React.FC<PendingApprovalProps> = ({ 
-  registrationData, 
-  onGoHome, 
-  onGoBackToStep1 
+const SIGNUP_DRAFT_STORAGE_KEY = 'teatimecari.signupDraft';
+const submittedRegistrationKeys = new Set<string>();
+const inFlightRegistrationSubmissions = new Map<string, Promise<Awaited<ReturnType<typeof submitRegistration>>>>();
+
+function getSubmissionKey(email?: string) {
+  return `teatimecari.registrationSubmitted:${email?.trim().toLowerCase() || 'unknown'}`;
+}
+
+function hasSubmittedRegistration(key: string) {
+  return submittedRegistrationKeys.has(key) || window.sessionStorage.getItem(key) === 'true';
+}
+
+function markRegistrationSubmitted(key: string) {
+  submittedRegistrationKeys.add(key);
+  window.sessionStorage.setItem(key, 'true');
+}
+
+function submitRegistrationOnce(key: string, payload: RegistrationPayload) {
+  const existingSubmission = inFlightRegistrationSubmissions.get(key);
+
+  if (existingSubmission) {
+    return existingSubmission;
+  }
+
+  const submission = submitRegistration(payload).finally(() => {
+    inFlightRegistrationSubmissions.delete(key);
+  });
+
+  inFlightRegistrationSubmissions.set(key, submission);
+  return submission;
+}
+
+const PendingApproval: React.FC<PendingApprovalProps> = ({
+  registrationData,
+  onGoHome,
+  onGoBackToStep1,
 }) => {
   const didRun = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [alreadyExists, setAlreadyExists] = useState(false);
 
-  // Download registration summary as image
-  const downloadSummaryAsImage = async () => {
+  const downloadReceiptAsImage = async () => {
     setIsDownloading(true);
+
     try {
-      const element = document.getElementById('registration-summary');
+      const element = document.getElementById('confirmation-receipt');
+
       if (!element) {
-        throw new Error('Summary element not found');
+        throw new Error('Receipt element not found');
       }
 
       const canvas = await html2canvas(element, {
         backgroundColor: '#ffffff',
-        scale: 2, // Higher quality
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         width: element.offsetWidth,
-        height: element.offsetHeight
+        height: element.offsetHeight,
       });
 
-      // Convert canvas to blob
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
+
           link.href = url;
-          link.download = `tea-time-cari-registration-${new Date().toISOString().split('T')[0]}.png`;
+          link.download = `tea-time-cari-confirmation-receipt-${new Date().toISOString().split('T')[0]}.png`;
+
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+
           URL.revokeObjectURL(url);
         }
       }, 'image/png', 0.95);
-
-    } catch (err: any) {
-      console.error('Error downloading summary:', err);
-      alert('Failed to download summary. Please try again.');
+    } catch (err: unknown) {
+      debugError('Error downloading receipt:', err);
+      alert('Failed to download receipt. Please try again.');
     } finally {
       setIsDownloading(false);
     }
   };
 
-  // Submit registration data when component mounts
   useEffect(() => {
-    // Prevent double execution in React StrictMode
     if (didRun.current) return;
     didRun.current = true;
 
     const handleSubmission = async () => {
-      // Prevent re-submission if already in progress
-      if (isSubmitting) return;
-      
-      if (!registrationData.step1 || !registrationData.step2 || !registrationData.step3) {
+      const { step1, step2, step3 } = registrationData;
+
+      if (!step1 || !step2 || !step3) {
         setError('Incomplete registration data. Please start over.');
+        return;
+      }
+
+      const submissionKey = getSubmissionKey(step1.email);
+
+      if (hasSubmittedRegistration(submissionKey)) {
+        setAlreadyExists(true);
+        setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
         return;
       }
 
@@ -91,10 +132,6 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
       setSuccessMessage('');
 
       try {
-        const { step1, step2, step3 } = registrationData;
-        
-        // Split fullName into firstName and lastName for database compatibility
-        
         const registrationPayload: RegistrationPayload = {
           fullName: step1.fullName,
           email: step1.email,
@@ -104,170 +141,105 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
           gender: step2.gender,
           captureType: step3.captureType,
           imageData: step3.imageData,
-          status: 'pending'
+          status: 'pending',
         };
-        
-        console.log('Submitting registration data...');
-        const result = await submitRegistration(registrationPayload);
-        
-        // Set success state and message based on whether record already existed
-        setIsSubmitted(true);
+
+        debugLog('Submitting registration data...');
+
+        const result = await submitRegistrationOnce(submissionKey, registrationPayload);
+
         setAlreadyExists(result.alreadyExists);
-        
+        markRegistrationSubmitted(submissionKey);
+        window.sessionStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
+
         if (result.alreadyExists) {
           setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
         } else if (result.data.sessionSynced === false) {
-          setSuccessMessage("Thanks! Your application has been submitted. For your privacy, we signed out any previous browser session. Please sign in with your new email to check your review status.");
+          setSuccessMessage("Thanks! Your application has been submitted. For your privacy, we signed out any previous browser session. Please log in with your new email to check your review status.");
         } else {
           setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue and this browser is now signed in to your new account.");
         }
-        
-        console.log('Registration submission completed:', {
+
+        debugLog('Registration submission completed:', {
           alreadyExists: result.alreadyExists,
-          isNewSubmission: result.isNewSubmission
+          isNewSubmission: result.isNewSubmission,
         });
-        
-      } catch (err: any) {
-        console.error('Error submitting registration:', err);
-        setError(`Failed to submit registration: ${err.message || 'Please try again.'}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Please try again.';
+
+        debugError('Error submitting registration:', err);
+        setError(`Failed to submit registration: ${message}`);
       } finally {
         setIsSubmitting(false);
       }
     };
 
     handleSubmission();
-  }, [registrationData, isSubmitting]);
+  }, [registrationData]);
 
-  // Loading state
   if (isSubmitting) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2">Submitting Your Application</h1>
-          <p className="text-sm text-gray-600">
-            Please wait while we process your registration...
-          </p>
-        </div>
+        <LoadingCard title="Submitting Your Application" message="Please wait while we process your registration...">
+          <RegistrationProgress currentStep={4} className="mt-6 text-left" />
+        </LoadingCard>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold mb-2 text-red-600">Registration Failed</h1>
-          <p className="text-sm text-gray-600 mb-6">
+        <PageSection className="text-center">
+          <StatusAlert variant="error" title="Registration Failed" className="mb-4 text-left">
             {error}
-          </p>
+          </StatusAlert>
+
+          <Link to="/contact-us" className="mb-6 inline-flex text-sm font-semibold text-[#4B9EC8] underline">
+            Contact support if you need help
+          </Link>
+
           <div className="flex items-center gap-3">
-            <button
-              onClick={onGoBackToStep1}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
+            <PrimaryButton onClick={onGoBackToStep1} className="flex-1" fullWidth={false}>
               Try Again
-            </button>
-            <button
-              onClick={onGoHome}
-              className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2 border"
-            >
+            </PrimaryButton>
+
+            <PrimaryButton onClick={onGoHome} variant="ghost" className="flex-1" fullWidth={false}>
               Go Home
-            </button>
+            </PrimaryButton>
           </div>
-        </div>
+        </PageSection>
       </div>
     );
   }
 
-  // Success state
   return (
     <div className="max-w-md mx-auto p-6">
       <div className="space-y-6">
-        {/* Registration Summary */}
-        <div id="registration-summary" className="rounded-2xl border p-8 shadow-sm bg-white">
+        <RegistrationProgress currentStep={4} className="mb-6" />
+
+        <div id="confirmation-receipt" className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)]">
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#4B9EC8] via-[#9B6BAE] to-[#D96E6E]" aria-hidden="true" />
+
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-[#D6EBF5] rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#EAF6FC] to-[#D6EBF5] shadow-md ring-4 ring-white">
               <Shield className="w-8 h-8 text-[#4B9EC8]" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Summary</h2>
+
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">Confirmation Receipt</h2>
+
             <p className="text-sm text-gray-600">
-              Submitted on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+              Your registration application was received.
             </p>
           </div>
 
-          {/* Personal Information */}
           <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="w-5 h-5 mr-2 text-blue-600" />
-                Personal Information
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.fullName}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                  <p className="text-gray-900 font-medium">@{registrationData.step1?.username}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step2?.gender}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2 text-green-600" />
-                Contact Information
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.email}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <p className="text-gray-900 font-medium">{registrationData.step1?.phone}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Verification Details */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Camera className="w-5 h-5 mr-2 text-purple-600" />
-                Verification Details
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Verification Method</label>
-                  <p className="text-gray-900 font-medium capitalize">
-                    {registrationData.step3?.captureType === 'selfie' ? 'Live Selfie Capture' : 'ID Document Photo'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo Status</label>
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                    <p className="text-gray-900 font-medium">Successfully Captured</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Information */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-amber-600" />
                 Application Status
               </h3>
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Current Status:</span>
@@ -275,72 +247,87 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
                     Pending Review
                   </span>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Submitted:</span>
                   <span className="text-sm text-gray-900">{new Date().toLocaleDateString()}</span>
                 </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-700">Expected Review:</span>
                   <span className="text-sm text-gray-900">Within 24-48 hours</span>
                 </div>
               </div>
             </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center">
+                <Shield className="w-5 h-5 mr-2 text-blue-600" />
+                Privacy Note
+              </h3>
+
+              <p className="text-sm text-gray-700">
+                This receipt intentionally excludes personal details such as your name, username,
+                contact information, gender, and verification method.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Success Message and Actions */}
-        <div className="rounded-2xl border p-8 shadow-sm bg-white text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <div className="relative overflow-hidden rounded-3xl border border-white/60 bg-white/95 p-8 shadow-[0_25px_70px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-md ring-4 ring-white">
+            <CheckCircle className="w-9 h-9 text-emerald-500" />
+          </div>
+
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
             {alreadyExists ? 'Application Already Submitted!' : 'Application Submitted!'}
           </h1>
-          <p className="text-sm text-gray-600 mb-4 font-medium">
+
+          <p className="text-sm text-slate-600 mb-4 font-medium">
             {successMessage || "Thank you! A team member will review your application. If approved, you'll receive an email with instructions to access the community forum."}
           </p>
 
-          <div className="text-sm text-gray-600 mb-6">
-            {alreadyExists 
+          <div className="text-sm text-slate-600 mb-6">
+            {alreadyExists
               ? "Your application is already in our system. No need to resubmit - we'll email you with forum access instructions once reviewed."
-              : "You can close this page. We'll email you with forum access instructions once your application is approved."
-            }
+              : "You can close this page. We'll email you with forum access instructions once your application is approved."}
           </div>
 
           <div className="space-y-3">
-            {/* Download Summary Button */}
             <button
-              onClick={downloadSummaryAsImage}
+              onClick={downloadReceiptAsImage}
               disabled={isDownloading || isSubmitting}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              className={`w-full py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
                 !isDownloading && !isSubmitting
-                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                  ? 'bg-gradient-to-r from-[#4B9EC8] to-[#D96E6E] hover:from-[#3382AA] hover:to-[#BC5050] text-white shadow-lg shadow-[#4B9EC8]/25 hover:shadow-xl hover:shadow-[#4B9EC8]/30 transform hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
               {isDownloading ? (
                 <div className="flex items-center justify-center">
                   <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                  Generating Download...
+                  Generating Receipt...
                 </div>
               ) : (
                 <div className="flex items-center justify-center">
                   <Download className="w-5 h-5 mr-2" />
-                  Download Summary as Image
+                  Download Confirmation Receipt
                 </div>
               )}
             </button>
 
-            {/* Navigation Buttons */}
             <div className="flex items-center gap-3">
               <button
                 onClick={onGoHome}
                 disabled={isSubmitting}
-                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border bg-black text-white"
+                className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 border border-slate-200 bg-white font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
               >
                 Go to Home
               </button>
+
               <Link
-                to="/help"
-                className="inline-flex items-center justify-center rounded-xl px-4 py-2 border"
+                to="/contact-us"
+                className="flex-1 inline-flex items-center justify-center rounded-xl px-4 py-2.5 border border-slate-200 bg-white font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
               >
                 Need help?
               </Link>

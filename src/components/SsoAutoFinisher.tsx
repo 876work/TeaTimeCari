@@ -36,7 +36,9 @@ export default function SsoAutoFinisher() {
           sessionStorage.removeItem('disc_return');
           window.location.href = j.redirectUrl;
         }
-      } catch {}
+      } catch (error) {
+        console.warn('Unable to finish pending Discourse SSO flow:', error);
+      }
     });
     return () => sub.data.subscription.unsubscribe();
   }, []);

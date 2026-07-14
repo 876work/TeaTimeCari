@@ -401,8 +401,9 @@ serve(async (req) => {
       throw error;
     }
   } catch (error) {
+    console.error("[discourse-admin-users] Unexpected error:", error instanceof Error ? error.message : error);
     return json(500, {
-      error: error instanceof Error ? error.message : String(error),
+      error: "Unable to complete this Discourse admin action. Please try again or check server logs.",
     });
   }
 });

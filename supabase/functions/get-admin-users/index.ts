@@ -88,7 +88,15 @@ const OPTIONAL_REGISTRATION_FIELDS = new Set([
 
 const TRACKING_FIELDS = [
   "registration_ip_address",
+  "registration_ip_header",
   "registration_ip_location",
+  "registration_city",
+  "registration_region",
+  "registration_country",
+  "registration_country_code",
+  "registration_timezone",
+  "registration_location_provider",
+  "registration_location_status",
   "registration_browser",
   "registration_device",
   "registration_operating_system",
@@ -96,7 +104,15 @@ const TRACKING_FIELDS = [
   "registration_tracked_at",
   "last_login_at",
   "last_login_ip_address",
+  "last_login_ip_header",
   "last_login_ip_location",
+  "last_login_city",
+  "last_login_region",
+  "last_login_country",
+  "last_login_country_code",
+  "last_login_timezone",
+  "last_login_location_provider",
+  "last_login_location_status",
   "last_login_browser",
   "last_login_device",
   "last_login_operating_system",
@@ -111,20 +127,39 @@ function withNullFields(users: Record<string, unknown>[], fields: string[]) {
   }));
 }
 
-async function fetchRegistrations() {
-  const selectedFields = new Set([...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
-  const omittedFields = new Set<string>();
+// Discovering which optional tracking columns actually exist requires
+// removing them one at a time on schema-cache errors (PostgREST only
+// reports one missing column per failed query). That's cheap once, but
+// without caching it repeats on every single request from a cold
+// function instance. Remember the last known-good column set across
+// invocations on the same warm instance so repeat page loads/pagination
+// skip straight to a working query instead of re-probing from scratch.
+// The TTL lets it self-heal (pick up newly-added columns) without
+// needing a redeploy once a pending migration is applied.
+const COLUMN_CACHE_TTL_MS = 5 * 60 * 1000;
+let columnCache: { selectedFields: string[]; omittedFields: string[]; cachedAt: number } | null = null;
+
+async function fetchRegistrations({ limit = 10, offset = 0 }: { limit?: number; offset?: number } = {}) {
+  const cacheIsFresh = columnCache !== null && Date.now() - columnCache.cachedAt < COLUMN_CACHE_TTL_MS;
+  const selectedFields = new Set(cacheIsFresh ? columnCache!.selectedFields : [...REGISTRATION_FIELDS, ...TRACKING_FIELDS]);
+  const omittedFields = new Set<string>(cacheIsFresh ? columnCache!.omittedFields : []);
 
   for (let attempts = 0; attempts < REGISTRATION_FIELDS.length + TRACKING_FIELDS.length + 1; attempts += 1) {
     const select = [...selectedFields].join(", ");
-    const { data, error } = await admin
+    const { data, error, count } = await admin
       .from("registrations")
-      .select(select)
-      .order("created_at", { ascending: false });
+      .select(select, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (!error) {
+      columnCache = { selectedFields: [...selectedFields], omittedFields: [...omittedFields], cachedAt: Date.now() };
+
       return {
         users: withNullFields((data ?? []) as Record<string, unknown>[], [...omittedFields]),
+        total: count ?? 0,
+        limit,
+        offset,
         trackingFieldsAvailable: TRACKING_FIELDS.every((field) => selectedFields.has(field)),
         omittedFields: [...omittedFields],
       };
@@ -167,12 +202,28 @@ serve(async (req) => {
       return json(adminCheck.status, { ok: false, error: adminCheck.error, stage });
     }
 
+    let pagination = { limit: 10, offset: 0 };
+
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({})) as { limit?: unknown; offset?: unknown };
+      const requestedLimit = typeof body.limit === "number" ? body.limit : Number(body.limit);
+      const requestedOffset = typeof body.offset === "number" ? body.offset : Number(body.offset);
+
+      pagination = {
+        limit: Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.floor(requestedLimit), 1), 500) : 10,
+        offset: Number.isFinite(requestedOffset) ? Math.max(Math.floor(requestedOffset), 0) : 0,
+      };
+    }
+
     stage = "fetch_registrations";
-    const result = await fetchRegistrations();
+    const result = await fetchRegistrations(pagination);
 
     return json(200, {
       ok: true,
       users: result.users,
+      total: result.total,
+      limit: result.limit,
+      offset: result.offset,
       trackingFieldsAvailable: result.trackingFieldsAvailable,
       omittedFields: result.omittedFields,
     });

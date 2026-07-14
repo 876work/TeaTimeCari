@@ -11,16 +11,26 @@ export async function finishDiscourseSso(accessToken: string) {
   const returnUrl =
     sessionStorage.getItem('disc_return') ||
     'https://community.teatimecari.app/session/sso_login';
-  if (!nonce || !accessToken) return;
+
+  if (!nonce || !accessToken) {
+    throw new Error('sso_session_expired');
+  }
+
   const res = await fetch(fnUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({ nonce, returnUrl }),
   });
   const j = await res.json().catch(() => ({}));
+
   if (res.ok && j?.redirectUrl) {
     sessionStorage.removeItem('disc_nonce');
     sessionStorage.removeItem('disc_return');
     window.location.href = j.redirectUrl;
+    return;
   }
+
+  sessionStorage.removeItem('disc_nonce');
+  sessionStorage.removeItem('disc_return');
+  throw new Error('sso_session_expired');
 }
