@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
@@ -255,16 +255,23 @@ export function RegisterStep3({
                 <p className="mt-2 text-sm leading-6 text-slate-700">
                   Take a quick live selfie so we can confirm new accounts are real. Your photo is used only for account review, visible only to authorized Tea Time Cari reviewers, and never shown on your profile or posts.
                 </p>
+              </div>
+            </div>
 
-                <p className="mt-2 text-xs leading-5 text-slate-600">
+            <details className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-slate-800 marker:hidden">
+                <HelpCircle className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                How long we keep your photo?
+              </summary>
+              <div className="mt-3 space-y-2 text-sm text-slate-600">
+                <p>
                   We keep verification photos only as long as reasonably needed for review, fraud prevention, safety, legal, audit, or dispute needs. You can contact support to request deletion, subject to legal and safety exceptions.
                 </p>
-
-                <p className="mt-3 text-xs leading-5 text-slate-500">
+                <p>
                   We use a live camera check so submitted photos are current. Uploads are not accepted for verification.
                 </p>
               </div>
-            </div>
+            </details>
 
             <div className="mt-5 flex flex-col gap-3">
               <button
