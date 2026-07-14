@@ -12,7 +12,7 @@ type SendEmailInput = {
 };
 
 const RESEND_API_URL = "https://api.resend.com/emails";
-const FROM_EMAIL = "noreply@teatimecari.app";
+const FROM_EMAIL = "admin@teatimecari.app";
 const FROM_NAME = "Tea Time Cari";
 const SUPPORT_EMAIL = "hello@teatimecari.app";
 
