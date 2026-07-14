@@ -7,6 +7,7 @@ import {
   sendAndLogAlert,
   type AlertSettings,
 } from "../_shared/slack.ts";
+import { describeError } from "../_shared/pgErrors.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -248,7 +249,7 @@ Deno.serve(async (req: Request) => {
 
     return json(400, { ok: false, error: `Unknown action: ${action}` });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeError(error);
     console.error("[admin-alerts] error:", message);
     return json(500, { ok: false, error: message });
   }

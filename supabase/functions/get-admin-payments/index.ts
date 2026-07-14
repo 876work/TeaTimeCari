@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { requireAdmin } from "../_shared/adminAuth.ts";
+import { describeError, isMissingTableError } from "../_shared/pgErrors.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -51,7 +52,7 @@ Deno.serve(async (req: Request) => {
       .limit(limit);
 
     if (error) {
-      if (error.code === "42P01") {
+      if (isMissingTableError(error)) {
         return json(200, {
           ok: true,
           payments: [],
@@ -142,7 +143,7 @@ Deno.serve(async (req: Request) => {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeError(error);
     console.error("[get-admin-payments] error:", message);
     return json(500, { ok: false, error: message });
   }
