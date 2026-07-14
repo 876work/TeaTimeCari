@@ -1,10 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle, Loader2 } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
 import { debugError } from '@/lib/debugLogger';
+import { analyzeCapturedPhoto } from '@/lib/photoQuality';
 
 export interface RegisterStep3Data {
   captureType: 'selfie' | 'id';
@@ -42,6 +43,9 @@ export function RegisterStep3({
   const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasConfirmedPhotoNotice, setHasConfirmedPhotoNotice] = useState(Boolean(initialData?.imageData));
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [photoQualityWarning, setPhotoQualityWarning] = useState<string | null>(null);
+  const [acknowledgedQualityWarning, setAcknowledgedQualityWarning] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,9 +145,11 @@ export function RegisterStep3({
     setImageBlob(null);
     setError(null);
     setHasConfirmedPhotoNotice(true);
+    setPhotoQualityWarning(null);
+    setAcknowledgedQualityWarning(false);
   };
 
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || cameraState !== 'active') {
       return;
     }
@@ -161,6 +167,21 @@ export function RegisterStep3({
     canvas.height = Math.round(video.videoHeight * scale);
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    setPhotoQualityWarning(null);
+    setAcknowledgedQualityWarning(false);
+    setIsAnalyzingPhoto(true);
+
+    try {
+      const quality = await analyzeCapturedPhoto(canvas, captureMode ?? 'selfie');
+      setPhotoQualityWarning(quality.warning);
+    } catch (err) {
+      // Fail open: automatic quality check is a UX nicety, not a hard gate.
+      // Admin review remains the source of truth if this can't run.
+      debugError('Automatic photo quality check unavailable:', err);
+    } finally {
+      setIsAnalyzingPhoto(false);
+    }
 
     canvas.toBlob(
       (blob) => {
@@ -182,13 +203,15 @@ export function RegisterStep3({
       'image/jpeg',
       0.72,
     );
-  }, [cameraState, stopCamera]);
+  }, [cameraState, captureMode, stopCamera]);
 
   const retakePhoto = () => {
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
     setError(null);
+    setPhotoQualityWarning(null);
+    setAcknowledgedQualityWarning(false);
   };
 
   const handleContinue = async () => {
@@ -213,7 +236,11 @@ export function RegisterStep3({
     }
   };
 
-  const isReadyToContinue = captureState === 'captured' && capturedImage && imageBlob;
+  const isReadyToContinue =
+    captureState === 'captured' &&
+    capturedImage &&
+    imageBlob &&
+    (!photoQualityWarning || acknowledgedQualityWarning);
 
   return (
     <div className="max-w-lg mx-auto">
@@ -324,10 +351,20 @@ export function RegisterStep3({
                   <img
                     src={capturedImage}
                     alt="Captured photo"
-                    className="w-full h-80 object-cover rounded-xl border-4 border-green-200"
+                    className={`w-full h-80 object-cover rounded-xl border-4 ${
+                      photoQualityWarning ? 'border-amber-300' : 'border-green-200'
+                    }`}
                   />
-                  <div className="absolute top-4 right-4 bg-green-500 text-white p-2 rounded-full">
-                    <Check className="w-5 h-5" />
+                  <div
+                    className={`absolute top-4 right-4 text-white p-2 rounded-full ${
+                      photoQualityWarning ? 'bg-amber-500' : 'bg-green-500'
+                    }`}
+                  >
+                    {photoQualityWarning ? (
+                      <AlertTriangle className="w-5 h-5" />
+                    ) : (
+                      <Check className="w-5 h-5" />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -413,6 +450,37 @@ export function RegisterStep3({
                 </div>
               )}
             </div>
+
+            {isAnalyzingPhoto && (
+              <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking photo quality…
+              </div>
+            )}
+
+            {!isAnalyzingPhoto && photoQualityWarning && captureState === 'captured' && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                  <div className="space-y-2">
+                    <p>{photoQualityWarning}</p>
+                    <p className="text-xs text-amber-700">
+                      Photos with this issue are more likely to be rejected during review. We
+                      recommend retaking the photo.
+                    </p>
+                    <label className="flex items-center gap-2 text-xs font-medium text-amber-800">
+                      <input
+                        type="checkbox"
+                        checked={acknowledgedQualityWarning}
+                        onChange={(event) => setAcknowledgedQualityWarning(event.target.checked)}
+                        className="h-4 w-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                      />
+                      Submit this photo anyway
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-center space-x-4">
               {captureState === 'captured' ? (
