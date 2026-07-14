@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Check, RotateCcw } from 'lucide-react';
+import React from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Check, RotateCcw } from "lucide-react";
 
 interface Step {
   label: string;
@@ -12,25 +12,43 @@ interface Step {
 
 const steps: Step[] = [
   {
-    label: 'Apply privately',
-    description: 'Start with a reviewed account.',
-    title: 'Apply With Privacy in Mind',
-    body: 'Create your Tea Time Cari account and share only what is needed for review. The first step is designed to protect community access, not to push you into a public profile.',
-    pills: ['Reviewed accounts', 'Username based', 'Privacy settings', 'Community access'],
+    label: "Apply privately",
+    description: "Start with a reviewed account.",
+    title: "Apply With Privacy in Mind",
+    body:
+      "Create your Tea Time Cari account and share only what is needed for review. The first step is designed to protect community access, not to push you into a public profile.",
+    pills: [
+      "Reviewed accounts",
+      "Username based",
+      "Privacy settings",
+      "Community access",
+    ],
   },
   {
-    label: 'Join safer spaces',
-    description: 'Enter areas built around trust.',
-    title: 'Join Private Community Spaces',
-    body: 'Once approved, you can read posts, share experiences, comment, and compare notes in spaces that prioritize privacy, respectful moderation, and member safety.',
-    pills: ['Private spaces', 'Respectful sharing', 'Anonymous posting', 'Report unsafe content'],
+    label: "Join safer spaces",
+    description: "Enter areas built around trust.",
+    title: "Join Private Community Spaces",
+    body:
+      "Once approved, you can read posts, share experiences, comment, and compare notes in spaces that prioritize privacy, respectful moderation, and member safety.",
+    pills: [
+      "Private spaces",
+      "Respectful sharing",
+      "Anonymous posting",
+      "Report unsafe content",
+    ],
   },
   {
-    label: 'Share responsibly',
-    description: 'Anonymous when needed, accountable always.',
-    title: 'Stay Anonymous With Accountability',
-    body: 'Tea Time Cari supports sensitive conversations without turning privacy into a free-for-all. Community rules, reporting, and review help keep posts factual, respectful, and safer for everyone.',
-    pills: ['Anonymous mode', 'Accountability rules', 'Report flow', 'Stronger together'],
+    label: "Share responsibly",
+    description: "Anonymous when needed, accountable always.",
+    title: "Stay Anonymous With Accountability",
+    body:
+      "Tea Time Cari supports sensitive conversations without turning privacy into a free-for-all. Community rules, reporting, and review help keep posts factual, respectful, and safer for everyone.",
+    pills: [
+      "Anonymous mode",
+      "Accountability rules",
+      "Report flow",
+      "Stronger together",
+    ],
   },
 ];
 
@@ -56,13 +74,23 @@ export function HowItWorksStepper() {
   };
 
   return (
-    <section className="mb-12 mt-2 text-left" aria-labelledby="how-it-works-heading">
+    <section
+      className="mb-12 mt-2 text-left"
+      aria-labelledby="how-it-works-heading"
+    >
       <div className="mx-auto max-w-5xl rounded-[2rem] border border-white/25 bg-white/15 p-5 shadow-2xl backdrop-blur-md md:p-8">
         <div className="mb-8 text-center">
-          <p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-white/70">Simple, safety-led flow</p>
-          <h2 id="how-it-works-heading" className="text-3xl font-black tracking-tight text-white drop-shadow-sm md:text-4xl">
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-white/70">
+            Simple, safety-led flow
+          </p>
+
+          <h2
+            id="how-it-works-heading"
+            className="text-3xl font-black tracking-tight text-white drop-shadow-sm md:text-4xl"
+          >
             How trust is built in
           </h2>
+
           <p className="mx-auto mt-3 max-w-2xl text-base font-light leading-relaxed text-white/90 md:text-lg">
             A calmer path from application to safer community participation.
           </p>
@@ -82,33 +110,40 @@ export function HowItWorksStepper() {
                       aria-hidden="true"
                     />
                   )}
+
                   <button
                     type="button"
                     onClick={() => setActiveStep(index)}
-                    aria-current={isActive ? 'step' : undefined}
+                    aria-current={isActive ? "step" : undefined}
                     className={`group relative flex w-full items-start rounded-2xl border p-4 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#9B6BAE] ${
                       isActive
-                        ? 'border-white/55 bg-white/25 shadow-lg'
-                        : 'border-white/20 bg-white/10 hover:border-white/40 hover:bg-white/15'
+                        ? "border-white/55 bg-white/25 shadow-lg"
+                        : "border-white/20 bg-white/10 hover:border-white/40 hover:bg-white/15"
                     }`}
                   >
                     <span
                       className={`mr-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-black shadow-md ring-2 ring-white/40 ${
                         isActive
-                          ? 'bg-gradient-to-br from-[#E89494] via-[#D96E6E] to-[#4B9EC8] text-white'
+                          ? "bg-gradient-to-br from-[#E89494] via-[#D96E6E] to-[#4B9EC8] text-white"
                           : isFinishedStep
-                            ? 'bg-white text-[#D96E6E]'
-                            : 'bg-white/20 text-white'
+                          ? "bg-white text-[#D96E6E]"
+                          : "bg-white/20 text-white"
                       }`}
                       aria-hidden="true"
                     >
                       {isFinishedStep ? <Check className="h-5 w-5" /> : index + 1}
                     </span>
+
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="block text-base font-bold text-white">Step {index + 1}: {step.label}</span>
+                        <span className="block text-base font-bold text-white">
+                          Step {index + 1}: {step.label}
+                        </span>
                       </span>
-                      <span className="mt-1 block text-sm leading-5 text-white/80">{step.description}</span>
+
+                      <span className="mt-1 block text-sm leading-5 text-white/80">
+                        {step.description}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -122,18 +157,28 @@ export function HowItWorksStepper() {
                 <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#E89494] via-[#D96E6E] to-[#4B9EC8] text-white shadow-lg">
                   <Check className="h-7 w-7" aria-hidden="true" />
                 </div>
-                <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">You’re ready to apply</h3>
+
+                <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
+                  You’re ready to apply
+                </h3>
+
                 <p className="mt-4 text-base leading-7 text-gray-700">
-                  Create your account, follow the community rules, and help keep Tea Time Cari respectful, factual, private, and safe.
+                  Create your account, follow the community rules, and help keep
+                  Tea Time Cari respectful, factual, private, and safe.
                 </p>
+
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/signup"
                     className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                   >
                     <span className="mr-2">Apply to join</span>
-                    <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                    <ArrowRight
+                      className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1"
+                      aria-hidden="true"
+                    />
                   </Link>
+
                   <button
                     type="button"
                     onClick={handleReset}
@@ -151,9 +196,19 @@ export function HowItWorksStepper() {
                   <div className="mb-5 inline-flex rounded-full bg-[#F9E3E3] px-4 py-2 text-sm font-bold text-[#BC5050]">
                     Step {activeStep + 1} of {steps.length}
                   </div>
-                  <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">{currentStep.title}</h3>
-                  <p className="mt-4 text-base leading-7 text-gray-700">{currentStep.body}</p>
-                  <div className="mt-6 flex flex-wrap gap-2" aria-label={`Step ${activeStep + 1} features`}>
+
+                  <h3 className="text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
+                    {currentStep.title}
+                  </h3>
+
+                  <p className="mt-4 text-base leading-7 text-gray-700">
+                    {currentStep.body}
+                  </p>
+
+                  <div
+                    className="mt-6 flex flex-wrap gap-2"
+                    aria-label={`Step ${activeStep + 1} features`}
+                  >
                     {currentStep.pills.map((pill) => (
                       <span
                         key={pill}
@@ -193,7 +248,10 @@ export function HowItWorksStepper() {
                       className="group inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#D96E6E] to-[#4B9EC8] px-6 py-3 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D96E6E] focus-visible:ring-offset-2"
                     >
                       <span className="mr-2">Next</span>
-                      <ArrowRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+                      <ArrowRight
+                        className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1"
+                        aria-hidden="true"
+                      />
                     </button>
                   )}
                 </div>

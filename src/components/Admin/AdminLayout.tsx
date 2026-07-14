@@ -2,19 +2,25 @@ import React from "react";
 import {
   Activity,
   BarChart3,
+  Bell,
+  CreditCard,
   ExternalLink,
   FileText,
   Flag,
   Home,
   Mail,
+  Megaphone,
   Menu,
   MessageSquare,
+  Search,
   Shield,
+  ToggleLeft,
   Users,
   X,
 } from "lucide-react";
 import { useSession } from "@supabase/auth-helpers-react";
 import { LogoutButton } from "../Auth/LogoutButton";
+import { AdminCommandPalette } from "./AdminCommandPalette";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -49,16 +55,46 @@ const navItems: NavItem[] = [
     icon: <Flag className="h-4 w-4" />,
   },
   {
+    id: "payments",
+    label: "Payments",
+    description: "Revenue & billing",
+    icon: <CreditCard className="h-4 w-4" />,
+  },
+  {
+    id: "invites",
+    label: "Invites",
+    description: "Email invites & codes",
+    icon: <Mail className="h-4 w-4" />,
+  },
+  {
+    id: "announcements",
+    label: "Announcements",
+    description: "Banners & broadcasts",
+    icon: <Megaphone className="h-4 w-4" />,
+  },
+  {
     id: "discourse-admins",
     label: "Community",
     description: "Discourse admins",
     icon: <MessageSquare className="h-4 w-4" />,
   },
   {
-    id: "invites",
-    label: "Invites",
-    description: "Invite by email",
-    icon: <Mail className="h-4 w-4" />,
+    id: "roles",
+    label: "Roles",
+    description: "Admin permissions",
+    icon: <Shield className="h-4 w-4" />,
+  },
+  {
+    id: "flags",
+    label: "Feature flags",
+    description: "Kill switches",
+    icon: <ToggleLeft className="h-4 w-4" />,
+  },
+  {
+    id: "alerts",
+    label: "Alerts",
+    description: "Slack alerting",
+    icon: <Bell className="h-4 w-4" />,
   },
   {
     id: "logs",
@@ -69,7 +105,7 @@ const navItems: NavItem[] = [
   {
     id: "function-ping",
     label: "Health",
-    description: "Function checks",
+    description: "System checks",
     icon: <Activity className="h-4 w-4" />,
   },
 ];
@@ -84,10 +120,23 @@ export function AdminLayout({
   onNavigate,
 }: AdminLayoutProps) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
   const session = useSession();
 
   const activeItem = getActiveNavItem(activePage);
   const adminEmail = session?.user?.email ?? "Admin";
+
+  React.useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
 
   const handleNavigate = (page: string) => {
     onNavigate?.(page);
@@ -220,6 +269,17 @@ export function AdminLayout({
             </div>
 
             <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/20 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-purple"
+                aria-label="Open search (Ctrl+K)"
+              >
+                <Search className="h-4 w-4" />
+                <span className="hidden md:inline">Search</span>
+                <kbd className="hidden rounded-md border border-white/20 bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/50 md:inline">⌘K</kbd>
+              </button>
+
               <a
                 href="/"
                 className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-purple sm:inline-flex lg:hidden xl:inline-flex"
@@ -271,6 +331,12 @@ export function AdminLayout({
           {children}
         </main>
       </div>
+
+      <AdminCommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

@@ -1,6 +1,50 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { sendInviteEmail } from "../_shared/resendEmail.ts";
-import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
+import { requireAdmin, writeAdminAuditLog, type AdminActor } from "../_shared/adminAuth.ts";
+import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
+import { isFeatureEnabled } from "../_shared/featureFlags.ts";
+
+async function recordInvite(
+  email: string,
+  actor: AdminActor,
+  result: { success: boolean; error?: string },
+) {
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from("email_invites")
+      .select("id, sent_count, status")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (existing) {
+      await supabaseAdmin
+        .from("email_invites")
+        .update({
+          status: existing.status === "accepted"
+            ? "accepted"
+            : result.success ? "sent" : "failed",
+          sent_count: (existing.sent_count ?? 1) + 1,
+          last_sent_at: new Date().toISOString(),
+          last_error: result.success ? null : result.error ?? "Failed to send invite email",
+          revoked_at: null,
+          invited_by: actor.userId,
+          invited_by_email: actor.email,
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabaseAdmin.from("email_invites").insert({
+        email,
+        status: result.success ? "sent" : "failed",
+        last_error: result.success ? null : result.error ?? "Failed to send invite email",
+        invited_by: actor.userId,
+        invited_by_email: actor.email,
+      });
+    }
+  } catch (trackingError) {
+    // Invite tracking is best-effort; delivery already happened.
+    console.warn("[send-invite-email] Unable to record invite lifecycle:", trackingError);
+  }
+}
 
 interface InviteRequest {
   emails?: string[];
@@ -61,6 +105,13 @@ Deno.serve(async (req: Request) => {
     }
     const actor = adminCheck.actor;
 
+    if (!(await isFeatureEnabled("invites_enabled"))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Email invites are currently disabled by a feature flag." } as InviteResponse),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     let requestData: InviteRequest;
     try {
       requestData = await req.json();
@@ -110,6 +161,8 @@ Deno.serve(async (req: Request) => {
 
         results.push({ email, success: emailResult.success, error: emailResult.error });
 
+        await recordInvite(email, actor, emailResult);
+
         await writeAdminAuditLog({
           actor,
           req,
@@ -123,6 +176,8 @@ Deno.serve(async (req: Request) => {
       } catch (emailError: unknown) {
         const message = getErrorMessage(emailError);
         results.push({ email, success: false, error: message });
+
+        await recordInvite(email, actor, { success: false, error: message });
 
         await writeAdminAuditLog({
           actor,

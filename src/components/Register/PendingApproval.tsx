@@ -154,10 +154,8 @@ const PendingApproval: React.FC<PendingApprovalProps> = ({
 
         if (result.alreadyExists) {
           setSuccessMessage("You've already submitted your application. You're in the review queue. We'll email you after review.");
-        } else if (result.data.sessionSynced === false) {
-          setSuccessMessage("Thanks! Your application has been submitted. For your privacy, we signed out any previous browser session. Please log in with your new email to check your review status.");
         } else {
-          setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue and this browser is now signed in to your new account.");
+          setSuccessMessage("Thanks! Your application has been submitted. You're in the review queue. We'll email you once it's reviewed, and you can log in any time to check your status.");
         }
 
         debugLog('Registration submission completed:', {

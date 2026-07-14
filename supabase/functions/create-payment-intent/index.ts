@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { isFeatureEnabled } from '../_shared/featureFlags.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,16 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    if (!(await isFeatureEnabled('premium_purchases_enabled'))) {
+      return new Response(
+        JSON.stringify({ error: 'Premium purchases are temporarily unavailable. Please try again later.' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 503,
+        }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
