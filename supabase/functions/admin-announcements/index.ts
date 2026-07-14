@@ -1,6 +1,7 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
+import { describeError, isMissingTableError } from "../_shared/pgErrors.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -45,7 +46,7 @@ async function listAnnouncements() {
     .limit(100);
 
   if (error) {
-    if (error.code === "42P01") return { announcements: [], tableMissing: true };
+    if (isMissingTableError(error)) return { announcements: [], tableMissing: true };
     throw error;
   }
 
@@ -326,7 +327,7 @@ Deno.serve(async (req: Request) => {
 
     return json(400, { ok: false, error: `Unknown action: ${action}` });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeError(error);
     console.error("[admin-announcements] error:", message);
     return json(500, { ok: false, error: message });
   }

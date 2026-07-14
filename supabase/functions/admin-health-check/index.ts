@@ -2,6 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { requireAdmin } from "../_shared/adminAuth.ts";
 import { getAlertSettings } from "../_shared/slack.ts";
+import { describeError, isMissingTableError } from "../_shared/pgErrors.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -30,7 +31,7 @@ async function timed(run: () => Promise<Omit<HealthCheck, "latencyMs">>): Promis
       id: "unknown",
       name: "Check failed",
       status: "fail",
-      message: error instanceof Error ? error.message : String(error),
+      message: describeError(error),
       latencyMs: Date.now() - startedAt,
     };
   }
@@ -42,8 +43,8 @@ async function checkDatabase(): Promise<Omit<HealthCheck, "latencyMs">> {
     .select("id", { count: "exact", head: true })
     .limit(1);
 
-  if (error && error.code !== "42P01") {
-    return { id: "database", name: "Database", status: "fail", message: error.message };
+  if (error && !isMissingTableError(error)) {
+    return { id: "database", name: "Database", status: "fail", message: describeError(error) };
   }
 
   return {
@@ -68,7 +69,7 @@ async function checkTables(): Promise<Omit<HealthCheck, "latencyMs">> {
   const missing: string[] = [];
   for (const table of tables) {
     const { error } = await supabaseAdmin.from(table).select("*", { head: true }).limit(1);
-    if (error?.code === "42P01") missing.push(table);
+    if (isMissingTableError(error)) missing.push(table);
   }
 
   if (missing.length === 0) {
@@ -203,7 +204,7 @@ Deno.serve(async (req: Request) => {
 
     return json(200, { ok: true, overall, checks, checkedAt: new Date().toISOString() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeError(error);
     console.error("[admin-health-check] error:", message);
     return json(500, { ok: false, error: message });
   }

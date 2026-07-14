@@ -2,6 +2,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { requireAdmin, writeAdminAuditLog } from "../_shared/adminAuth.ts";
 import { sendInviteEmail } from "../_shared/resendEmail.ts";
+import { describeError, isMissingTableError } from "../_shared/pgErrors.ts";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -19,9 +20,7 @@ type RequestBody = {
   expires_in_days?: number;
 };
 
-function isMissingTable(error: { code?: string } | null) {
-  return error?.code === "42P01";
-}
+const isMissingTable = isMissingTableError;
 
 async function listInvites() {
   const { data: invites, error } = await supabaseAdmin
@@ -264,7 +263,7 @@ Deno.serve(async (req: Request) => {
 
     return json(400, { ok: false, error: `Unknown action: ${action}` });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = describeError(error);
     console.error("[admin-invites] error:", message);
     return json(500, { ok: false, error: message });
   }
