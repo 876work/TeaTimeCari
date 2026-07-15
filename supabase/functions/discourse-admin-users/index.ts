@@ -294,7 +294,7 @@ async function changeAdminStatus(
 
   const endpoint = action === "promote" ? "grant_admin" : "revoke_admin";
 
-  await discourseFetch(`/admin/users/${targetUserId}/${endpoint}`, {
+  await discourseFetch(`/admin/users/${targetUserId}/${endpoint}.json`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
