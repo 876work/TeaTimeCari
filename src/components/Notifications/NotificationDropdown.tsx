@@ -1,7 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff, Loader2 } from 'lucide-react';
+import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
+import { MessageSquare, Reply, CheckCircle, XCircle, Clock, BookMarked as MarkAsRead, ExternalLink, Bell, BellOff, BellRing, Loader2 } from 'lucide-react';
 import { useNotifications, type Notification as AppNotification } from '../../contexts/NotificationContext';
+import {
+  isPushNotificationSupported,
+  getPushSubscriptionState,
+  subscribeToPushNotifications,
+  unsubscribeFromPushNotifications,
+} from '@/lib/pushNotifications';
 
 interface NotificationDropdownProps {
   onClose: () => void;
@@ -9,14 +16,48 @@ interface NotificationDropdownProps {
 
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
   const navigate = useNavigate();
-  const { 
-    notifications, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead, 
+  const session = useSession();
+  const supabase = useSupabaseClient();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
     refreshNotifications,
-    isLoading 
+    isLoading
   } = useNotifications();
+
+  const [pushState, setPushState] = useState<'subscribed' | 'unsubscribed' | 'unsupported' | 'loading'>(
+    'unsupported',
+  );
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isPushNotificationSupported()) {
+      setPushState('unsupported');
+      return;
+    }
+
+    getPushSubscriptionState().then(setPushState);
+  }, []);
+
+  const handleTogglePush = async () => {
+    if (!session?.user?.id || pushState === 'loading' || pushState === 'unsupported') return;
+
+    setPushError(null);
+    setPushState('loading');
+
+    const result =
+      pushState === 'subscribed'
+        ? await unsubscribeFromPushNotifications(supabase, session.user.id)
+        : await subscribeToPushNotifications(supabase, session.user.id);
+
+    if (!result.success) {
+      setPushError(result.error ?? 'Something went wrong.');
+    }
+
+    setPushState(await getPushSubscriptionState());
+  };
 
   // Mark all as read when dropdown opens (if there are unread notifications)
   useEffect(() => {
@@ -84,6 +125,26 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             Notifications
           </h3>
           <div className="flex items-center space-x-2">
+            {pushState !== 'unsupported' && (
+              <button
+                onClick={handleTogglePush}
+                disabled={pushState === 'loading'}
+                className="p-1 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+                title={
+                  pushState === 'subscribed'
+                    ? 'Turn off push notifications on this device'
+                    : 'Get push notifications on this device'
+                }
+              >
+                {pushState === 'loading' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : pushState === 'subscribed' ? (
+                  <BellRing className="w-4 h-4 text-[#4B9EC8]" />
+                ) : (
+                  <BellOff className="w-4 h-4" />
+                )}
+              </button>
+            )}
             <button
               onClick={refreshNotifications}
               className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
@@ -106,6 +167,9 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
           <p className="text-sm text-gray-600 mt-1">
             {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
           </p>
+        )}
+        {pushError && (
+          <p className="text-xs text-red-600 mt-1">{pushError}</p>
         )}
       </div>
 
