@@ -11,7 +11,7 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - **Premium Cross-Gender Feed:** Exclusive section allowing access to content from the opposite gender (paid feature)
 - **Post Management:** Users can upload photos with community feedback via green/red flag counts
 - **Commenting System:** Engage with posts through anonymous comments
-- **Real-time Notifications:** Users receive notifications for new comments, replies, and post flags
+- **Real-time & Push Notifications:** Users receive in-app notifications for new comments, replies, and post flags, with an optional browser push opt-in so they're notified even when the app isn't open
 
 ### Administrative Features
 - **Admin Dashboard:** Comprehensive portal for administrators featuring:
@@ -157,6 +157,44 @@ TWILIO_ACCOUNT_SID=your-twilio-account-sid
 TWILIO_AUTH_TOKEN=your-twilio-auth-token
 TWILIO_FROM_NUMBER=+1234567890
 ```
+
+#### Web Push Notifications (Optional)
+
+Lets approved users opt in (via the bell icon in the header) to receive a
+browser push notification — even when the app tab is closed — when someone
+comments, replies, or flags their post.
+
+1. Generate a VAPID key pair:
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+2. Set the public key for the frontend build and the private key + subject as
+   Supabase Edge Function secrets:
+   ```bash
+   supabase secrets set \
+     VAPID_PUBLIC_KEY=your-vapid-public-key \
+     VAPID_PRIVATE_KEY=your-vapid-private-key \
+     VAPID_SUBJECT=mailto:admin@your-domain.com \
+     PUSH_WEBHOOK_SECRET=a-long-random-shared-secret
+   ```
+   Add `VITE_VAPID_PUBLIC_KEY=your-vapid-public-key` (same value as above) to
+   your frontend `.env` / hosting provider env vars.
+3. Deploy the `send-push-notification` function:
+   ```bash
+   supabase functions deploy send-push-notification --project-ref <your-project-ref>
+   ```
+4. In the Supabase Dashboard, go to **Database → Webhooks → Create a new
+   webhook**, and configure:
+   - Table: `notifications`
+   - Events: `Insert`
+   - Type: `HTTP Request`, method `POST`
+   - URL: `https://<your-project-ref>.functions.supabase.co/send-push-notification`
+   - Headers: `Content-Type: application/json` and
+     `x-webhook-secret: <the PUSH_WEBHOOK_SECRET value from step 2>`
+
+If these are left unset, the push opt-in toggle simply won't appear (browser
+support check fails without `VITE_VAPID_PUBLIC_KEY`), and the app continues
+to work exactly as before via in-app/realtime notifications.
 
 ### 4. Start Development Server
 ```bash
