@@ -48,6 +48,12 @@ The signing in `src/sso.mjs` is intentionally **byte-compatible** with the produ
 The mock Discourse re-verifies that signature exactly as a real Discourse would, so
 the signed `remove_groups` payloads produced here are already Stage-2 ready.
 
+> **Stage 2 is built.** The production-shaped version of everything in the right-hand
+> column above — real Supabase migrations, a scheduled Edge Function, a data-parity
+> import, and a zero-downtime cutover runbook — lives in [`stage2/`](./stage2/), still
+> isolated from production. Its schema is verified against real Postgres and its Deno
+> signer is verified byte-identical to this Node one. See [`stage2/README.md`](./stage2/README.md).
+
 ## Design of the sweep (why it's safe)
 
 - **Idempotent / at-least-once.** A failed Discourse sync leaves the grant `active`

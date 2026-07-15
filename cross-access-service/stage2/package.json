@@ -1,0 +1,18 @@
+{
+  "name": "cross-access-stage2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Stage 2 — production-shaped Supabase schema + revocation Edge Function (isolated project). Deploy targets the Stage 2 project ref, never production.",
+  "scripts": {
+    "test": "node test/schema.test.mjs",
+    "import:dry": "node scripts/import-from-production.mjs",
+    "import:commit": "node scripts/import-from-production.mjs --commit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.53.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4"
+  }
+}
