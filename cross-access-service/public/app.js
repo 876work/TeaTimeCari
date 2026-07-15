@@ -64,7 +64,7 @@ function renderTiles(s) {
     { cls: "", k: "Active grants", v: s.activeCount, sub: `${s.totalUsers} members in roster` },
     { cls: "warm", k: "Expiring < 1h", v: s.expiringSoonCount, sub: s.overdueCount ? `${s.overdueCount} overdue for sweep` : "all on schedule" },
     { cls: "good", k: "Revoked (24h)", v: s.revokedTodayCount, sub: "auto + manual" },
-    { cls: "neutral", k: "Worker sweeps", v: s.worker.sweeps, sub: `every ${Math.round(s.worker.intervalMs / 1000)}s` },
+    { cls: "gold", k: "Verified+ members", v: s.verifiedPlusCount, sub: `of ${s.totalUsers} total` },
   ];
   $("#tiles").innerHTML = tiles
     .map((t) => `<div class="tile ${t.cls}"><div class="k">${t.k}</div><div class="v">${t.v}</div><div class="sub">${t.sub}</div></div>`)
@@ -103,11 +103,13 @@ const STATUS_LABEL = {
 
 function renderGrants() {
   const body = $("#grants-body");
+  const usersById = Object.fromEntries(state.users.map((u) => [u.external_id, u]));
   const rows = state.grants
     .map((g) => {
       const t = grantTiming(g);
       const av = avatarFor(g.username);
       const isNew = !lastGrantIds.has(g.id) && lastGrantIds.size > 0;
+      const isPlus = usersById[g.user_external_id]?.verified === "plus";
       const timeCell =
         g.status === "revoked"
           ? `<span class="dash">revoked ${g.revoked_at ? relTime(g.revoked_at) : ""}</span>`
@@ -116,11 +118,12 @@ function renderGrants() {
         g.status === "active"
           ? `<button class="btn-revoke" data-revoke="${g.id}">Revoke now</button>`
           : `<span class="dash">—</span>`;
+      const sourceCell = g.checkout_source === "storefront" ? `<span class="src">${g.source}</span> <span class="chip chip-buy" title="Bought via storefront">buy</span>` : `<span class="src">${g.source}</span>`;
       return `<tr class="${g.status === "revoked" ? "is-revoked" : ""}${isNew ? " flash" : ""}" data-id="${g.id}">
         <td><div class="member"><div class="avatar" style="background:${av.color}">${av.initials}</div>
-          <div><div class="name">${g.username}</div><div class="eid">${g.user_external_id.slice(0, 8)}…</div></div></div></td>
+          <div><div class="name">${g.username}${isPlus ? '<span class="verified-badge" title="Verified+">✓</span>' : ""}</div><div class="eid">${g.user_external_id.slice(0, 8)}…</div></div></div></td>
         <td><span class="chip chip-${g.base_gender}">${g.base_gender}</span></td>
-        <td><span class="src">${g.source}</span></td>
+        <td>${sourceCell}</td>
         <td><span class="expires">${g.status === "revoked" ? "—" : fmtClock(g.expires_at)}</span></td>
         <td>${timeCell}</td>
         <td><span class="status status-${t.key}"><span class="d"></span>${STATUS_LABEL[t.key]}</span></td>
@@ -211,7 +214,8 @@ function populateUsers() {
   sel.innerHTML = state.users
     .map((u) => {
       const busy = activeIds.has(u.external_id);
-      return `<option value="${u.external_id}" ${busy ? "disabled" : ""}>${u.username} · ${u.gender}${busy ? " (has active grant)" : ""}</option>`;
+      const plus = u.verified === "plus" ? " · Verified+" : "";
+      return `<option value="${u.external_id}" ${busy ? "disabled" : ""}>${u.username} · ${u.gender}${plus}${busy ? " (has active grant)" : ""}</option>`;
     })
     .join("");
   if (prev) sel.value = prev;

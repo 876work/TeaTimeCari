@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { config } from "./config.mjs";
 import { load, db, save, appendLog } from "./store.mjs";
 import { runRevocationSweep, revokeGrantNow, startWorker } from "./worker.mjs";
+import { CROSS_ACCESS_TIERS, VERIFIED_PLUS_PRODUCT, priceForTier, findTier, formatUsd } from "./tiers.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,12 +38,14 @@ function summarize() {
   const revokedToday = state.grants.filter(
     (g) => g.status === "revoked" && g.revoked_at && now - new Date(g.revoked_at).getTime() < 24 * 60 * 60 * 1000,
   );
+  const verifiedPlusCount = state.users.filter((u) => u.verified === "plus").length;
   return {
     activeCount: active.length,
     expiringSoonCount: expiringSoon.length,
     overdueCount: overdue.length,
     revokedTodayCount: revokedToday.length,
     totalUsers: state.users.length,
+    verifiedPlusCount,
     worker: {
       intervalMs: config.workerIntervalMs,
       lastSweepAt: state.meta.lastSweepAt,
@@ -67,6 +70,45 @@ app.get("/api/grants", (_req, res) => {
   res.json({ grants, users: db().users });
 });
 
+/**
+ * Shared grant creation used by both the admin quick-grant panel and the
+ * storefront checkout — same record shape either way, distinguished only by
+ * `checkout_source` and, for paid tiers, a `paid_cents` figure for the log.
+ */
+function createGrant(state, { user, source, durationMs, label, checkoutSource, paidCents }) {
+  const existing = state.grants.find((g) => g.user_external_id === user.external_id && g.status === "active");
+  if (existing) return { error: `${user.username} already has an active grant`, status: 409 };
+
+  const grantedAt = Date.now();
+  const grant = {
+    id: crypto.randomUUID(),
+    user_external_id: user.external_id,
+    username: user.username,
+    base_gender: user.gender,
+    source,
+    checkout_source: checkoutSource,
+    granted_at: new Date(grantedAt).toISOString(),
+    expires_at: new Date(grantedAt + durationMs).toISOString(),
+    status: "active",
+    revoked_at: null,
+    revocation_synced: false,
+    revoke_reason: null,
+    retry_count: 0,
+  };
+  state.grants.push(grant);
+
+  const priceNote = paidCents != null ? ` — ${formatUsd(paidCents)} (simulated checkout)` : "";
+  appendLog({
+    level: "info",
+    action: checkoutSource === "storefront" ? "checkout_grant" : "grant_created",
+    grant_id: grant.id,
+    user_external_id: user.external_id,
+    username: user.username,
+    message: `Granted '${config.xaccessGroup}' to ${user.username} — ${label}${priceNote}`,
+  });
+  return { grant };
+}
+
 app.post("/api/grants", (req, res) => {
   const { external_id, durationKey } = req.body || {};
   const duration = DURATIONS[durationKey];
@@ -76,35 +118,16 @@ app.post("/api/grants", (req, res) => {
   const user = state.users.find((u) => u.external_id === external_id);
   if (!user) return res.status(404).json({ error: "user not found" });
 
-  const existing = state.grants.find((g) => g.user_external_id === external_id && g.status === "active");
-  if (existing) return res.status(409).json({ error: `${user.username} already has an active grant` });
-
-  const grantedAt = Date.now();
-  const grant = {
-    id: crypto.randomUUID(),
-    user_external_id: user.external_id,
-    username: user.username,
-    base_gender: user.gender,
+  const result = createGrant(state, {
+    user,
     source: duration.source,
-    granted_at: new Date(grantedAt).toISOString(),
-    expires_at: new Date(grantedAt + duration.ms).toISOString(),
-    status: "active",
-    revoked_at: null,
-    revocation_synced: false,
-    revoke_reason: null,
-    retry_count: 0,
-  };
-  state.grants.push(grant);
-  appendLog({
-    level: "info",
-    action: "grant_created",
-    grant_id: grant.id,
-    user_external_id: user.external_id,
-    username: user.username,
-    message: `Granted '${config.xaccessGroup}' to ${user.username} — ${duration.label}`,
+    durationMs: duration.ms,
+    label: duration.label,
+    checkoutSource: "admin",
   });
+  if (result.error) return res.status(result.status).json({ error: result.error });
   save();
-  res.status(201).json({ grant });
+  res.status(201).json({ grant: result.grant });
 });
 
 app.post("/api/grants/:id/revoke", async (req, res) => {
@@ -123,6 +146,90 @@ app.post("/api/worker/run", async (_req, res) => {
 app.get("/api/durations", (_req, res) =>
   res.json(Object.entries(DURATIONS).map(([key, v]) => ({ key, label: v.label }))),
 );
+
+/* ---------- Storefront: tiered cross-access + Verified+ (research brief §6) ---------- */
+/*
+ * Stripe is intentionally paused (per product decision) — these endpoints simulate a
+ * successful payment_intent.succeeded synchronously instead of taking a card. When
+ * Stripe wiring resumes, swap the "simulated" branch below for a real PaymentIntent +
+ * webhook: the shape of what happens *after* payment succeeds (createGrant / set
+ * user.verified) does not need to change.
+ */
+
+app.get("/api/tiers", (req, res) => {
+  const state = db();
+  const user = state.users.find((u) => u.external_id === req.query.external_id) || null;
+  const activeGrant = user ? state.grants.find((g) => g.user_external_id === user.external_id && g.status === "active") : null;
+
+  const tiers = CROSS_ACCESS_TIERS.map((t) => {
+    const price = priceForTier(t, user);
+    return {
+      id: t.id,
+      label: t.label,
+      tagline: t.tagline,
+      featured: !!t.featured,
+      durationMs: t.durationMs,
+      priceCents: price.cents,
+      originalCents: price.originalCents,
+      discounted: price.discounted,
+      priceLabel: formatUsd(price.cents),
+      originalLabel: formatUsd(price.originalCents),
+    };
+  });
+
+  res.json({
+    tiers,
+    verifiedPlus: {
+      ...VERIFIED_PLUS_PRODUCT,
+      priceLabel: formatUsd(VERIFIED_PLUS_PRODUCT.priceCents),
+      owned: user?.verified === "plus",
+    },
+    blockedByActiveGrant: !!activeGrant,
+  });
+});
+
+app.post("/api/checkout/cross-access", (req, res) => {
+  const { external_id, tierId } = req.body || {};
+  const tier = findTier(tierId);
+  if (!tier) return res.status(400).json({ error: "unknown tierId" });
+
+  const state = db();
+  const user = state.users.find((u) => u.external_id === external_id);
+  if (!user) return res.status(404).json({ error: "user not found" });
+
+  const price = priceForTier(tier, user);
+  const result = createGrant(state, {
+    user,
+    source: tier.source,
+    durationMs: tier.durationMs,
+    label: tier.label,
+    checkoutSource: "storefront",
+    paidCents: price.cents,
+  });
+  if (result.error) return res.status(result.status).json({ error: result.error });
+  save();
+  res.status(201).json({ grant: result.grant, paidCents: price.cents, discounted: price.discounted });
+});
+
+app.post("/api/checkout/verified-plus", (req, res) => {
+  const { external_id } = req.body || {};
+  const state = db();
+  const user = state.users.find((u) => u.external_id === external_id);
+  if (!user) return res.status(404).json({ error: "user not found" });
+  if (user.verified === "plus") return res.status(409).json({ error: `${user.username} already has Verified+` });
+
+  user.verified = "plus";
+  user.verified_plus_since = new Date().toISOString();
+  appendLog({
+    level: "success",
+    action: "verified_plus_purchased",
+    user_external_id: user.external_id,
+    username: user.username,
+    message: `${user.username} upgraded to Verified+ — ${formatUsd(VERIFIED_PLUS_PRODUCT.priceCents)} (simulated checkout)`,
+  });
+  save();
+  res.status(201).json({ user });
+});
 
 app.listen(config.port, () => {
   console.log(`\n  Cross-Access Service · Stage 1 (dummy data)`);

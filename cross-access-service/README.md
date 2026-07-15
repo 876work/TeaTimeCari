@@ -66,14 +66,40 @@ the signed `remove_groups` payloads produced here are already Stage-2 ready.
 | --- | --- | --- |
 | `GET` | `/api/summary` | Tiles + worker status |
 | `GET` | `/api/grants` | All grants + user roster |
-| `POST` | `/api/grants` | Create a grant `{ external_id, durationKey }` |
+| `POST` | `/api/grants` | Admin quick-grant `{ external_id, durationKey }` |
 | `POST` | `/api/grants/:id/revoke` | Manual "revoke now" |
-| `GET` | `/api/worker/log` | Revocation audit log |
+| `GET` | `/api/worker/log` | Revocation + purchase audit log |
 | `POST` | `/api/worker/run` | Trigger a sweep on demand |
+| `GET` | `/api/tiers?external_id=` | Cross-access + Verified+ catalog, priced for that member |
+| `POST` | `/api/checkout/cross-access` | Simulated purchase `{ external_id, tierId }` |
+| `POST` | `/api/checkout/verified-plus` | Simulated Verified+ upgrade `{ external_id }` |
+
+## Monetization surfaces (research brief §6)
+
+Two ideas from the brief, built on top of the Stage 1 worker:
+
+**Tiered cross-access** — `/storefront.html` sells three passes (`24-Hour Peek`,
+`3-Day Pass`, `Monthly All-Access`) defined in `src/tiers.mjs`. Every tier calls the
+same `createGrant()` helper as the admin panel, so a storefront purchase and an
+admin comp look identical in the Grants table (distinguished only by a `buy` chip)
+and are revoked by the exact same scheduled worker — no separate code path to expire.
+
+**Verified+ badge** — reuses the KYC identity check that already exists in
+production (face-api.js selfie verification) as the *base* trust signal, and sells a
+one-time gold-badge upgrade on top of it (`POST /api/checkout/verified-plus`). Owning
+Verified+ also knocks 15% off every cross-access tier (`VERIFIED_PLUS_DISCOUNT` in
+`src/tiers.mjs`) — a concrete example of the brief's point that these features should
+share one mechanism rather than growing in isolation.
+
+**Checkout is simulated, on purpose.** Stripe wiring is paused for this build. Both
+checkout endpoints complete a dummy transaction synchronously instead of creating a
+real PaymentIntent. When Stripe work resumes, only the *front half* changes (a real
+Stripe Elements form + webhook instead of an instant POST) — `createGrant()` and the
+`user.verified = "plus"` write are already the right shape for a
+`payment_intent.succeeded` handler to call into.
 
 ## Not in scope for Stage 1 (by design)
 
 - No real Supabase or Discourse connection, and no production secrets.
-- No Stripe wiring — grants are created directly (a real Stripe webhook would call
-  `POST /api/grants` after `payment_intent.succeeded`).
+- No real Stripe integration (explicitly paused) — see "Checkout is simulated" above.
 - No change to the live SSO Edge Functions or the React app.

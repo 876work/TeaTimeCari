@@ -20,20 +20,24 @@ const iso = (ms) => new Date(ms).toISOString();
 
 // Dummy roster. external_id mirrors the production contract: it is the permanent
 // Supabase registration id sent to DiscourseConnect. These are throwaway UUIDs.
+//
+// `verified` mirrors the research brief's verified-badge idea:
+//   'kyc'  -> every approved member already has this (selfie/ID check passed at signup)
+//   'plus' -> a paid upgrade (gold check + cross-access discount, see tiers.mjs)
 const users = [
-  { external_id: crypto.randomUUID(), username: "sandy_w",    email: "sandy@stage1.local",    gender: "women" },
-  { external_id: crypto.randomUUID(), username: "wang_yibo",  email: "yibo@stage1.local",     gender: "men"   },
-  { external_id: crypto.randomUUID(), username: "x_gamer",    email: "xgamer@stage1.local",   gender: "men"   },
-  { external_id: crypto.randomUUID(), username: "arina_k",    email: "arina@stage1.local",    gender: "women" },
-  { external_id: crypto.randomUUID(), username: "mark_kyle",  email: "mark@stage1.local",     gender: "men"   },
-  { external_id: crypto.randomUUID(), username: "nina_r",     email: "nina@stage1.local",     gender: "women" },
-  { external_id: crypto.randomUUID(), username: "ron_21",     email: "ron@stage1.local",      gender: "men"   },
-  { external_id: crypto.randomUUID(), username: "savannah_w", email: "savannah@stage1.local", gender: "women" },
+  { external_id: crypto.randomUUID(), username: "sandy_w",    email: "sandy@stage1.local",    gender: "women", verified: "plus" },
+  { external_id: crypto.randomUUID(), username: "wang_yibo",  email: "yibo@stage1.local",     gender: "men",   verified: "kyc"  },
+  { external_id: crypto.randomUUID(), username: "x_gamer",    email: "xgamer@stage1.local",   gender: "men",   verified: "kyc"  },
+  { external_id: crypto.randomUUID(), username: "arina_k",    email: "arina@stage1.local",    gender: "women", verified: "plus" },
+  { external_id: crypto.randomUUID(), username: "mark_kyle",  email: "mark@stage1.local",     gender: "men",   verified: "kyc"  },
+  { external_id: crypto.randomUUID(), username: "nina_r",     email: "nina@stage1.local",     gender: "women", verified: "kyc"  },
+  { external_id: crypto.randomUUID(), username: "ron_21",     email: "ron@stage1.local",      gender: "men",   verified: "kyc"  },
+  { external_id: crypto.randomUUID(), username: "savannah_w", email: "savannah@stage1.local", gender: "women", verified: "kyc"  },
 ];
 
 const U = Object.fromEntries(users.map((u) => [u.username, u]));
 
-function grant({ user, source, grantedMsAgo, durationMs, status = "active", revokedMsAgo }) {
+function grant({ user, source, grantedMsAgo, durationMs, status = "active", revokedMsAgo, checkoutSource = "storefront" }) {
   const granted_at = now - grantedMsAgo;
   return {
     id: crypto.randomUUID(),
@@ -41,6 +45,7 @@ function grant({ user, source, grantedMsAgo, durationMs, status = "active", revo
     username: user.username,
     base_gender: user.gender,
     source,
+    checkout_source: checkoutSource,
     granted_at: iso(granted_at),
     expires_at: iso(granted_at + durationMs),
     status,
@@ -62,7 +67,7 @@ const grants = [
   // Healthy active grants:
   grant({ user: U.sandy_w,   source: "stripe_monthly", grantedMsAgo: hrs(2),   durationMs: hrs(24 * 30) }),
   grant({ user: U.wang_yibo, source: "stripe_3day",    grantedMsAgo: hrs(10),  durationMs: hrs(72) }),
-  grant({ user: U.nina_r,    source: "admin_comp",     grantedMsAgo: mins(20), durationMs: hrs(48) }),
+  grant({ user: U.nina_r,    source: "admin_comp",     grantedMsAgo: mins(20), durationMs: hrs(48), checkoutSource: "admin" }),
 
   // History — already revoked:
   grant({ user: U.x_gamer,   source: "stripe_24h",  grantedMsAgo: hrs(50), durationMs: hrs(24), status: "revoked", revokedMsAgo: hrs(26) }),
@@ -90,6 +95,22 @@ const seed = {
       username: "x_gamer",
       message: "Removed 'xaccess' from x_gamer — grant expired",
       discourse_status: 200,
+    },
+    {
+      id: crypto.randomUUID(),
+      created_at: iso(now - hrs(40)),
+      level: "success",
+      action: "verified_plus_purchased",
+      username: "arina_k",
+      message: "arina_k upgraded to Verified+ (simulated checkout)",
+    },
+    {
+      id: crypto.randomUUID(),
+      created_at: iso(now - hrs(80)),
+      level: "success",
+      action: "verified_plus_purchased",
+      username: "sandy_w",
+      message: "sandy_w upgraded to Verified+ (simulated checkout)",
     },
   ],
   meta: { lastSweepAt: null, sweeps: 0 },
