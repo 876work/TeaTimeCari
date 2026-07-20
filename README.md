@@ -20,7 +20,6 @@ Tea Time Cari is a community platform designed for authentic conversations and c
   - Invite code management
   - System activity monitoring and health checks
   - Moderation logs and analytics
-  - Geography map: country-level member distribution (choropleth + bubbles) built from existing IP-based location tracking — aggregated only, no precise member locations
 
 ### Security & Integration
 - **Discourse SSO Integration:** Seamless Single Sign-On with Discourse forum
@@ -36,7 +35,6 @@ Tea Time Cari is a community platform designed for authentic conversations and c
 - **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS framework for rapid UI development
 - **[Vite](https://vitejs.dev/)** - Lightning-fast build tool and development server
 - **[Lucide React](https://lucide.dev/)** - Beautiful, customizable SVG icons
-- **[Leaflet](https://leafletjs.com/)** + **[React Leaflet](https://react-leaflet.js.org/)** - Interactive maps for admin geographic analytics (OpenStreetMap tiles, no API key required)
 
 ### Backend & Database
 - **[Supabase](https://supabase.com/)** - Complete backend solution providing:

@@ -7,7 +7,6 @@ import {
   ExternalLink,
   FileText,
   Flag,
-  Globe2,
   Home,
   Mail,
   Megaphone,
@@ -60,12 +59,6 @@ const navItems: NavItem[] = [
     label: "Payments",
     description: "Revenue & billing",
     icon: <CreditCard className="h-4 w-4" />,
-  },
-  {
-    id: "geography",
-    label: "Geography",
-    description: "Member map",
-    icon: <Globe2 className="h-4 w-4" />,
   },
   {
     id: "invites",

@@ -39,7 +39,6 @@ import { DiscourseCommunityAdmins } from "./DiscourseCommunityAdmins";
 import { AdminAuditLogs } from "./AdminAuditLogs";
 import { AdminInvites } from "./AdminInvites";
 import { AdminPayments } from "./AdminPayments";
-import { AdminGeography } from "./AdminGeography";
 import { AdminAnnouncements } from "./AdminAnnouncements";
 import { AdminRoles } from "./AdminRoles";
 import { AdminFeatureFlags } from "./AdminFeatureFlags";
@@ -804,10 +803,6 @@ export function AdminDashboard({
 
   if (activePage === "payments") {
     return <AdminPayments activePage={activePage} onNavigate={onNavigate} />;
-  }
-
-  if (activePage === "geography") {
-    return <AdminGeography activePage={activePage} onNavigate={onNavigate} />;
   }
 
   if (activePage === "announcements") {
