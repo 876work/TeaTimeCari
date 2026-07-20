@@ -162,6 +162,7 @@ type AdminPage =
   | "user-reviews"
   | "flagged-posts"
   | "payments"
+  | "geography"
   | "discourse-admins"
   | "invites"
   | "announcements"
@@ -176,6 +177,7 @@ const adminPagePaths: Record<AdminPage, string> = {
   "user-reviews": "/admin/users",
   "flagged-posts": "/admin/flagged-posts",
   payments: "/admin/payments",
+  geography: "/admin/geography",
   "discourse-admins": "/admin/discourse-admins",
   invites: "/admin/invites",
   announcements: "/admin/announcements",
@@ -557,6 +559,10 @@ function App() {
                   <Route
                     path="/admin/payments"
                     element={<AdminPortalRoute initialPage="payments" />}
+                  />
+                  <Route
+                    path="/admin/geography"
+                    element={<AdminPortalRoute initialPage="geography" />}
                   />
                   <Route
                     path="/admin/announcements"
