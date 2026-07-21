@@ -165,6 +165,7 @@ type AdminPage =
   | "discourse-admins"
   | "invites"
   | "announcements"
+  | "advertising"
   | "roles"
   | "flags"
   | "alerts"
@@ -179,6 +180,7 @@ const adminPagePaths: Record<AdminPage, string> = {
   "discourse-admins": "/admin/discourse-admins",
   invites: "/admin/invites",
   announcements: "/admin/announcements",
+  advertising: "/admin/advertising",
   roles: "/admin/roles",
   flags: "/admin/flags",
   alerts: "/admin/alerts",
@@ -561,6 +563,10 @@ function App() {
                   <Route
                     path="/admin/announcements"
                     element={<AdminPortalRoute initialPage="announcements" />}
+                  />
+                  <Route
+                    path="/admin/advertising"
+                    element={<AdminPortalRoute initialPage="advertising" />}
                   />
                   <Route
                     path="/admin/roles"

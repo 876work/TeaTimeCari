@@ -27,6 +27,7 @@ import {
   Flag,
   HardDrive,
   FileText,
+  Image as ImageIcon,
   Mail,
   Megaphone,
   MessageSquare,
@@ -40,6 +41,7 @@ import { AdminAuditLogs } from "./AdminAuditLogs";
 import { AdminInvites } from "./AdminInvites";
 import { AdminPayments } from "./AdminPayments";
 import { AdminAnnouncements } from "./AdminAnnouncements";
+import { AdminAdvertising } from "./AdminAdvertising";
 import { AdminRoles } from "./AdminRoles";
 import { AdminFeatureFlags } from "./AdminFeatureFlags";
 import { AdminAlerts } from "./AdminAlerts";
@@ -809,6 +811,10 @@ export function AdminDashboard({
     return <AdminAnnouncements activePage={activePage} onNavigate={onNavigate} />;
   }
 
+  if (activePage === "advertising") {
+    return <AdminAdvertising activePage={activePage} onNavigate={onNavigate} />;
+  }
+
   if (activePage === "roles") {
     return <AdminRoles activePage={activePage} onNavigate={onNavigate} />;
   }
@@ -1052,6 +1058,14 @@ export function AdminDashboard({
                 description="Banners and email broadcasts"
                 icon={<Megaphone className="h-4 w-4" />}
                 page="announcements"
+                onNavigate={onNavigate}
+              />
+
+              <GlassShortcutButton
+                label="Advertising"
+                description="Banner ad management"
+                icon={<ImageIcon className="h-4 w-4" />}
+                page="advertising"
                 onNavigate={onNavigate}
               />
 

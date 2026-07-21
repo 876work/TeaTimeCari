@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AdSlot } from './Ads/AdSlot';
 
 const APP_STORE_URL = 'https://teatimecari.app';
 const PLAY_STORE_URL = 'https://teatimecari.app';
@@ -152,6 +153,10 @@ export function Footer() {
               </div>
             ))}
           </nav>
+        </div>
+
+        <div className="mt-10">
+          <AdSlot placement="footer" />
         </div>
 
         <div className="mt-10 border-t border-slate-200/80 pt-6 sm:mt-12 sm:flex sm:items-center sm:justify-between">

@@ -18,6 +18,7 @@ import {
   Clock
 } from 'lucide-react';
 import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { AdSlot } from '@/components/Ads/AdSlot';
 import { anonymousComposerHelperText } from '@/content/anonymousMode';
 import { StripeProvider } from '../Payment/StripeProvider';
 import { PaymentForm } from '../Payment/PaymentForm';
@@ -699,8 +700,9 @@ export function OppositeGenderFeed() {
           ) : (
             /* Posts Feed - Same structure as GenderFeed */
             <div className="space-y-8">
-              {posts.map((post) => (
-                <div key={post.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-[#E0A3A3] border-opacity-20">
+              {posts.map((post, postIndex) => (
+                <React.Fragment key={post.id}>
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-[#E0A3A3] border-opacity-20">
                   {/* Post Header */}
                   <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center justify-between">
@@ -817,6 +819,8 @@ export function OppositeGenderFeed() {
                     )}
                   </div>
                 </div>
+                {(postIndex + 1) % 6 === 0 && <AdSlot placement="in_feed" />}
+                </React.Fragment>
               ))}
             </div>
           )}
