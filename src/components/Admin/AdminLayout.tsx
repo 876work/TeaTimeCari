@@ -8,6 +8,7 @@ import {
   FileText,
   Flag,
   Home,
+  Image,
   Mail,
   Megaphone,
   Menu,
@@ -71,6 +72,12 @@ const navItems: NavItem[] = [
     label: "Announcements",
     description: "Banners & broadcasts",
     icon: <Megaphone className="h-4 w-4" />,
+  },
+  {
+    id: "advertising",
+    label: "Advertising",
+    description: "Banner ad management",
+    icon: <Image className="h-4 w-4" />,
   },
   {
     id: "discourse-admins",

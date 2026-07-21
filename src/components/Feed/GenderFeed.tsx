@@ -14,6 +14,7 @@ import {
   Heart
 } from 'lucide-react';
 import { isApprovedRegistrationStatus } from '@/lib/auth/approvalStatus';
+import { AdSlot } from '@/components/Ads/AdSlot';
 import { anonymousComposerHelperText } from '@/content/anonymousMode';
 
 // Type definitions
@@ -437,8 +438,9 @@ export function GenderFeed() {
         ) : (
           /* Posts Feed */
           <div className="space-y-8">
-            {posts.map((post) => (
-              <div key={post.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]">
+            {posts.map((post, postIndex) => (
+              <React.Fragment key={post.id}>
+              <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]">
                 {/* Post Header */}
                 <div className="p-6 border-b border-gray-100">
                   <div className="flex items-center justify-between">
@@ -549,6 +551,8 @@ export function GenderFeed() {
                   )}
                 </div>
               </div>
+              {(postIndex + 1) % 6 === 0 && <AdSlot placement="in_feed" />}
+              </React.Fragment>
             ))}
           </div>
         )}

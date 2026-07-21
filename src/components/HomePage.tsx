@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { HowItWorksStepper } from "./HowItWorksStepper";
 import { SiteHeader } from "./SiteHeader";
+import { AdSlot } from "./Ads/AdSlot";
 
 const trustCards = [
   {
@@ -128,6 +129,10 @@ export function HomePage() {
         </section>
 
         <HowItWorksStepper />
+
+        <div className="my-10">
+          <AdSlot placement="homepage" />
+        </div>
 
         <div className="space-y-3">
           <p className="text-sm font-medium text-white/80">
