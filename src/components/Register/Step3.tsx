@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle, Loader2 } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
 import { debugError } from '@/lib/debugLogger';
-import { analyzeCapturedPhoto, prewarmPhotoQualityModels } from '@/lib/photoQuality';
+import { analyzeCapturedPhoto } from '@/lib/photoQuality';
 
 export interface RegisterStep3Data {
   captureType: 'selfie' | 'id';
@@ -43,7 +43,6 @@ export function RegisterStep3({
   const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasConfirmedPhotoNotice, setHasConfirmedPhotoNotice] = useState(Boolean(initialData?.imageData));
-  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [photoQualityWarning, setPhotoQualityWarning] = useState<string | null>(null);
   const [acknowledgedQualityWarning, setAcknowledgedQualityWarning] = useState(false);
 
@@ -78,10 +77,6 @@ export function RegisterStep3({
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         streamRef.current = stream;
-
-        // Start fetching the face detection model now so the post-capture
-        // quality check is usually instant.
-        prewarmPhotoQualityModels();
 
         if (!videoRef.current) {
           throw new Error('Video element not available');
@@ -155,7 +150,6 @@ export function RegisterStep3({
     setHasConfirmedPhotoNotice(true);
     setPhotoQualityWarning(null);
     setAcknowledgedQualityWarning(false);
-    setIsAnalyzingPhoto(false);
   };
 
   const capturePhoto = useCallback(() => {
@@ -180,14 +174,13 @@ export function RegisterStep3({
     captureIdRef.current += 1;
 
     const captureId = captureIdRef.current;
-    const mode = captureMode ?? 'selfie';
 
-    setPhotoQualityWarning(null);
+    // Synchronous pixel read — no network, no model, nothing that can stall
+    // between the user and their photo.
+    setPhotoQualityWarning(analyzeCapturedPhoto(canvas).warning);
     setAcknowledgedQualityWarning(false);
     setError(null);
 
-    // The photo is secured before anything else runs. The quality check is
-    // advisory, so it must never stand between the user and their photo.
     canvas.toBlob(
       (blob) => {
         if (captureIdRef.current !== captureId) return;
@@ -208,26 +201,6 @@ export function RegisterStep3({
           setCaptureState('captured');
           stopCamera();
           setCameraState('idle');
-          setIsAnalyzingPhoto(true);
-
-          // Deferred so the browser paints the preview before the quality
-          // check starts competing for the main thread.
-          setTimeout(() => {
-            analyzeCapturedPhoto(canvas, mode)
-              .then((quality) => {
-                if (captureIdRef.current !== captureId) return;
-                setPhotoQualityWarning(quality.warning);
-              })
-              .catch((err) => {
-                // Fail open: the check is a UX nicety, not a hard gate.
-                // Admin review remains the source of truth if it can't run.
-                debugError('Automatic photo quality check unavailable:', err);
-              })
-              .finally(() => {
-                if (captureIdRef.current !== captureId) return;
-                setIsAnalyzingPhoto(false);
-              });
-          }, 0);
         };
 
         reader.onerror = () => {
@@ -240,7 +213,7 @@ export function RegisterStep3({
       'image/jpeg',
       0.72,
     );
-  }, [cameraState, captureMode, stopCamera]);
+  }, [cameraState, stopCamera]);
 
   const retakePhoto = () => {
     captureIdRef.current += 1;
@@ -250,7 +223,6 @@ export function RegisterStep3({
     setError(null);
     setPhotoQualityWarning(null);
     setAcknowledgedQualityWarning(false);
-    setIsAnalyzingPhoto(false);
   };
 
   const handleContinue = async () => {
@@ -279,7 +251,6 @@ export function RegisterStep3({
     captureState === 'captured' &&
     capturedImage &&
     imageBlob &&
-    !isAnalyzingPhoto &&
     (!photoQualityWarning || acknowledgedQualityWarning);
 
   return (
@@ -491,14 +462,7 @@ export function RegisterStep3({
               )}
             </div>
 
-            {isAnalyzingPhoto && (
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking photo quality…
-              </div>
-            )}
-
-            {!isAnalyzingPhoto && photoQualityWarning && captureState === 'captured' && (
+            {photoQualityWarning && captureState === 'captured' && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
@@ -564,7 +528,6 @@ export function RegisterStep3({
                   setCameraState('idle');
                   setPhotoQualityWarning(null);
                   setAcknowledgedQualityWarning(false);
-                  setIsAnalyzingPhoto(false);
                 }}
                 className="text-sm text-gray-600 hover:text-gray-800 underline"
               >
