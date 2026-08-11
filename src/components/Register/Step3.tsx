@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle, Loader2 } from 'lucide-react';
+import { Camera, RotateCcw, Check, AlertTriangle, CreditCard, ShieldCheck, HelpCircle } from 'lucide-react';
 import { RegistrationProgress } from './RegistrationProgress';
 import type { RegisterStep1Data } from '../RegisterStep1';
 import type { RegisterStep2Data } from './Step2';
@@ -43,13 +43,15 @@ export function RegisterStep3({
   const [imageBlob, setImageBlob] = useState<Blob | null>(initialData?.imageBlob || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasConfirmedPhotoNotice, setHasConfirmedPhotoNotice] = useState(Boolean(initialData?.imageData));
-  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [photoQualityWarning, setPhotoQualityWarning] = useState<string | null>(null);
   const [acknowledgedQualityWarning, setAcknowledgedQualityWarning] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Bumped on every capture/retake so a slow quality check that resolves late
+  // can't apply its result to a photo the user has already replaced.
+  const captureIdRef = useRef(0);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -139,6 +141,7 @@ export function RegisterStep3({
   }, [stopCamera]);
 
   const handleStartCapture = (mode: 'selfie' | 'id') => {
+    captureIdRef.current += 1;
     setCaptureMode(initialData?.captureType || mode);
     setCaptureState('none');
     setCapturedImage(null);
@@ -149,7 +152,7 @@ export function RegisterStep3({
     setAcknowledgedQualityWarning(false);
   };
 
-  const capturePhoto = useCallback(async () => {
+  const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || cameraState !== 'active') {
       return;
     }
@@ -168,44 +171,52 @@ export function RegisterStep3({
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    setPhotoQualityWarning(null);
-    setAcknowledgedQualityWarning(false);
-    setIsAnalyzingPhoto(true);
+    captureIdRef.current += 1;
 
-    try {
-      const quality = await analyzeCapturedPhoto(canvas, captureMode ?? 'selfie');
-      setPhotoQualityWarning(quality.warning);
-    } catch (err) {
-      // Fail open: automatic quality check is a UX nicety, not a hard gate.
-      // Admin review remains the source of truth if this can't run.
-      debugError('Automatic photo quality check unavailable:', err);
-    } finally {
-      setIsAnalyzingPhoto(false);
-    }
+    const captureId = captureIdRef.current;
+
+    // Synchronous pixel read — no network, no model, nothing that can stall
+    // between the user and their photo.
+    setPhotoQualityWarning(analyzeCapturedPhoto(canvas).warning);
+    setAcknowledgedQualityWarning(false);
+    setError(null);
 
     canvas.toBlob(
       (blob) => {
-        if (blob) {
-          setImageBlob(blob);
+        if (captureIdRef.current !== captureId) return;
 
-          const reader = new FileReader();
-
-          reader.onload = () => {
-            setCapturedImage(reader.result as string);
-            setCaptureState('captured');
-            stopCamera();
-            setCameraState('idle');
-          };
-
-          reader.readAsDataURL(blob);
+        if (!blob) {
+          setError('We could not save that photo. Please try again.');
+          return;
         }
+
+        setImageBlob(blob);
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (captureIdRef.current !== captureId) return;
+
+          setCapturedImage(reader.result as string);
+          setCaptureState('captured');
+          stopCamera();
+          setCameraState('idle');
+        };
+
+        reader.onerror = () => {
+          if (captureIdRef.current !== captureId) return;
+          setError('We could not save that photo. Please try again.');
+        };
+
+        reader.readAsDataURL(blob);
       },
       'image/jpeg',
       0.72,
     );
-  }, [cameraState, captureMode, stopCamera]);
+  }, [cameraState, stopCamera]);
 
   const retakePhoto = () => {
+    captureIdRef.current += 1;
     setCaptureState('none');
     setCapturedImage(null);
     setImageBlob(null);
@@ -451,14 +462,7 @@ export function RegisterStep3({
               )}
             </div>
 
-            {isAnalyzingPhoto && (
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Checking photo quality…
-              </div>
-            )}
-
-            {!isAnalyzingPhoto && photoQualityWarning && captureState === 'captured' && (
+            {photoQualityWarning && captureState === 'captured' && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
@@ -513,6 +517,7 @@ export function RegisterStep3({
               <button
                 type="button"
                 onClick={() => {
+                  captureIdRef.current += 1;
                   stopCamera();
                   setCaptureMode(null);
                   setCaptureState('none');
@@ -521,6 +526,8 @@ export function RegisterStep3({
                   setError(null);
                   setHasConfirmedPhotoNotice(false);
                   setCameraState('idle');
+                  setPhotoQualityWarning(null);
+                  setAcknowledgedQualityWarning(false);
                 }}
                 className="text-sm text-gray-600 hover:text-gray-800 underline"
               >
