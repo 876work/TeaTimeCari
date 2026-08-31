@@ -203,6 +203,25 @@ npm run dev
 
 Visit `http://localhost:5173` to see the application running.
 
+### Cloudflare Workers deployment
+
+The application is deployed to Cloudflare as a static-assets Worker. In
+**Workers & Pages → Settings → Builds**, use these commands:
+
+```text
+Build command: npm run build
+Deploy command: npx wrangler deploy
+```
+
+The root [`wrangler.jsonc`](wrangler.jsonc) points Wrangler at Vite's `dist`
+output and enables SPA fallback routing. Without that configuration, a Workers
+Build can compile the Vite application successfully but fail during deployment
+because Wrangler has neither a Worker entry point nor an assets directory.
+
+Add the same `VITE_*` environment variables used by the production frontend to
+the Cloudflare build configuration. A pull request rerun should then publish a
+preview Worker instead of leaving the **Workers Builds** check failed.
+
 
 ### Discourse User Download Watermark Plugin
 
