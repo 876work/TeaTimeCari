@@ -116,6 +116,7 @@ interface UserRow {
 }
 
 type PresenceFilter = 'all' | 'online' | 'offline';
+type GenderFilter = 'all' | 'Male' | 'Female';
 type SortBy = 'registration_desc' | 'registration_asc' | 'last_login_desc' | 'last_login_asc';
 type ConfirmationAction = 'reject' | 'suspend' | 'unsuspend';
 type EditableUser = Pick<UserRow, 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'gender'>;
@@ -586,6 +587,7 @@ export function AdminUserReview({
   });
   const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
   const [presenceFilter, setPresenceFilter] = useState<PresenceFilter>('all');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('registration_desc');
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -1205,6 +1207,7 @@ export function AdminUserReview({
       return (
         (!needle || hay.some((h) => h.includes(needle))) &&
         (filterStatus === 'all' || normalizeApprovalStatus(u.status) === filterStatus) &&
+        (genderFilter === 'all' || u.gender === genderFilter) &&
         (presenceFilter === 'all' ||
           (presenceFilter === 'online' && isOnline(u)) ||
           (presenceFilter === 'offline' && isOffline(u)))
@@ -1229,10 +1232,11 @@ export function AdminUserReview({
     setSearch('');
     setFilterStatus('all');
     setPresenceFilter('all');
+    setGenderFilter('all');
     setSortBy('registration_desc');
   };
 
-  const hasActiveFilters = Boolean(search.trim()) || filterStatus !== 'all' || presenceFilter !== 'all' || sortBy !== 'registration_desc';
+  const hasActiveFilters = Boolean(search.trim()) || filterStatus !== 'all' || presenceFilter !== 'all' || genderFilter !== 'all' || sortBy !== 'registration_desc';
 
   const appTrackingHealth = presenceSystemStatus?.appTracking?.status;
   const communityHealth = presenceSystemStatus?.communityTracking?.status;
@@ -1336,7 +1340,7 @@ export function AdminUserReview({
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 xl:w-auto">
               <AdminSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)}>
                 <option value="all">All statuses</option>
                 <option value="pending">Pending</option>
@@ -1344,6 +1348,12 @@ export function AdminUserReview({
                 <option value="rejected">Rejected</option>
                 <option value="banned">Banned</option>
                 <option value="suspended">Suspended</option>
+              </AdminSelect>
+
+              <AdminSelect value={genderFilter} onChange={(e) => setGenderFilter(e.target.value as GenderFilter)}>
+                <option value="all">All genders</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
               </AdminSelect>
 
               <AdminSelect value={presenceFilter} onChange={(e) => setPresenceFilter(e.target.value as PresenceFilter)}>
