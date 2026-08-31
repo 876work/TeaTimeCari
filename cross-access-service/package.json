@@ -1,0 +1,15 @@
+{
+  "name": "cross-access-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Stage 1 (dummy data) — scheduled cross-access revocation worker + admin dashboard. Fully isolated from the Tea Time Cari production app; touches no production code or credentials.",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "seed": "node src/seed.mjs",
+    "reset": "node src/seed.mjs --force"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
